@@ -2,7 +2,7 @@
 Status: Concept baseline, October 29, 2026. This is a planning document, not permission to implement unspecified features.
 
 ## Purpose and philosophy
-An independent, invitation-only, member-run New Mexico State Aggies sports clubhouse. A welcoming alternative/companion to existing fan message boards, centered on real conversation, athletics, and long-lived community history. Not affiliated with or endorsed by New Mexico State University. No ads, mandatory subscriptions, or commercial ambition. Initial founder is simply a Founding Member in public-facing community life. Forum administrators run the community; technical ownership of repository/domain/hosting can be transferred later.
+An independent, invitation-only, member-run New Mexico State Aggies sports forum. A welcoming alternative/companion to existing fan message boards, centered on real conversation, athletics, and long-lived community history. Not affiliated with or endorsed by New Mexico State University. No ads, mandatory subscriptions, or commercial ambition. Initial founder is simply a Founding Member in public-facing community life. Forum administrators run the community; technical ownership of repository/domain/hosting can be transferred later.
 
 **Operating principles:** mobile-first, excellent desktop layout, easy to use, low cost, accessible, privacy-preserving, sustainable, community-governed. Start with a manageable build; avoid feature creep and unnecessary branches/PRs. Document decisions before coding.
 
@@ -10,14 +10,14 @@ An independent, invitation-only, member-run New Mexico State Aggies sports clubh
 Invite roughly 12 existing Aggie acquaintances initially, perhaps 20–30 early members; plan for eventual 300–500 members and concurrent game-day chat. An account is required for all member content; optional public landing/welcome page only.
 
 ## Branding and visual direction
-- Crimson, white, charcoal, with a Southwestern collegiate clubhouse character.
+- Crimson, white, charcoal, with a Southwestern collegiate sports-forum character.
 - **Use the previously selected cowboy crest as the primary design reference**, not the later crossed-revolver experiments. The crest includes a cowboy with hat and mustache, mountain landscape, adobe architecture, large NMSU lettering, SPORTS FORUM ribbon, and small sports symbols. Preserve that composition as the creative starting point; design derivative header, square PWA shortcut, favicon, sport-category graphics, and badges. The existing generated image is a reference, not a production-ready licensed asset; the actual image must be supplied to the implementation repository before coding.
 - A previously discussed website header also exists as a design reference, but the exact asset must be located/provided; do not invent a replacement and call it approved.
 - Avoid copying university trademarks, official Pistol Pete art, official lettering, or restricted cultural symbols. The current crest contains elements requiring review (including NMSU/NM STATE lettering and a Zia-style symbol). Develop original alternatives and assess trademark permissions before publication; AI-generated art is not automatically legally cleared.
 - App icon must remain legible at small iPhone/desktop shortcut sizes; full crest can remain on website.
 - Responsive: phone has compact header, bottom or accessible primary navigation, readable threads, thumb-friendly reactions, game-day chat; tablet/desktop use sidebars, multi-column dashboard, wider reading area, and clear moderation tools. Keyboard and screen-reader usability.
 
-## Home / clubhouse
+## Home / NMSU Sports Forum
 - Featured next NMSU game with sport, opponent, local start time, home/away, venue, score/status when available, TV/radio/streaming links, and entry to Game Center.
 - Recent and active forum threads, unread updates, most appreciated post this week, active game chat, upcoming games, optional announcements.
 - Member directory and opt-in approximate member map.
@@ -29,6 +29,27 @@ Invite roughly 12 existing Aggie acquaintances initially, perhaps 20–30 early 
 - Optional member real name, avatar, bio, interests, graduation year, city/state. Email private by default, share only by affirmative opt-in. No precise location or home address collection for map.
 - Member may self-report prior Aggie Alert username, join year, and post count, editable at any time and clearly labeled self-reported. Forum's own post count is automatic and not member-editable.
 - Founding Member badge for joining in first 30 days after official launch; later Honorary Founding Member possible based on community contribution, criteria not yet finalized.
+
+## Venue-inspired sports forum navigation
+The site name and public-facing identity are **NMSU Sports Forum**, not “Aggie Clubhouse.” Organize sports forums around familiar Aggie venues while keeping the sport itself unmistakable in navigation, labels, search, and accessibility:
+- **The Pan Am** — basketball (men's and women's); volleyball may share this venue identity while retaining its own sport filter.
+- **Aggie Memorial** — football.
+- **Presley Askew Field** — baseball.
+- **Softball Complex** — softball (official venue naming to confirm before launch).
+- **The Pitch** — women's soccer (friendly forum label, not a claim about official facility naming).
+- **Track & Field** — track and cross-country; venue naming to verify.
+- Other sports (swimming, tennis, golf, etc.) can be added without creating empty forums before participation warrants them.
+Mobile: compact category tiles or lists, not an oversized gallery. Desktop: richer venue cards and clear forum directory. Each forum opens recent threads, sport-specific schedules, and associated game-day discussions. Photography must be licensed or owned; reference photos are not production assets.
+
+## Ring of Honor — permanent community memorial
+A dignified, distinct area honoring forum members who have died, and optionally respected longtime Aggie Alert community posters who never joined this site.
+- Administrators may create a tribute **only after respectfully verifying the death** and considering family wishes, privacy, and the appropriateness of public details. Do not rely on rumors or automated status inference.
+- Memorial entry may show chosen username, approved avatar, a short remembrance, and links to historical posts when permitted. Real names, photos, dates, and personal details are optional and should not be added without appropriate care.
+- Members can submit memories and tributes subject to moderation; avoid competitive reactions, ranking, or gamification on memorial pages.
+- A deceased member's account is retired/secured; never allow further posts under their identity.
+- Memorial records and tribute messages are permanent by policy and **exempt from the standard 90-day thread archive and uploaded-image deletion rules**; memorial images need a distinct retention/consent policy. Historical linked forum posts still follow their original archival rules unless explicitly preserved.
+- Ring of Honor is accessible from main navigation and member history, with a respectful design distinct from achievement badges or reputation.
+- Procedures for corrections, mistaken reports, requests from family, and removal should be documented before launch.
 
 ## Forum and threads
 - Categories: Basketball, Football, Other Sports, General; a distinct Politics category is contemplated. Whether Politics is opt-in is **undecided**. No politics in sports discussions.
@@ -70,7 +91,7 @@ Invite roughly 12 existing Aggie acquaintances initially, perhaps 20–30 early 
 - Mobile and desktop acceptance testing, including iPhone PWA install, chat, offline/reconnect behavior, and desktop layout.
 
 ## Release sequencing (proposal, not authorization)
-**Initial usable release:** identity/invitations; responsive clubhouse; categories/threads/replies; basic reactions; member cards; admin moderation; simple schedule links; approved branding.
+**Initial usable release:** identity/invitations; responsive forum home; categories/threads/replies; basic reactions; member cards; admin moderation; simple schedule links; approved branding.
 **Next:** game chat and Game Center, polls, notifications, member map, archive/image lifecycle, reputation/featured posts.
 **Later:** suggestion workflow, richer badges and sponsor history, refined feeds/automations, more live-data integrations, advanced admin and community features.
 
@@ -84,7 +105,7 @@ This sequencing does not remove any feature from the overall vision. Review it b
 5. Hosting/domain account ownership and allowed data-source licensing.
 6. Launch date used to calculate Founding Member window; honorary badge thresholds.
 7. Live-chat retention and notification preferences.
-8. Site cost/renewal disclosure and voluntary sponsor confirmation process.
+8. Site cost/renewal disclosure and voluntary sponsor confirmation process.\n9. Confirm venue names, photo licensing, and which sports receive dedicated forums at launch.\n10. Ring of Honor verification, consent, family requests, memorial image retention, and moderator workflow.
 
 ## Working agreement for coding agents
 - Read this vision and the repository's current state before making changes.
