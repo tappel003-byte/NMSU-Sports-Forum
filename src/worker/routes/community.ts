@@ -12,7 +12,8 @@ import { putObject, getObject, deleteObject } from '../storage';
 import { getPreview } from '../lib/previews';
 import { pushEnabled } from '../lib/push';
 import { notifyModerators } from '../lib/moderation';
-import { destroySession } from '../auth';
+import { destroySession, rateLimit } from '../auth';
+import { createInvite, memberInvitesOn } from '../lib/invites';
 import { hashPassword, randomToken, verifyPassword } from '../util';
 
 export const community = new Hono<AppEnv>();
@@ -570,3 +571,28 @@ community.post('/me/appeals', async (c) => {
 });
 
 export { fileAppeal };
+
+// ---------- Members invite friends ----------
+
+community.get('/invites/mine', async (c) => {
+  const rows = await all(c.env,
+    `SELECT i.id, i.note, i.uses, i.max_uses, i.expires_at, i.revoked, i.created_at,
+       (SELECT group_concat(nu.username, ', ') FROM invite_uses iu JOIN users nu ON nu.id = iu.user_id WHERE iu.invite_id = i.id) AS used_by
+     FROM invites i WHERE i.created_by = ? ORDER BY i.id DESC LIMIT 50`, c.get('user').id);
+  return c.json({ invites: rows, enabled: await memberInvitesOn(c.env) });
+});
+
+community.post('/invites', async (c) => {
+  const user = c.get('user');
+  if (user.role !== 'admin' && !(await memberInvitesOn(c.env))) throw new HttpError(403, 'Member invitations are switched off right now.');
+  const body = parse(z.object({ name: z.string().trim().max(60).optional(), email: z.string().trim().email().max(200).optional().or(z.literal('')) }), await c.req.json());
+  await rateLimit(c.env, `member-invite:${user.id}`, 10, DAY);
+  const r = await createInvite(c.env, new URL(c.req.url).origin, user, { name: body.name, email: body.email || undefined, days: 14, maxUses: 1 });
+  return c.json({ link: r.link, emailed: r.emailed, emailEnabled: r.emailEnabled, days: r.days });
+});
+
+community.delete('/invites/:id', async (c) => {
+  await run(c.env, 'UPDATE invites SET revoked = 1 WHERE id = ? AND created_by = ?', Number(c.req.param('id')) || 0, c.get('user').id);
+  return c.json({ ok: true });
+});
+

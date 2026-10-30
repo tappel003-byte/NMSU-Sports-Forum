@@ -69,3 +69,4 @@ Status values: **Planned** · **Built** (code exists) · **Verified** (tested en
 | 62 | Audit history: every moderation decision recorded with its reason | DECISIONS (refined troll flagging) | Verified — audit log entries with reasons for every decision |
 | 63 | Latest scores strip on top of the Board (automatic results, spoiler-free respected) | DECISIONS (after first live review) | Verified with the synthetic feed |
 | 64 | Rosters & links hub: official roster/schedule links per sport, admin-curated radio/stream links | DECISIONS (after first live review) | Verified — roster links point to nmstatesports.com's standard pages (**confirm they open correctly on the live site**); only https links accepted |
+| 65 | Members invite friends from their phone (one tap; daily limit; admin switch) | DECISIONS (after first live review) | Verified — member invites a friend who joins; switch off refuses |

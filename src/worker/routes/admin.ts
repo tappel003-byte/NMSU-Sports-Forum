@@ -7,6 +7,7 @@ import { emailEnabled, sendEmail } from '../email';
 import { DAY, HttpError, now, parse, randomToken, sha256 } from '../util';
 import { BADGES, SPORT_BY_KEY } from '../../shared/sports';
 import { awardBadge } from '../lib/members';
+import { createInvite } from '../lib/invites';
 import { createResetToken } from './auth';
 import { publishPost, broadcastThread } from '../lib/threads';
 import { BAN_APPROVALS_REQUIRED, MAX_SUSPENSION_DAYS, assertNotLastModerator, issueWarning, moderatorIds, notifyModerators, overturn, removePost, suspend, tellMember, voteBan } from '../lib/moderation';
@@ -57,21 +58,10 @@ admin.post('/invites', async (c) => {
     days: z.number().int().min(1).max(60).default(14),
     max_uses: z.number().int().min(1).max(50).default(1),
   }), await c.req.json());
-  const token = randomToken(24);
-  const t = now();
-  // Phone numbers are never sent here: texting happens on the admin's own phone.
-  const note = [body.name, body.note].filter(Boolean).join(' — ') || (body.email ? `Emailed to ${body.email}` : null);
-  await run(c.env, 'INSERT INTO invites (token_hash, created_by, email, note, max_uses, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-    await sha256(token), user.id, body.email && body.lock_email ? body.email : null, note, body.max_uses, t + body.days * DAY, t);
-  const link = `${new URL(c.req.url).origin}/join/${token}`;
-  let emailed = false;
-  if (body.email && emailEnabled(c.env)) {
-    emailed = await sendEmail(c.env, body.email, "You're invited to NMSU Sports Forum",
-      `${body.name ? `Hi ${body.name},\n\n` : ''}${user.display_name || user.username} invited you to join NMSU Sports Forum, a community for Aggie fans.\n\nCreate your account here (link works once and expires in ${body.days} days):\n${link}\n\nNMSU Sports Forum is an independent fan community, not affiliated with New Mexico State University.`);
-  }
-  await logMod(c.env, user.id, 'create_invite', 'invite', null, note ?? '');
+  const r = await createInvite(c.env, new URL(c.req.url).origin, user, { email: body.email || undefined, lockEmail: body.lock_email, name: body.name, note: body.note, days: body.days, maxUses: body.max_uses });
+  await logMod(c.env, user.id, 'create_invite', 'invite', null, r.note ?? '');
   // The link is shown once; only its hash is stored.
-  return c.json({ link, emailed, emailEnabled: emailEnabled(c.env), days: body.days });
+  return c.json({ link: r.link, emailed: r.emailed, emailEnabled: r.emailEnabled, days: r.days });
 });
 
 admin.delete('/invites/:id', async (c) => {
@@ -391,7 +381,7 @@ admin.delete('/badges/:id', async (c) => {
 
 // ---------- Settings ----------
 
-const SETTING_KEYS = ['launch_date', 'honorary_threshold', 'chat_window', 'announcement', 'approve_first_post', 'signup_mode', 'public_read', 'troll_threshold', 'hub_links'] as const;
+const SETTING_KEYS = ['launch_date', 'honorary_threshold', 'chat_window', 'announcement', 'approve_first_post', 'signup_mode', 'public_read', 'troll_threshold', 'hub_links', 'member_invites'] as const;
 
 admin.get('/settings', async (c) => {
   const out: Record<string, string> = {};
@@ -410,6 +400,7 @@ admin.put('/settings', async (c) => {
     public_read: z.enum(['0', '1']).optional(),
     troll_threshold: z.string().regex(/^[1-9]\d?$/, 'use a number from 1 to 99').optional(),
     hub_links: z.string().max(4000).optional(),
+    member_invites: z.enum(['0', '1', '']).optional(),
   }), await c.req.json());
   for (const [k, v] of Object.entries(body)) if (v !== undefined) await setSetting(c.env, k, v);
   await logMod(c.env, c.get('user').id, 'update_settings', 'settings', null, JSON.stringify(body).slice(0, 500));
