@@ -4,7 +4,7 @@ Updated October 29, 2026.
 ## Approved
 - Public name **NMSU Sports Forum**. Independent NMSU fan community, not officially endorsed. Avoid "Aggie Clubhouse" branding.
 - The owner controls **NMSUSportsForum.com**; **Cloudflare is the hosting platform**. GitHub repo is the code source. Publish approved iterations to the website for direct iPhone and desktop review, after checking DNS and Cloudflare project permissions. Site deployment may not yet be configured.
-- Invite-only forum eventually, starting with 20–30 members, scalable toward a few hundred; 4–5 community administrators. Owner need not be public moderator or have a special badge.
+- Starts invite-only with 20–30 members; switchable to open sign-up (see open community decisions below), scalable toward a few hundred or more; 4–5 community administrators. Owner need not be public moderator or have a special badge.
 - **Mobile first, but excellent desktop.** PWA approach.
 - Approved cowboy crest and header/screenshots supplied directly by owner to Claude Code; do not use generated crossed-guns replacement. **Brand-color authority:** [BRAND_COLORS.md](BRAND_COLORS.md) — NMSU's verified official palette. Website primary crimson **#8C0B42**, white **#FFFFFF**; secondary **#B6A5AD** and **#D7C9C4**; gray **#6D6E71**. Old colors sampled from the crest are NOT official brand colors. Keep the approved crest composition unchanged unless owner approves edits.\n
 - Sports forums: The Pan Am (basketball and volleyball), Aggie Memorial (football), Presley Askew Field (baseball), Softball Complex (softball), The Pitch (women's soccer), Track & Field. Clear sport labels always.
@@ -40,6 +40,14 @@ Updated October 29, 2026.
   - Tweet text is fetched through X's free embed service (no paid API). If a tweet is deleted, the card says so.
   - Automatic X search stays out unless the owner later approves the cost.
 - **Deliberately skipped:** paid tiers or premium-only boards, extra reaction types, clubs/sub-groups, automatic paid X search.
+
+## Approved October 30, 2026 (open community)
+- **Migration strategy:** the forum only works if the Aggie Alert conversation moves here, so it must be easy to join. **Supersedes invite-only as the permanent model.**
+- **Sign-up mode is an admin switch:** *invite-only* or *open sign-up*. Plan: launch invite-only for 2–4 weeks with the core group, then switch to open.
+- **Public reading, sign up to post** (also a switch). Discussions, games, recruiting and the Time Machine are readable without an account; posting, reacting, chat, private messages, the member directory, map and calendar require an account. Private messages stay strictly private.
+- **Open sign-up protections:** Cloudflare Turnstile human check, email confirmation (requires an email service), first-post approval for newcomers, sign-up rate limits.
+- **Troll flag:** established members can flag a post as trolling. When enough different members flag it (admin setting, default 3), the post is hidden immediately, the poster's next posts go to approval, and admins are notified. Admins restore or remove. An admin's flag hides at once.
+- **Old Aggie Alert posts cannot be imported** (Rivals' terms, no export). Members bring their moniker and post count, and can re-post favorite memories in Aggie History.
 
 ## Decisions pending
 - Politics category and possible opt-in.

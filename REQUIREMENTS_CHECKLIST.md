@@ -60,3 +60,6 @@ Status values: **Planned** · **Built** (code exists) · **Verified** (tested en
 | 53 | Recruiting and transfer portal tracker (automatic where a free permitted source exists) | DECISIONS (Oct 30 research round), MILESTONE | Built and verified with synthetic CollegeFootballData responses. **Blocked: needs the free CFBD_API_KEY and network access; confirm CFBD terms before launch** |
 | 54 | Effortless tweet sharing: pasted links embed, Share a tweet button, iPhone share-sheet Shortcut, tweets attach to recruit cards | DECISIONS, MILESTONE | Verified — paste-to-embed, Share a tweet (home, threads, player cards), clipboard Paste button, /share page for the iPhone Shortcut (setup steps in Settings) |
 | 55 | Phone refinements: pinned reply bar, floating new-thread button, pull to refresh, shorter phone home, game threads grouped under the game card, bigger reaction buttons, compact list option | DECISIONS (Oct 30) | Verified |
+| 56 | Sign-up mode switch (invite-only / open) with Turnstile, email confirmation, newcomer first-post approval | DECISIONS (open community) | Planned |
+| 57 | Public reading switch: read without an account, sign up to post | DECISIONS (open community) | Planned |
+| 58 | Troll flag: community flags auto-hide a post at a threshold, hold the poster's next posts, alert admins | DECISIONS (open community) | Planned |
