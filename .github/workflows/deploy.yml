@@ -25,8 +25,8 @@ jobs:
       - run: npx vite build
 
   # Deploys main to Cloudflare once the technical owner has added the repository
-  # secrets CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID and the repository
-  # variable D1_DATABASE_ID (see docs/DEPLOYMENT.md). Skipped until then.
+  # secrets CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID (see docs/DEPLOYMENT.md).
+  # Skipped until then.
   deploy:
     needs: check
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
@@ -34,13 +34,13 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      D1_DATABASE_ID: ${{ vars.D1_DATABASE_ID }}
+      BOOTSTRAP_TOKEN: ${{ secrets.BOOTSTRAP_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - name: Skip when Cloudflare is not configured
         id: configured
         run: |
-          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ] || [ -z "$D1_DATABASE_ID" ]; then
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
             echo "Cloudflare deployment is not configured yet; skipping."
             echo "ok=false" >> "$GITHUB_OUTPUT"
           else
@@ -53,9 +53,6 @@ jobs:
           cache: npm
       - if: steps.configured.outputs.ok == 'true'
         run: npm ci
-      - name: Point wrangler at the production database
-        if: steps.configured.outputs.ok == 'true'
-        run: sed -i "s/00000000-0000-0000-0000-000000000000/${D1_DATABASE_ID}/" wrangler.jsonc
       - if: steps.configured.outputs.ok == 'true'
         run: npx vite build
       - name: Apply database migrations
@@ -64,3 +61,7 @@ jobs:
       - name: Deploy worker
         if: steps.configured.outputs.ok == 'true'
         run: npx wrangler deploy
+      # Uploads the one-time setup token for creating the first administrator, if provided.
+      - name: Set first-admin setup token
+        if: steps.configured.outputs.ok == 'true' && env.BOOTSTRAP_TOKEN != ''
+        run: printf '%s' "$BOOTSTRAP_TOKEN" | npx wrangler secret put BOOTSTRAP_TOKEN

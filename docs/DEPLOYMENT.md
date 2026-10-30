@@ -13,36 +13,24 @@ This is the one-time setup for the **technical owner** (whoever holds the Cloudf
 | Email (invites, resets, digest) | **Resend** (optional) | Without it, admins copy and send links themselves |
 
 ## One-time setup
-Run these from a computer with Node 22, inside a clone of the repository.
+Everything happens in web browsers; no command line needed.
 
-1. **Check the existing site and DNS first.** In the Cloudflare dashboard, open **nmsusportsforum.com → DNS → Records**. Write down what's there. If the domain already serves a website you want to keep, stop and decide what to do with it before step 6. Nothing below touches DNS until step 6.
-2. **Sign in and create the database:**
-   ```sh
-   npm ci
-   npx wrangler login
-   npx wrangler d1 create nmsu-sports-forum
-   ```
-   Copy the `database_id` it prints.
-3. **Set the secrets** (never commit these):
-   ```sh
-   npx wrangler secret put BOOTSTRAP_TOKEN    # any long random string; used once to create the first admin
-   # Optional email:
-   npx wrangler secret put RESEND_API_KEY
-   ```
-   For email, also set `MAIL_FROM` in `wrangler.jsonc` `vars` (for example `"NMSU Sports Forum <noreply@nmsusportsforum.com>"`) after verifying the domain in Resend.
-4. **Turn on automatic deploys from GitHub.** In GitHub → Settings → Secrets and variables → Actions:
-   - Secret `CLOUDFLARE_API_TOKEN`: create it in Cloudflare → My Profile → API Tokens with the **Edit Cloudflare Workers** template plus **D1 Edit** permission.
-   - Secret `CLOUDFLARE_ACCOUNT_ID`: shown on the Cloudflare dashboard home page.
-   - Variable `D1_DATABASE_ID`: the id from step 2.
+1. **Check the existing site and DNS first.** In the Cloudflare dashboard, open **nmsusportsforum.com → DNS → Records**. Write down what's there. If the domain already serves a website you want to keep, decide what to do with it before step 6. Nothing below touches DNS until step 6.
+2. **Database: already done.** The D1 database `nmsu-sports-forum` was created on October 30, 2026 (id in `wrangler.jsonc`). The first deploy creates its tables.
+3. **Add three GitHub secrets.** In GitHub → the repository → **Settings → Secrets and variables → Actions → New repository secret**:
+   - `CLOUDFLARE_API_TOKEN`: in Cloudflare → **My Profile → API Tokens → Create Token**, start from the **Edit Cloudflare Workers** template and add **Account → D1 → Edit**.
+   - `CLOUDFLARE_ACCOUNT_ID`: shown in the right-hand column of the Cloudflare dashboard home page (Workers & Pages → Overview).
+   - `BOOTSTRAP_TOKEN`: any long random phrase you make up. You'll type it once to create the first administrator. Keep it private.
 
-   From then on, every merge to `main` runs the checks, applies database migrations and deploys. Until these are set, the deploy job skips itself and the checks still run.
-5. **First deploy.** Merge to `main` (or run the workflow manually from the Actions tab). The site goes live at `https://nmsu-sports-forum.<your-subdomain>.workers.dev`.
+   Until the first two are set, the deploy job skips itself and the checks still run.
+4. **Optional email.** To send invites and password resets by email, add the secret with `npx wrangler secret put RESEND_API_KEY` (or in the Worker's **Settings → Variables and secrets**) and set `MAIL_FROM` in `wrangler.jsonc` `vars` after verifying the domain in Resend.
+5. **First deploy.** Merge the pull request into `main` (or run the workflow manually from the Actions tab). The workflow creates the tables, deploys, and uploads the setup token. The site goes live at `https://nmsu-sports-forum.<your-subdomain>.workers.dev`; the exact address appears in the workflow log and under **Workers & Pages** in Cloudflare.
 6. **Connect the domain** once you're happy with step 1. Uncomment the `routes` line in `wrangler.jsonc`:
    ```jsonc
    "routes": [{ "pattern": "nmsusportsforum.com", "custom_domain": true }]
    ```
    Cloudflare creates the DNS record for you. If a record for the bare domain already exists, Cloudflare refuses rather than overwriting it, so remove the old one deliberately first. Add `www.nmsusportsforum.com` the same way if you want it.
-7. **Create the first administrator.** Visit `https://nmsusportsforum.com/setup`, enter the `BOOTSTRAP_TOKEN` and choose the admin's username, email and password. Setup works only while the database has no users. After that, you can delete the secret with `npx wrangler secret delete BOOTSTRAP_TOKEN`.
+7. **Create the first administrator.** Visit `/setup` on the site (the workers.dev address works before the domain is connected), enter the `BOOTSTRAP_TOKEN` and choose the admin's username, email and password. Setup works only while the database has no users. After that, you can delete the `BOOTSTRAP_TOKEN` secret in GitHub and in the Worker's settings.
 8. **Connect the official schedule feeds.** Sign in as an admin, open **Admin → Sports data** and add the official NMSU Athletics calendar feed (the "Sync to calendar / iCal" link on nmstatesports.com). Press **Sync now**. From then on it updates every 30 minutes by itself. See `SPORTS_DATA.md`.
 
 ## Optional: R2 for photos

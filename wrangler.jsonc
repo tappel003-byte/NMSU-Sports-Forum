@@ -15,8 +15,7 @@
     {
       "binding": "DB",
       "database_name": "nmsu-sports-forum",
-      // Replace with the id printed by `wrangler d1 create nmsu-sports-forum` (see docs/DEPLOYMENT.md).
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "f5db5668-301e-46cb-a845-07532741d3d9",
       "migrations_dir": "migrations"
     }
   ],
