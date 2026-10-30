@@ -11,7 +11,7 @@
     "test": "vitest run",
     "db:migrate:local": "wrangler d1 migrations apply DB --local",
     "db:migrate:remote": "wrangler d1 migrations apply DB --remote",
-    "e2e": "node tests/e2e.mjs && node tests/e2e-round2.mjs && node tests/e2e-round3.mjs",
+    "e2e": "node tests/e2e.mjs && node tests/e2e-round2.mjs && node tests/e2e-round3.mjs && node tests/e2e-round4.mjs",
     "deploy": "npm run build && wrangler d1 migrations apply DB --remote && wrangler deploy",
     "vapid": "node scripts/vapid.mjs"
   },

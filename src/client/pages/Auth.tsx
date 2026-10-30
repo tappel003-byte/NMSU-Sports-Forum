@@ -48,6 +48,7 @@ export function Login() {
         {error && <div className="error-box" style={{ marginBottom: 12 }}>{error}</div>}
         <button className="btn block" disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button>
       </form>
+      {error && /appeal below/.test(error) && <AppealFromLogin username={username} password={password} />}
       <p className="small" style={{ textAlign: 'center' }}><Link to="/forgot">Forgot your password?</Link></p>
       {site.signupMode === 'open'
         ? <p className="small" style={{ textAlign: 'center' }}>New here? <Link to="/join"><strong>Join free</strong></Link></p>
@@ -233,5 +234,23 @@ export function Verify() {
       subtitle={state === 'ok' ? "You're all set. Jump into the conversation." : state === 'bad' ? 'This confirmation link is invalid or expired. Sign in and ask for a new one in Settings.' : undefined}>
       <Link className="btn block" to="/">Go to the forum</Link>
     </AuthShell>
+  );
+}
+
+function AppealFromLogin({ username, password }: { username: string; password: string }) {
+  const [message, setMessage] = useState('');
+  const [sent, setSent] = useState(false);
+  const { error, busy, submit } = useSubmit(async () => {
+    await api('/auth/appeal', { body: { username, password, message } });
+    setSent(true);
+  });
+  if (sent) return <div className="note-box small" style={{ marginTop: 12 }}>Your appeal was sent. A moderator who wasn't involved in the decision will review it, and you'll get an email (if email is set up) with the outcome.</div>;
+  return (
+    <form onSubmit={submit} style={{ marginTop: 14 }}>
+      <div className="field"><label htmlFor="appeal">Appeal this decision</label><textarea id="appeal" className="textarea" style={{ minHeight: 90 }} value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Explain why you think this should be reconsidered." required minLength={10} /></div>
+      <span className="hint">Appeals are reviewed by a moderator who didn't make the original decision.</span>
+      {error && <div className="error-box" style={{ margin: '8px 0' }}>{error}</div>}
+      <button className="btn secondary block" style={{ marginTop: 8 }} disabled={busy || message.trim().length < 10}>Send appeal</button>
+    </form>
   );
 }

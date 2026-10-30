@@ -341,6 +341,8 @@ export function Settings() {
         <button className="btn ghost small" style={{ marginTop: 10 }} onClick={() => api('/auth/logout-all', { method: 'POST' }).then(() => refresh())}>Sign out on all devices</button>
       </section>
 
+      <ModerationHistory />
+
       <section className="card card-pad">
         <h2>Your data</h2>
         <p className="small muted" style={{ marginTop: 0 }}>Download everything you've posted and your settings, including your private messages, as a file.</p>
@@ -594,5 +596,39 @@ function DeleteAccount() {
         </div>
       )}
     </div>
+  );
+}
+
+const ACTION_LABELS: Record<string, string> = { remove_post: 'Post removed', warn: 'Warning', suspend: 'Suspension', ban: 'Ban', revoke_flagging: 'Flagging turned off' };
+
+function ModerationHistory() {
+  const { toast } = useApp();
+  const { data, reload } = useApi<{ decisions: { id: number; action: string; detail: string; created_at: number; appeal_status: string | null; decision_note: string | null }[] }>('/me/moderation');
+  const [appealing, setAppealing] = useState<number | null>(null);
+  const [message, setMessage] = useState('');
+  const send = async () => {
+    try { await api('/me/appeals', { body: { log_id: appealing, message } }); toast('Appeal sent'); setAppealing(null); setMessage(''); reload(); } catch (e) { toast((e as Error).message); }
+  };
+  return (
+    <section className="card card-pad" id="moderation">
+      <h2>Moderation history</h2>
+      {!data?.decisions.length ? <p className="small muted" style={{ margin: 0 }}>Nothing here. Thanks for keeping it friendly.</p> : data.decisions.map((d) => (
+        <div key={d.id} style={{ padding: '10px 0', borderBottom: '1px solid var(--line)' }}>
+          <div className="spread"><strong className="small">{ACTION_LABELS[d.action] ?? d.action}</strong><span className="tiny muted">{fullTime(d.created_at)}</span></div>
+          <div className="small">{d.detail}</div>
+          {d.appeal_status ? (
+            <div className="tiny muted" style={{ marginTop: 4 }}>Appeal {d.appeal_status === 'open' ? 'under review' : d.appeal_status === 'overturned' ? 'granted' : 'reviewed: decision stands'}{d.decision_note ? ` — ${d.decision_note}` : ''}</div>
+          ) : d.action !== 'revoke_flagging' && (
+            appealing === d.id ? (
+              <div style={{ marginTop: 6 }}>
+                <textarea className="textarea" style={{ minHeight: 80 }} value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Explain why this should be reconsidered." aria-label="Appeal message" />
+                <div className="row" style={{ marginTop: 6 }}><button className="btn small" disabled={message.trim().length < 10} onClick={send}>Send appeal</button><button className="btn ghost small" onClick={() => setAppealing(null)}>Cancel</button></div>
+                <div className="tiny muted">A moderator who didn't make this decision reviews appeals.</div>
+              </div>
+            ) : <button className="btn ghost small" onClick={() => setAppealing(d.id)}>Appeal</button>
+          )}
+        </div>
+      ))}
+    </section>
   );
 }

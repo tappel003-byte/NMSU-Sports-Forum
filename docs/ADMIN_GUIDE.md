@@ -8,8 +8,16 @@ Community administrators run the forum day to day. You don't need any technical 
 - **Anyone can read without an account:** visitors can browse discussions, games and recruiting; they must join to post.
 - **Troll flags needed to hide a post** (default 3).
 
-## Troll flags
-Established members can tap **Troll** on a post. When enough different members flag it, the post is hidden immediately, that member's next posts wait for approval, and every admin is notified. Review it in **Admin → Reports → Troll flags**: *Not trolling: restore* or *Remove post*, and suspend the member from **Admin → Members** if needed. An admin's own flag hides a post at once.
+## Troll flags and moderator review
+Moderators are the forum's administrators.
+- **Flags:** registered members tap **Troll** on a post (once per post). When **three different members** flag it, the post is **temporarily hidden pending review**. That is a precaution, not a verdict: the author isn't penalized and **flags never change Aggie Reputation**. A moderator's flag counts as one flag. All moderators get a notification.
+- **Review (Admin → Reports → Flagged posts):** you see the post, who flagged it, and each flagger's history (how often their flags were dismissed, and whether they keep flagging the same person). Type a reason, then **Restore** or **Remove**, optionally ticking **Also send a warning**. The member sees the reason.
+- **Warnings:** Admin → Members → **Warn**.
+- **Suspensions:** one moderator can suspend for **1–90 days**, with a reason. It lifts itself.
+- **Permanent bans need three moderators.** Admin → Members → **Propose ban** (your proposal counts as one approval); two more moderators approve under **Admin → Bans & appeals**. Proposals expire after 14 days. With fewer than three moderators, use timed suspensions.
+- **Appeals:** members appeal removals, warnings, suspensions and bans (from Settings, or from the sign-in page if suspended or banned). The moderator who made the decision can't decide the appeal; for a ban, none of the approving moderators can. Granting an appeal undoes the decision.
+- **Abusive flagging:** **Admin → Bans & appeals → Flagging history** shows each member's flags, upheld vs. dismissed. You can turn off a member's flagging (with a reason); they can still use Report.
+- **Audit history:** every decision and its reason is in **Admin → Log**, visible only to moderators.
 
 ## Inviting members
 **Admin → Invitations → Create invitation.** Optionally enter the person's email (then only that address can use it) and a private note so you remember who it's for. Copy the link and send it by text or email. Links work once and expire after 14 days by default; revoke unused ones any time.

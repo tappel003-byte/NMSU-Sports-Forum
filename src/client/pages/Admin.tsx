@@ -123,15 +123,18 @@ function Members() {
                   : <button className="btn ghost small" onClick={() => confirm(`Make ${m.username} an administrator?`) && patch(m.id, { role: 'admin' }, 'Now an administrator')}>Make admin</button>)}
                 {m.id !== me?.id && (m.status === 'active'
                   ? <button className="btn ghost small" onClick={() => {
-                      const reason = prompt(`Suspend ${m.username}? Reason (private):`);
-                      if (reason === null) return;
-                      const days = prompt('For how many days? Leave blank to suspend until you reinstate them.', '7');
-                      if (days === null) return;
-                      const body: Record<string, unknown> = { status: 'suspended', reason };
-                      if (days.trim()) body.days = Number(days);
-                      patch(m.id, body as Record<string, string>, days.trim() ? `Suspended for ${days} days` : 'Member suspended and signed out');
+                      const days = prompt(`Suspend ${m.username} for how many days? (1–90. Permanent bans need three moderators: use "Propose ban".)`, '7');
+                      if (!days) return;
+                      const reason = prompt('Reason (the member sees it and can appeal):');
+                      if (!reason) return;
+                      patch(m.id, { status: 'suspended', days: Number(days), reason }, `Suspended for ${days} days`);
                     }}>Suspend</button>
-                  : <button className="btn ghost small" onClick={() => patch(m.id, { status: 'active' }, 'Member reinstated')}>Reinstate</button>)}
+                  : <button className="btn ghost small" onClick={() => { const reason = prompt(`Lift ${m.username}'s suspension? Reason (recorded):`); if (reason) patch(m.id, { status: 'active', reason }, 'Member reinstated'); }}>Reinstate</button>)}
+                {m.id !== me?.id && <button className="btn ghost small" onClick={() => { const reason = prompt(`Warning for ${m.username} (they see it and can appeal):`); if (reason) api(`/admin/members/${m.id}/warn`, { body: { reason } }).then(() => toast('Warning sent')).catch((e) => toast(e.message)); }}>Warn</button>}
+                {m.id !== me?.id && m.status === 'active' && <button className="btn ghost small" onClick={() => {
+                  const reason = prompt(`Propose permanently banning ${m.username}? Three moderators must approve. Explain why:`);
+                  if (reason) api<{ status: string; approvals: number }>('/admin/bans', { body: { user_id: m.id, reason } }).then((r) => toast(r.status === 'approved' ? 'Banned' : `Ban proposed: ${r.approvals} of 3 approvals. Other moderators have been notified.`)).catch((e) => toast(e.message));
+                }}>Propose ban</button>}
                 <button className="btn ghost small" onClick={() => reset(m.id)}>Reset link</button>
                 <button className="btn ghost small" onClick={() => setBadgeFor(m)}>Recognize</button>
               </div>
@@ -168,24 +171,39 @@ function BadgeModal({ member, onClose }: { member: { id: number; username: strin
   );
 }
 
+interface Flagger { id: number; username: string; can_flag: number; on_author_30d: number; dismissed: number; total: number }
+
 function Flagged() {
   const { toast, refreshPulse } = useApp();
-  const { data, reload } = useApi<{ flagged: { id: number; thread_id: number; body: string; hidden: number; username: string | null; user_id: number | null; title: string; flags: number; flagged_by: string }[] }>('/admin/flagged');
+  const { data, reload } = useApi<{ flagged: { id: number; thread_id: number; body: string; hidden: number; username: string | null; user_id: number | null; title: string; flags: number; prior_warnings: number; flaggers: Flagger[] }[] }>('/admin/flagged');
+  const [reason, setReason] = useState<Record<number, string>>({});
+  const [warn, setWarn] = useState<Record<number, boolean>>({});
   const act = async (id: number, action: 'restore' | 'remove') => {
-    try { await api(`/admin/flagged/${id}`, { body: { action } }); toast(action === 'restore' ? 'Restored' : 'Removed'); refreshPulse(); reload(); } catch (e) { toast((e as Error).message); }
+    try {
+      await api(`/admin/flagged/${id}`, { body: { action, reason: reason[id] ?? '', warn: Boolean(warn[id]) } });
+      toast(action === 'restore' ? 'Restored' : 'Removed');
+      refreshPulse();
+      reload();
+    } catch (e) { toast((e as Error).message); }
   };
   if (!data?.flagged.length) return null;
   return (
     <section className="card" style={{ marginBottom: 16 }}>
-      <div className="section-head"><h2>🚩 Troll flags</h2></div>
+      <div className="section-head"><h2>🚩 Flagged posts</h2><span className="small muted">Three flags hide a post until reviewed. Flags never change reputation.</span></div>
       {data.flagged.map((f) => (
         <div key={f.id} className="card-pad" style={{ borderBottom: '1px solid var(--line)' }}>
-          <div className="small"><strong>{f.username ?? 'member'}</strong> in <Link to={`/t/${f.thread_id}?post=${f.id}`}>“{f.title}”</Link> · {f.flags} flag{f.flags === 1 ? '' : 's'} by {f.flagged_by} {f.hidden ? <span className="chip gray">Hidden</span> : null}</div>
+          <div className="small"><strong>{f.username ?? 'member'}</strong> in <Link to={`/t/${f.thread_id}?post=${f.id}`}>“{f.title}”</Link> · {f.flags} flag{f.flags === 1 ? '' : 's'} {f.hidden ? <span className="chip gray">Hidden pending review</span> : null}{f.prior_warnings ? <span className="tiny muted"> · {f.prior_warnings} earlier warning{f.prior_warnings === 1 ? '' : 's'}</span> : null}</div>
           <blockquote className="quote-embed small">{f.body.slice(0, 500)}</blockquote>
-          <div className="row">
-            <button className="btn secondary small" onClick={() => act(f.id, 'restore')}>Not trolling: restore</button>
-            <button className="btn small" onClick={() => act(f.id, 'remove')}>Remove post</button>
-            {f.user_id && <Link className="btn ghost small" to="/admin/members">Suspend member…</Link>}
+          <div className="tiny muted" style={{ marginBottom: 6 }}>
+            Flagged by: {f.flaggers.map((x, i) => (
+              <span key={x.id}>{i > 0 && ', '}<strong>{x.username}</strong> ({x.on_author_30d > 1 ? `${x.on_author_30d} flags on this member in 30 days, ` : ''}{x.dismissed}/{x.total} past flags dismissed{x.can_flag ? '' : ', flagging off'})</span>
+            ))}
+          </div>
+          <input className="input" placeholder="Reason (recorded; the member sees it)" value={reason[f.id] ?? ''} onChange={(e) => setReason({ ...reason, [f.id]: e.target.value })} aria-label="Reason" />
+          <div className="row" style={{ marginTop: 8 }}>
+            <label className="small row"><input type="checkbox" checked={Boolean(warn[f.id])} onChange={(e) => setWarn({ ...warn, [f.id]: e.target.checked })} /> Also send a warning</label>
+            <button className="btn secondary small" disabled={(reason[f.id] ?? '').trim().length < 3} onClick={() => act(f.id, 'restore')}>Restore</button>
+            <button className="btn small" disabled={(reason[f.id] ?? '').trim().length < 3} onClick={() => act(f.id, 'remove')}>Remove</button>
           </div>
         </div>
       ))}
@@ -204,7 +222,7 @@ function Reports() {
     refreshPulse();
     reload();
   };
-  const removePost = async (postId: number) => { if (!confirm('Remove this post?')) return; await api(`/posts/${postId}`, { method: 'DELETE' }); toast('Post removed'); };
+  const removePost = async (postId: number) => { const reason = prompt('Reason for removing this post (the member sees it and can appeal):'); if (!reason) return; try { await api(`/posts/${postId}`, { method: 'DELETE', body: { reason } }); toast('Post removed'); } catch (e) { toast((e as Error).message); } };
   const removeChat = async (id: number) => { await api(`/chat/messages/${id}`, { method: 'DELETE' }); toast('Chat message removed'); };
   return (
     <>
@@ -249,6 +267,76 @@ function Approvals() {
         </div>
       )) : <div className="empty">Nothing waiting.</div>}
     </section>
+  );
+}
+
+function BansAppeals() {
+  const { me, toast, refreshPulse } = useApp();
+  const { data: bans, reload: reloadBans } = useApi<{ required: number; moderators: number; proposals: { id: number; user_id: number; username: string; proposed_by_name: string; reason: string; status: string; created_at: number; votes: { moderator: string; moderator_id: number; vote: string; reason: string }[] }[] }>('/admin/bans');
+  const { data: appeals, reload: reloadAppeals } = useApi<{ appeals: { id: number; username: string; action: string; detail: string; actor_id: number | null; acted_by: string | null; message: string; status: string; decision_note: string | null; decided_by_name: string | null; created_at: number }[] }>('/admin/appeals');
+  const { data: flaggers, reload: reloadFlaggers } = useApi<{ flaggers: { id: number; username: string; can_flag: number; flags: number; upheld: number; dismissed: number; pending: number }[] }>('/admin/flaggers');
+  const vote = async (id: number, v: 'approve' | 'reject') => {
+    const reason = prompt(v === 'approve' ? 'Why do you approve this ban?' : 'Why do you reject this ban?');
+    if (!reason) return;
+    try { const r = await api<{ status: string; approvals: number }>(`/admin/bans/${id}/vote`, { body: { vote: v, reason } }); toast(r.status === 'approved' ? 'Ban approved by three moderators and in effect' : r.status === 'rejected' ? 'Proposal rejected' : `Vote recorded (${r.approvals} of 3)`); refreshPulse(); reloadBans(); } catch (e) { toast((e as Error).message); }
+  };
+  const decide = async (id: number, decision: 'upheld' | 'overturned') => {
+    const note = prompt(decision === 'overturned' ? 'Why grant this appeal? (the member sees this)' : 'Why does the decision stand? (the member sees this)');
+    if (!note) return;
+    try { await api(`/admin/appeals/${id}`, { body: { decision, note } }); toast('Appeal decided'); refreshPulse(); reloadAppeals(); } catch (e) { toast((e as Error).message); }
+  };
+  const toggleFlagging = async (id: number, enabled: boolean) => {
+    const reason = prompt(enabled ? 'Reason for restoring flagging:' : 'Reason for turning off flagging (the member sees it):');
+    if (!reason) return;
+    await api(`/admin/members/${id}/flagging`, { body: { enabled, reason } });
+    reloadFlaggers();
+  };
+  return (
+    <div className="stack">
+      <section className="card">
+        <div className="section-head"><h2>Permanent ban proposals</h2><span className="small muted">{bans?.required ?? 3} moderators must approve{bans && bans.moderators < 3 ? ` (only ${bans.moderators} active now: use timed suspensions until more moderators join)` : ''}</span></div>
+        {bans?.proposals.length ? bans.proposals.map((b) => {
+          const mine = b.votes.find((v) => v.moderator_id === me?.id);
+          return (
+            <div key={b.id} className="card-pad" style={{ borderBottom: '1px solid var(--line)' }}>
+              <div className="small"><strong>{b.username}</strong> · proposed by {b.proposed_by_name} · {timeAgo(b.created_at)} · <span className="chip gray">{b.status}</span></div>
+              <div className="small" style={{ margin: '4px 0' }}>{b.reason}</div>
+              <div className="tiny muted">{b.votes.map((v) => `${v.moderator}: ${v.vote} (${v.reason})`).join(' · ')}</div>
+              {b.status === 'open' && b.user_id !== me?.id && (
+                <div className="row" style={{ marginTop: 6 }}>
+                  <button className="btn small" onClick={() => vote(b.id, 'approve')}>{mine?.vote === 'approve' ? 'Approved ✓' : 'Approve'}</button>
+                  <button className="btn secondary small" onClick={() => vote(b.id, 'reject')}>{mine?.vote === 'reject' ? 'Rejected ✓' : 'Reject'}</button>
+                </div>
+              )}
+            </div>
+          );
+        }) : <div className="empty">No ban proposals. Propose one from Admin → Members.</div>}
+      </section>
+      <section className="card">
+        <div className="section-head"><h2>Appeals</h2><span className="small muted">Decided by a moderator who didn't make the original decision</span></div>
+        {appeals?.appeals.length ? appeals.appeals.map((a) => (
+          <div key={a.id} className="card-pad" style={{ borderBottom: '1px solid var(--line)' }}>
+            <div className="small"><strong>{a.username}</strong> appeals: {a.action.replace(/_/g, ' ')} by {a.acted_by ?? 'the system'} · {timeAgo(a.created_at)} {a.status !== 'open' && <span className="chip gray">{a.status === 'overturned' ? 'granted' : 'upheld'} by {a.decided_by_name}</span>}</div>
+            <div className="tiny muted">Decision: {a.detail}</div>
+            <blockquote className="quote-embed small">{a.message}</blockquote>
+            {a.decision_note && <div className="tiny muted">Note: {a.decision_note}</div>}
+            {a.status === 'open' && (a.actor_id === me?.id
+              ? <div className="tiny muted">You made this decision, so another moderator will review the appeal.</div>
+              : <div className="row"><button className="btn small" onClick={() => decide(a.id, 'overturned')}>Grant appeal</button><button className="btn secondary small" onClick={() => decide(a.id, 'upheld')}>Decision stands</button></div>)}
+          </div>
+        )) : <div className="empty">No appeals.</div>}
+      </section>
+      <section className="card">
+        <div className="section-head"><h2>Flagging history</h2><span className="small muted">Spot members whose flags are often dismissed</span></div>
+        <div className="table-scroll"><table className="simple"><thead><tr><th>Member</th><th>Flags</th><th>Upheld</th><th>Dismissed</th><th>Open</th><th /></tr></thead><tbody>
+          {flaggers?.flaggers.map((f) => (
+            <tr key={f.id}><td>{f.username}{!f.can_flag && <span className="tiny muted"> (flagging off)</span>}</td><td>{f.flags}</td><td>{f.upheld ?? 0}</td><td>{f.dismissed ?? 0}</td><td>{f.pending ?? 0}</td>
+              <td><button className="btn ghost small" onClick={() => toggleFlagging(f.id, !f.can_flag)}>{f.can_flag ? 'Turn off flagging' : 'Restore flagging'}</button></td></tr>
+          ))}
+        </tbody></table></div>
+        {!flaggers?.flaggers.length && <div className="empty">No flags yet.</div>}
+      </section>
+    </div>
   );
 }
 
@@ -402,7 +490,7 @@ export function Admin() {
     <div className="stack">
       <div className="page-head"><div className="eyebrow">Community administration</div><h1>Admin</h1><p className="small muted" style={{ margin: 0 }}>Community administration is separate from technical ownership of hosting, the domain and GitHub.</p></div>
       <nav className="card tabs" aria-label="Admin sections">
-        {[['', 'Overview'], ['invites', 'Invitations'], ['members', 'Members'], ['reports', 'Reports'], ['approvals', 'Approvals'], ['data', 'Sports data'], ['settings', 'Settings'], ['log', 'Log']].map(([p, l]) => (
+        {[['', 'Overview'], ['invites', 'Invitations'], ['members', 'Members'], ['reports', 'Reports'], ['approvals', 'Approvals'], ['bans', 'Bans & appeals'], ['data', 'Sports data'], ['settings', 'Settings'], ['log', 'Log']].map(([p, l]) => (
           <NavLink key={p} to={`/admin${p ? `/${p}` : ''}`} end className={({ isActive }) => `tab ${isActive ? 'active' : ''}`}>{l}</NavLink>
         ))}
       </nav>
@@ -412,6 +500,7 @@ export function Admin() {
         <Route path="members" element={<Members />} />
         <Route path="reports" element={<Reports />} />
         <Route path="approvals" element={<Approvals />} />
+        <Route path="bans" element={<BansAppeals />} />
         <Route path="data" element={<SportsData />} />
         <Route path="settings" element={<SettingsTab />} />
         <Route path="log" element={<Log />} />

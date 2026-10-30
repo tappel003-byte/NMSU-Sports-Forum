@@ -146,8 +146,15 @@ export function ThreadPage() {
   };
 
   const remove = async (p: Post) => {
-    if (!confirm('Remove this post?')) return;
-    await api(`/posts/${p.id}`, { method: 'DELETE' });
+    // Moderators removing someone else's post give a reason the member sees (and can appeal).
+    if (p.author?.id !== me?.id) {
+      const reason = prompt('Reason for removing this post (the member sees it and can appeal):');
+      if (!reason) return;
+      try { await api(`/posts/${p.id}`, { method: 'DELETE', body: { reason } }); toast('Removed'); } catch (e) { toast((e as Error).message); }
+    } else {
+      if (!confirm('Remove this post?')) return;
+      await api(`/posts/${p.id}`, { method: 'DELETE' });
+    }
     reload();
   };
 
@@ -183,10 +190,10 @@ export function ThreadPage() {
   const goPage = (n: number) => setParams({ page: String(n) });
 
   const flagTroll = async (p: Post) => {
-    if (!confirm('Flag this post as trolling? When enough members flag it, it is hidden right away and the admins review it.')) return;
+    if (!confirm('Flag this post as trolling? When three members flag a post it is hidden temporarily until a moderator reviews it. Flags never affect anyone’s Aggie Reputation.')) return;
     try {
       const r = await api<{ hidden: boolean; flags: number; threshold: number }>(`/posts/${p.id}/troll`, { method: 'POST' });
-      toast(r.hidden ? 'Hidden. The admins have been notified.' : `Flagged (${r.flags} of ${r.threshold} needed to hide it).`);
+      toast(r.hidden ? 'Hidden pending moderator review. Moderators have been notified.' : `Flagged (${r.flags} of ${r.threshold} needed to hide it for review).`);
       if (r.hidden) reload();
     } catch (e) { toast((e as Error).message); }
   };
@@ -280,7 +287,7 @@ export function ThreadPage() {
                 <span className="tiny muted">· <a href={`#p${p.id}`} title={fullTime(p.created_at)} style={{ color: 'inherit' }}>{timeAgo(p.created_at)}</a></span>
                 {p.edit_count > 0 && <button className="tiny muted" style={{ border: 0, background: 'none', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => api(`/posts/${p.id}/history`).then(setHistory)}>edited</button>}
               </div>
-              {p.hidden && <div className="chip gray" style={{ marginBottom: 6 }}>Hidden after members flagged it as trolling. An admin will review it.</div>}
+              {p.hidden && <div className="chip gray" style={{ marginBottom: 6 }}>Temporarily hidden while moderators review it. This isn't a judgment about the author.</div>}
               {p.hidden && !p.body ? null : p.deleted ? <div className="muted small"><em>This post was removed.</em></div> : editing?.id === p.id ? (
                 <div>
                   <textarea className="textarea" value={editing.body} onChange={(e) => setEditing({ ...editing, body: e.target.value })} aria-label="Edit post" />

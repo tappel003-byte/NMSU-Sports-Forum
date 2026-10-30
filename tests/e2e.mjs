@@ -314,7 +314,7 @@ try {
   const reports = (await api(admin, '/admin/reports')).body.reports;
   check('Member reports a post and admins see it', reportRes.status === 200 && reports.length === 1);
   await api(admin, `/admin/reports/${reports[0].id}`, { method: 'PATCH', body: { status: 'resolved', note: 'ok' } });
-  const remove = await api(admin, `/posts/${(await api(admin, `/threads/${threadId}`)).body.posts[2].id}`, { method: 'DELETE' });
+  const remove = await api(admin, `/posts/${(await api(admin, `/threads/${threadId}`)).body.posts[2].id}`, { method: 'DELETE', body: { reason: 'Off-topic test removal' } });
   check('Admin removes a post', remove.status === 200 && (await api(member, `/threads/${threadId}`)).body.posts[2].deleted === true);
   await admin.goto(BASE + '/admin/invites');
   await admin.fill('#in', 'To be revoked');
@@ -330,10 +330,10 @@ try {
   const memberAdmin = await api(member, '/admin/overview');
   check('Regular members cannot use admin APIs', memberAdmin.status === 403);
   // Suspension signs the member out.
-  await api(admin, '/admin/members/2', { method: 'PATCH', body: { status: 'suspended', reason: 'e2e' } });
+  await api(admin, '/admin/members/2', { method: 'PATCH', body: { status: 'suspended', days: 1, reason: 'e2e test' } });
   const suspended = await api(member, '/home');
   check('Suspending a member ends their session immediately', suspended.status === 401);
-  await api(admin, '/admin/members/2', { method: 'PATCH', body: { status: 'active' } });
+  await api(admin, '/admin/members/2', { method: 'PATCH', body: { status: 'active', reason: 'e2e test over' } });
   await api(member, '/auth/login', { body: { username: 'CrimsonFan', password: 'member-password-123' } });
   // Suggestion implemented → Idea Contributor badge.
   const sug = await api(admin, '/threads', { body: { forum: 'suggestions', title: 'Add a rivalry countdown', description: 'For UTEP and UNM weeks', body: 'Countdown banner idea.' } });

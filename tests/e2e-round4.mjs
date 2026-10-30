@@ -1,0 +1,190 @@
+// Moderation v2: fair troll flags, moderator review with reasons, warnings, timed suspensions,
+// three-moderator bans, appeals decided by a different moderator, and flag-abuse controls.
+// Run after the other three suites on the same local database.
+import { createRequire } from 'node:module';
+import fs from 'node:fs';
+
+const require = createRequire(import.meta.url);
+const { chromium } = require('playwright');
+const BASE = process.env.BASE_URL ?? 'http://localhost:8787';
+const SHOTS = 'tests/screenshots';
+fs.mkdirSync(SHOTS, { recursive: true });
+const results = [];
+const check = (name, ok, detail = '') => { results.push({ ok }); console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? ` — ${detail}` : ''}`); };
+
+async function api(page, path, opts = {}) {
+  return page.evaluate(async ({ path, opts }) => {
+    const r = await fetch(`/api${path}`, { method: opts.method ?? (opts.body ? 'POST' : 'GET'), headers: { 'x-nsf': '1', 'content-type': 'application/json' }, body: opts.body ? JSON.stringify(opts.body) : undefined });
+    return { status: r.status, body: await r.json().catch(() => null) };
+  }, { path, opts });
+}
+async function login(browser, u, p, viewport = { width: 1280, height: 900 }) {
+  const page = await (await browser.newContext({ viewport })).newPage();
+  await page.goto(BASE + '/login');
+  await page.fill('#u', u);
+  await page.fill('#p', p);
+  await page.click('button:has-text("Sign in")');
+  await page.waitForURL(BASE + '/');
+  return page;
+}
+const answer = (page, text) => page.once('dialog', (d) => d.accept(text));
+
+const browser = await chromium.launch();
+try {
+  const admin = await login(browser, 'AggieAdmin', 'admin-password-123');
+  const crimson = await login(browser, 'CrimsonFan', 'brand-new-password-1');
+  const helper = await login(browser, 'FlagHelper', 'helper-password-1');
+  const troll = await login(browser, 'RivalTroll', 'troll-password-1', { width: 390, height: 844 });
+  const inv = (await api(admin, '/admin/invites', { body: { note: 'second helper' } })).body.link;
+  const helper2 = await (await browser.newContext()).newPage();
+  await helper2.goto(inv);
+  await helper2.fill('#un', 'FlagHelperTwo');
+  await helper2.fill('#em', 'helper2@example.test');
+  await helper2.fill('#pw', 'helper2-password-1');
+  await helper2.fill('#pc', 'helper2-password-1');
+  await helper2.click('button:has-text("Join NMSU Sports Forum")');
+  await helper2.waitForURL('**/settings?welcome=1');
+  const members = (await api(admin, '/admin/members')).body.members;
+  const id = (u) => members.find((m) => m.username === u)?.id ?? null;
+  const ids = { crimson: id('CrimsonFan'), helper: id('FlagHelper'), troll: id('RivalTroll') };
+  const threadId = (await api(crimson, '/feed?tab=latest&tag=recruiting')).body.threads[0].id;
+  const post = (body) => api(troll, `/threads/${threadId}/posts`, { body: { body } });
+  const view = async (page, postId) => (await api(page, `/threads/${threadId}?post=${postId}`)).body.posts.find((p) => p.id === postId);
+  const rep = async () => (await api(crimson, `/members/${ids.troll}`)).body.member.reputation;
+
+  // ---------- Three flags temporarily hide; no author penalty, reputation untouched ----------
+  const p1 = (await post('Borderline hot take for the flag test.')).body.id;
+  await api(crimson, `/posts/${p1}/react`, { body: { value: 1 } });
+  const repBefore = await rep();
+  const f1 = await api(crimson, `/posts/${p1}/troll`, { method: 'POST' });
+  const dup = await api(crimson, `/posts/${p1}/troll`, { method: 'POST' });
+  check('A member cannot flag the same post twice', f1.body.flags === 1 && dup.status === 409);
+  const f2 = await api(helper, `/posts/${p1}/troll`, { method: 'POST' });
+  check('Two flags are not enough to hide a post', f2.body.hidden === false && !(await view(crimson, p1)).hidden);
+  const f3 = await api(admin, `/posts/${p1}/troll`, { method: 'POST' });
+  check("A moderator's flag counts as one flag (third flag hides)", f3.body.flags === 3 && f3.body.hidden === true);
+  const hiddenView = await view(crimson, p1);
+  check('Hidden post text is withheld from others', hiddenView.hidden === true && hiddenView.body === '');
+  await crimson.goto(`${BASE}/t/${threadId}?post=${p1}`);
+  await crimson.waitForSelector("text=Temporarily hidden while moderators review it");
+  check('Members see "temporarily hidden while moderators review it"', true);
+  check('Flags never reduce Aggie Reputation', (await rep()) === repBefore, `before ${repBefore}, after ${await rep()}`);
+  const next = await post('A normal follow-up post.');
+  check('The author is not penalized: their next post appears immediately', next.body.pending === false);
+  const authorNote = (await api(troll, '/notifications')).body.notifications.some((n) => /temporarily hidden while moderators review/.test(n.text));
+  const modNotes = await Promise.all([admin, crimson].map(async (pg) => (await api(pg, '/notifications')).body.notifications));
+  check('The author is told, and moderators are notified', authorNote && modNotes[0].some((n) => /needs review/.test(n.text)));
+
+  // ---------- Moderator review: restore with a reason ----------
+  await admin.goto(BASE + '/admin/reports');
+  await admin.waitForSelector('text=Flagged posts');
+  const flaggedText = await admin.textContent('main');
+  check('Review queue shows who flagged and their flag history', /Flagged by:/.test(flaggedText) && /past flags dismissed/.test(flaggedText));
+  check('A decision requires a reason', await admin.isDisabled('button:has-text("Restore")'));
+  await admin.fill('input[aria-label="Reason"]', 'Hot take, not trolling.');
+  await admin.screenshot({ path: `${SHOTS}/admin-flag-review.png`, fullPage: true });
+  await admin.click('button:has-text("Restore")');
+  await admin.waitForSelector('text=Restored');
+  const restored = await view(crimson, p1);
+  check('Moderator restores the post', restored.hidden === false && restored.body.includes('Borderline'));
+  check('The author is told it was restored', (await api(troll, '/notifications')).body.notifications.some((n) => /reviewed and restored/.test(n.text)));
+
+  // ---------- Remove + warning, member appeal, decided by a different moderator ----------
+  const p2 = (await post('Go Miners, Aggies stink (flag test two).')).body.id;
+  for (const pg of [crimson, helper, helper2]) await api(pg, `/posts/${p2}/troll`, { method: 'POST' });
+  await admin.goto(BASE + '/admin/reports');
+  await admin.waitForSelector('text=flag test two');
+  await admin.fill('input[aria-label="Reason"]', 'Baiting other members.');
+  await admin.check('text=Also send a warning');
+  await admin.click('button:has-text("Remove")');
+  await admin.waitForSelector('text=Removed');
+  check('Moderator removes the post and issues a warning', (await view(crimson, p2)).deleted === true);
+  await troll.goto(BASE + '/settings#moderation');
+  await troll.waitForSelector('text=Moderation history');
+  const hist = await troll.textContent('#moderation');
+  check("The member sees the removal and warning with the moderator's reason", /Post removed/.test(hist) && /Warning/.test(hist) && /Baiting other members/.test(hist));
+  await troll.locator('#moderation > div').filter({ hasText: 'Post removed' }).locator('button:has-text("Appeal")').click();
+  await troll.fill('textarea[aria-label="Appeal message"]', 'I was joking with friends; I did not mean to bait anyone.');
+  await troll.click('button:has-text("Send appeal")');
+  await troll.waitForSelector('text=Appeal under review');
+  check('Member files an appeal from Settings', true);
+  const appealId = (await api(admin, '/admin/appeals')).body.appeals.find((a) => a.status === 'open').id;
+  const self = await api(admin, `/admin/appeals/${appealId}`, { body: { decision: 'overturned', note: 'Own decision' } });
+  check('The moderator who acted cannot decide the appeal', self.status === 403);
+  await api(admin, `/admin/members/${ids.crimson}`, { method: 'PATCH', body: { role: 'admin', reason: 'Second moderator' } });
+  const granted = await api(crimson, `/admin/appeals/${appealId}`, { body: { decision: 'overturned', note: 'Context makes it clear it was banter.' } });
+  check('A different moderator grants the appeal and the decision is undone', granted.status === 200 && (await view(helper, p2)).deleted === false);
+
+  // ---------- Suspensions: one moderator, temporary only ----------
+  const noDays = await api(admin, `/admin/members/${ids.troll}`, { method: 'PATCH', body: { status: 'suspended', reason: 'test' } });
+  const tooLong = await api(admin, `/admin/members/${ids.troll}`, { method: 'PATCH', body: { status: 'suspended', days: 365, reason: 'test' } });
+  check('One moderator cannot suspend indefinitely or beyond 90 days', noDays.status === 400 && tooLong.status === 400);
+  await api(admin, `/admin/members/${ids.troll}`, { method: 'PATCH', body: { status: 'suspended', days: 2, reason: 'Cooling-off period.' } });
+  const blocked = await api(helper2, '/auth/login', { body: { username: 'RivalTroll', password: 'troll-password-1' } });
+  check('Suspended member sees the reason when signing in', blocked.status === 403 && /Cooling-off period/.test(blocked.body.error));
+  await api(admin, `/admin/members/${ids.troll}`, { method: 'PATCH', body: { status: 'active', reason: 'Lifted early after talking it over.' } });
+
+  // ---------- Permanent ban needs three moderators ----------
+  await api(admin, `/admin/members/${ids.helper}`, { method: 'PATCH', body: { role: 'admin', reason: 'Third moderator' } });
+  const troll2 = await login(browser, 'RivalTroll', 'troll-password-1');
+  const prop = await api(admin, '/admin/bans', { body: { user_id: ids.troll, reason: 'Repeated baiting after warnings and a suspension.' } });
+  check('Proposing a ban counts as one approval; the member stays active', prop.body.status === 'open' && prop.body.approvals === 1 && (await api(troll2, '/home')).status === 200);
+  const second = await api(crimson, `/admin/bans/${prop.body.id}/vote`, { body: { vote: 'approve', reason: 'Agree, pattern of behavior.' } });
+  check('Two approvals are still not enough', second.body.status === 'open' && (await api(troll2, '/home')).status === 200);
+  await helper.goto(BASE + '/admin/bans');
+  await helper.waitForSelector('text=Permanent ban proposals');
+  await helper.screenshot({ path: `${SHOTS}/admin-bans.png`, fullPage: true });
+  answer(helper, 'Agree after reviewing the history.');
+  await helper.click('button:has-text("Approve")');
+  await helper.waitForSelector('text=Ban approved by three moderators');
+  check('Third moderator approval bans the member immediately', (await api(troll2, '/home')).status === 401);
+
+  // ---------- Ban appeal from the sign-in page, decided by a moderator who did not vote ----------
+  const loginPage = await (await browser.newContext({ viewport: { width: 390, height: 844 } })).newPage();
+  await loginPage.goto(BASE + '/login');
+  await loginPage.fill('#u', 'RivalTroll');
+  await loginPage.fill('#p', 'troll-password-1');
+  await loginPage.click('button:has-text("Sign in")');
+  await loginPage.waitForSelector('text=permanently banned');
+  await loginPage.fill('#appeal', 'I understand the concerns and will follow the rules. Please reconsider.');
+  await loginPage.click('button:has-text("Send appeal")');
+  await loginPage.waitForSelector('text=Your appeal was sent');
+  await loginPage.screenshot({ path: `${SHOTS}/banned-appeal.png`, fullPage: true });
+  check('A banned member can appeal from the sign-in page', true);
+  const banAppeal = (await api(admin, '/admin/appeals')).body.appeals.find((a) => a.status === 'open' && a.action === 'ban');
+  const voterTry = await api(crimson, `/admin/appeals/${banAppeal.id}`, { body: { decision: 'overturned', note: 'test' } });
+  check('Moderators who voted for the ban cannot decide its appeal', voterTry.status === 403);
+  await api(admin, `/admin/members/${id('FlagHelperTwo') ?? (await api(admin, '/admin/members')).body.members.find((m) => m.username === 'FlagHelperTwo').id}`, { method: 'PATCH', body: { role: 'admin', reason: 'Fourth moderator' } });
+  const decided = await api(helper2, `/admin/appeals/${banAppeal.id}`, { body: { decision: 'upheld', note: 'The pattern of behavior is clear; the ban stands.' } });
+  check('An uninvolved moderator decides the ban appeal', decided.status === 200);
+
+  // ---------- Flag-abuse controls ----------
+  const flaggers = (await api(admin, '/admin/flaggers')).body.flaggers;
+  check('Moderators can review each member\'s flagging history', flaggers.some((f) => f.username === 'CrimsonFan' && f.flags >= 2 && f.dismissed >= 1));
+  const memberInv = (await api(admin, '/admin/invites', { body: { note: 'flag abuser' } })).body.link;
+  const abuser = await (await browser.newContext()).newPage();
+  await abuser.goto(memberInv);
+  await abuser.fill('#un', 'FlagHappy');
+  await abuser.fill('#em', 'flaghappy@example.test');
+  await abuser.fill('#pw', 'flaghappy-password-1');
+  await abuser.fill('#pc', 'flaghappy-password-1');
+  await abuser.click('button:has-text("Join NMSU Sports Forum")');
+  await abuser.waitForURL('**/settings?welcome=1');
+  const abuserId = (await api(admin, '/admin/members')).body.members.find((m) => m.username === 'FlagHappy').id;
+  await api(admin, `/admin/members/${abuserId}/flagging`, { body: { enabled: false, reason: 'Repeated bad-faith flags.' } });
+  const denied = await api(abuser, `/posts/${p1}/troll`, { method: 'POST' });
+  check('A moderator can switch off flagging for an abusive flagger', denied.status === 403);
+
+  // ---------- Audit history ----------
+  const log = (await api(admin, '/admin/log')).body.log;
+  const actions = new Set(log.map((l) => l.action));
+  const needed = ['auto_hide_pending_review', 'restore_post', 'remove_post', 'warn', 'appeal_overturned', 'suspend', 'lift_suspension', 'ban_proposed', 'ban_vote_approve', 'ban', 'appeal_upheld', 'revoke_flagging'];
+  check('Every decision is recorded in the audit history with its reason', needed.every((a) => actions.has(a)) && log.find((l) => l.action === 'restore_post').detail === 'Hot take, not trolling.', needed.filter((a) => !actions.has(a)).join(', '));
+} catch (e) {
+  check('Unexpected error', false, e.stack?.split('\n').slice(0, 3).join(' | '));
+} finally {
+  await browser.close();
+  const failed = results.filter((r) => !r.ok);
+  console.log(`\n${results.length - failed.length}/${results.length} moderation checks passed`);
+  process.exit(failed.length ? 1 : 0);
+}

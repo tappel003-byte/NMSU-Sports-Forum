@@ -48,7 +48,6 @@ try {
   await admin.goto(BASE + '/admin/settings');
   await admin.selectOption('#sm', 'open');
   await admin.check('text=Anyone can read discussions without an account');
-  await admin.fill('#tt', '2');
   await admin.click('button:has-text("Save settings")');
   await admin.waitForSelector('text=Settings saved');
   check('Admin switches on open sign-up and public reading', true);
@@ -89,9 +88,7 @@ try {
   check('New open sign-ups cannot flag until approved', earlyFlag.status === 403);
   await api(admin, `/admin/pending/${first.body.id}`, { body: { approve: true } });
 
-  // ---------- Troll flags ----------
-  const bad = await api(troll, `/threads/${threadId}/posts`, { body: { body: 'Aggies are trash, go Miners!!! (troll test)' } });
-  check('After approval the member posts immediately', bad.body.pending === false);
+  // Troll flags and moderator review are covered in tests/e2e-round4.mjs.
   const inv = (await api(admin, '/admin/invites', { body: { note: 'flag helper' } })).body.link;
   const helper = await (await browser.newContext()).newPage();
   await helper.goto(inv);
@@ -102,37 +99,6 @@ try {
   await helper.click('button:has-text("Join NMSU Sports Forum")');
   await helper.waitForURL('**/settings?welcome=1');
 
-  await member.goto(`${BASE}/t/${threadId}?post=${bad.body.id}`);
-  await member.waitForSelector(`#p${bad.body.id} button:has-text("Troll")`);
-  member.once('dialog', (d) => d.accept());
-  await member.click(`#p${bad.body.id} button:has-text("Troll")`);
-  await member.waitForSelector('text=Flagged (1 of 2 needed to hide it)');
-  check('First flag is counted but the post stays up', !(await api(anon, `/threads/${threadId}?post=${bad.body.id}`)).body.posts.find((p) => p.id === bad.body.id).hidden);
-  const second = await api(helper, `/posts/${bad.body.id}/troll`, { method: 'POST' });
-  check('Second member\'s flag hides the post immediately (threshold 2)', second.body.hidden === true);
-  const asVisitor = (await api(await (await browser.newContext()).newPage().then(async (p) => { await p.goto(BASE + '/'); return p; }), `/threads/${threadId}?post=${bad.body.id}`)).body.posts.find((p) => p.id === bad.body.id);
-  check('Hidden post text is no longer shown to others', asVisitor.hidden === true && asVisitor.body === '');
-  const own = (await api(troll, `/threads/${threadId}?post=${bad.body.id}`)).body.posts.find((p) => p.id === bad.body.id);
-  check('The author still sees their own hidden post with a notice', own.hidden === true && own.body.includes('troll test'));
-  const next = await api(troll, `/threads/${threadId}/posts`, { body: { body: 'Another one' } });
-  check("The flagged member's next posts go to approval", next.body.pending === true);
-  const notes = (await api(admin, '/notifications')).body.notifications;
-  check('Admins are notified right away', notes.some((n) => n.type === 'troll'));
-  await admin.goto(BASE + '/admin/reports');
-  await admin.waitForSelector('text=Troll flags');
-  await admin.screenshot({ path: `${SHOTS}/admin-troll-flags.png`, fullPage: true });
-  await admin.click('button:has-text("Not trolling: restore")');
-  await admin.waitForSelector('text=Restored');
-  const restored = (await api(member, `/threads/${threadId}?post=${bad.body.id}`)).body.posts.find((p) => p.id === bad.body.id);
-  check('Admin can restore a wrongly flagged post', restored.hidden === false && restored.body.includes('troll test'));
-  const adminFlag = await api(admin, `/posts/${bad.body.id}/troll`, { method: 'POST' });
-  check("An admin's flag hides a post at once", adminFlag.body.hidden === true);
-  await api(admin, `/admin/flagged/${bad.body.id}`, { body: { action: 'remove' } });
-  const removed = (await api(member, `/threads/${threadId}?post=${bad.body.id}`)).body.posts.find((p) => p.id === bad.body.id);
-  check('Admin removes the flagged post', removed.deleted === true);
-  const selfFlag = await api(member, `/posts/${(await api(member, `/threads/${threadId}`)).body.posts.find((p) => p.author?.username === 'CrimsonFan').id}/troll`, { method: 'POST' });
-  check("Members can't flag their own posts", selfFlag.status === 400);
-
   // ---------- Unconfirmed email ----------
   sql("UPDATE users SET email_verified = 0 WHERE username = 'FlagHelper'");
   const unverified = await api(helper, `/threads/${threadId}/posts`, { body: { body: 'should be blocked' } });
@@ -141,7 +107,7 @@ try {
   sql("UPDATE users SET email_verified = 1 WHERE username = 'FlagHelper'");
 
   // Put things back the way the earlier suites expect.
-  await api(admin, '/admin/settings', { method: 'PUT', body: { signup_mode: 'invite', public_read: '0', troll_threshold: '3' } });
+  await api(admin, '/admin/settings', { method: 'PUT', body: { signup_mode: 'invite', public_read: '0' } });
   const back = await api(await (await browser.newContext()).newPage().then(async (p) => { await p.goto(BASE + '/login'); return p; }), '/feed');
   check('Switching back to private takes effect immediately', back.status === 401);
 } catch (e) {
