@@ -13,7 +13,7 @@ export const games = new Hono<AppEnv>();
 export function presentGame(g: GameRow) {
   return {
     id: g.id, sport: g.sport, opponent: g.opponent, home_away: g.home_away, venue: g.venue, starts_at: g.starts_at, time_tba: Boolean(g.time_tba),
-    status: g.status, result: g.result, nmsu_score: g.nmsu_score, opp_score: g.opp_score, tv: g.tv, radio: g.radio,
+    status: g.status, result: g.result, nmsu_score: g.nmsu_score, opp_score: g.opp_score, tv: g.tv, radio: g.radio, audio_url: g.audio_url ?? null, video_url: g.video_url ?? null,
     official_url: g.official_url ?? officialScheduleUrl(g.sport), schedule_url: officialScheduleUrl(g.sport),
     pregame_thread_id: g.pregame_thread_id, postgame_thread_id: g.postgame_thread_id,
     overridden: g.override_fields !== '{}' && Boolean(g.override_fields),

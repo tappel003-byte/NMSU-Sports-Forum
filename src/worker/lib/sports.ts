@@ -20,6 +20,8 @@ export interface GameRow {
   opp_score: number | null;
   tv: string | null;
   radio: string | null;
+  audio_url: string | null;
+  video_url: string | null;
   official_url: string | null;
   override_fields: string;
   pregame_thread_id: number | null;
@@ -28,7 +30,7 @@ export interface GameRow {
   reminded: number;
 }
 
-const SYNC_FIELDS = ['sport', 'opponent', 'home_away', 'venue', 'starts_at', 'time_tba', 'status', 'result', 'nmsu_score', 'opp_score', 'tv', 'radio', 'official_url', 'raw_summary'] as const;
+const SYNC_FIELDS = ['sport', 'opponent', 'home_away', 'venue', 'starts_at', 'time_tba', 'status', 'result', 'nmsu_score', 'opp_score', 'tv', 'radio', 'audio_url', 'video_url', 'official_url', 'raw_summary'] as const;
 
 export function matchup(g: { opponent: string; home_away: string }): string {
   return g.home_away === 'away' ? `NM State at ${g.opponent}` : `NM State vs. ${g.opponent}`;
@@ -53,9 +55,9 @@ export async function syncFeed(env: Env, feed: { id: number; sport: string; url:
   for (const g of games) {
     const existing = await first<GameRow & Record<string, unknown>>(env, 'SELECT * FROM games WHERE source_uid = ?', g.source_uid);
     if (!existing) {
-      await run(env, `INSERT INTO games (feed_id, source_uid, sport, opponent, home_away, venue, starts_at, time_tba, status, result, nmsu_score, opp_score, tv, radio, official_url, raw_summary, created_at, updated_at)
-                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        feed.id, g.source_uid, g.sport, g.opponent, g.home_away, g.venue, g.starts_at, g.time_tba, g.status, g.result, g.nmsu_score, g.opp_score, g.tv, g.radio, g.official_url, g.raw_summary, t, t);
+      await run(env, `INSERT INTO games (feed_id, source_uid, sport, opponent, home_away, venue, starts_at, time_tba, status, result, nmsu_score, opp_score, tv, radio, audio_url, video_url, official_url, raw_summary, created_at, updated_at)
+                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        feed.id, g.source_uid, g.sport, g.opponent, g.home_away, g.venue, g.starts_at, g.time_tba, g.status, g.result, g.nmsu_score, g.opp_score, g.tv, g.radio, g.audio_url, g.video_url, g.official_url, g.raw_summary, t, t);
       added++;
       continue;
     }

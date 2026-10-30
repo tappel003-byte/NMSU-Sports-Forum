@@ -149,6 +149,8 @@ export interface GameItem {
   opp_score: number | null;
   tv: string | null;
   radio: string | null;
+  audio_url?: string | null;
+  video_url?: string | null;
   official_url: string;
   schedule_url: string;
   live: boolean;
