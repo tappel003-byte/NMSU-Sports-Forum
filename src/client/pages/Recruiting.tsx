@@ -4,7 +4,7 @@ import { Plus } from 'lucide-react';
 import { api } from '../api';
 import { useApi, useApp } from '../state';
 import { LinkPreview, sportIcon, sportName, timeAgo } from '../format';
-import { ErrorState, Loading, Modal } from '../components/ui';
+import { ErrorState, JoinCta, Loading, Modal } from '../components/ui';
 import { ShareForm, ShareModal } from '../components/Share';
 import type React from 'react';
 import { SPORTS } from '../../shared/sports';
@@ -31,6 +31,7 @@ export function Recruiting() {
   const kind = params.get('kind') ?? 'recruit';
   const sport = params.get('sport') ?? '';
   const [adding, setAdding] = useState(false);
+  const { me } = useApp();
   const { data, error, reload } = useApi<{ players: Player[]; sync: { configured: boolean; last_ok_at?: number | null; last_error?: string | null } }>(`/players?kind=${kind}${sport ? `&sport=${sport}` : ''}`);
   if (error) return <ErrorState error={error} retry={reload} />;
   const set = (k: string, v: string) => setParams((p) => { if (v) p.set(k, v); else p.delete(k); return p; }, { replace: true });
@@ -42,7 +43,7 @@ export function Recruiting() {
           <h1>Who's coming, who's going</h1>
           <p className="small muted" style={{ margin: 0 }}>Football recruits and portal moves update automatically each day. Members add everything else and share tweets on each player's card.</p>
         </div>
-        <button className="btn" onClick={() => setAdding(true)}><Plus size={16} /> Add a player</button>
+        {me && <button className="btn" onClick={() => setAdding(true)}><Plus size={16} /> Add a player</button>}
       </div>
       {data && !data.sync.configured && <div className="notice small">Automatic football recruiting data turns on once the free CollegeFootballData.com key is added. Until then, members can add players with a source link.</div>}
       {data?.sync.last_error && <div className="error-box small">The last automatic update failed ({data.sync.last_error}). Existing players are unaffected.</div>}
@@ -110,7 +111,7 @@ function AddPlayer({ onClose, defaultKind }: { onClose: () => void; defaultKind:
 export function PlayerPage() {
   const { id = '' } = useParams();
   const nav = useNavigate();
-  const { toast } = useApp();
+  const { toast, me } = useApp();
   const { data, error, reload } = useApi<{ player: Player & { added_by: string | null }; news: { id: number; url: string; note: string | null; username: string; created_at: number; post_id: number | null }[]; predictions: { yes: number; no: number; mine: string | null }; can_edit: boolean }>(`/players/${id}`);
   const [share, setShare] = useState(false);
   if (error) return <ErrorState error={error} retry={reload} />;
@@ -146,10 +147,10 @@ export function PlayerPage() {
           {p.rating !== null && <><dt>Rating</dt><dd>{p.rating}{p.ranking ? ` · national rank ${p.ranking}` : ''}</dd></>}
           <dt>Source</dt><dd className="small">{p.source === 'cfbd' ? 'CollegeFootballData.com (updates daily)' : `Added by ${p.added_by ?? 'a member'}`}</dd>
         </dl>
-        <div className="row" style={{ marginTop: 12 }}>
+        {!me ? <div style={{ marginTop: 12 }}><JoinCta text="Join free to share news and predict where he lands." /></div> : <div className="row" style={{ marginTop: 12 }}>
           <button className="btn" onClick={() => setShare(true)}>Share a tweet about him</button>
           <button className="btn secondary" onClick={discuss}>Discussion</button>
-        </div>
+        </div>}
         {data.can_edit && (
           <div className="row" style={{ marginTop: 10 }}>
             <label className="small" htmlFor="pstatus">Update status</label>
@@ -160,13 +161,13 @@ export function PlayerPage() {
       <section className="card card-pad">
         <h2>🔮 {question}</h2>
         <div className="row">
-          <button className={`btn ${data.predictions.mine === 'yes' ? '' : 'secondary'}`} onClick={() => predict('yes')}>Yes</button>
-          <button className={`btn ${data.predictions.mine === 'no' ? '' : 'secondary'}`} onClick={() => predict('no')}>No</button>
+          {me && <button className={`btn ${data.predictions.mine === 'yes' ? '' : 'secondary'}`} onClick={() => predict('yes')}>Yes</button>}
+          {me && <button className={`btn ${data.predictions.mine === 'no' ? '' : 'secondary'}`} onClick={() => predict('no')}>No</button>}
           {total > 0 && <span className="small muted">{Math.round((data.predictions.yes / total) * 100)}% of {total} member{total === 1 ? '' : 's'} say yes</span>}
         </div>
       </section>
       <section className="card">
-        <div className="section-head"><h2>News &amp; tweets</h2><button className="btn small secondary" onClick={() => setShare(true)}>Add</button></div>
+        <div className="section-head"><h2>News &amp; tweets</h2>{me && <button className="btn small secondary" onClick={() => setShare(true)}>Add</button>}</div>
         {data.news.length ? data.news.map((n) => (
           <div key={n.id} className="card-pad" style={{ borderBottom: '1px solid var(--line)' }}>
             {n.note && <div style={{ marginBottom: 4 }}>{n.note}</div>}

@@ -47,7 +47,7 @@ export function ForumPage() {
   const status = params.get('status') ?? '';
   const tag = params.get('tag') ?? '';
   const [page, setPage] = useState(1);
-  const { toast } = useApp();
+  const { toast, me } = useApp();
   const q = new URLSearchParams({ page: String(page), ...(sport ? { sport } : {}), ...(status ? { status } : {}), ...(tag ? { tag } : {}) });
   const { data, error, loading, reload } = useApi<{ forum: ForumInfo; threads: ThreadItem[]; hasMore: boolean; games: GameItem[] }>(`/forums/${slug}?${q}`);
   if (error) return <ErrorState error={error} retry={reload} />;
@@ -68,8 +68,8 @@ export function ForumPage() {
           <p className="muted small" style={{ margin: 0 }}>{f.description}</p>
         </div>
         <div className="row">
-          <button className="btn ghost small" onClick={toggleMute}><BellOff size={16} /> {f.muted ? 'Unmute' : 'Mute'}</button>
-          <Link to={`/new?forum=${f.slug}`} className="btn"><Plus size={16} /> {f.kind === 'suggestions' ? 'Suggest an idea' : 'New thread'}</Link>
+          {me && <button className="btn ghost small" onClick={toggleMute}><BellOff size={16} /> {f.muted ? 'Unmute' : 'Mute'}</button>}
+          {me && <Link to={`/new?forum=${f.slug}`} className="btn"><Plus size={16} /> {f.kind === 'suggestions' ? 'Suggest an idea' : 'New thread'}</Link>}
         </div>
       </div>
       {f.kind === 'suggestions' && (
@@ -105,7 +105,7 @@ export function ForumPage() {
           </div>
         )}
         {loading ? <Loading /> : <ThreadList threads={data.threads} showForum={false} empty="No discussions here yet. Start the first one!" />}
-        <Link to={`/new?forum=${f.slug}`} className="fab" aria-label="Start a new discussion"><Plus size={26} /></Link>
+        {me && <Link to={`/new?forum=${f.slug}`} className="fab" aria-label="Start a new discussion"><Plus size={26} /></Link>}
         {(page > 1 || data.hasMore) && (
           <div className="pager">
             <button className="btn secondary small" disabled={page <= 1} onClick={() => setPage(page - 1)}>Newer</button>

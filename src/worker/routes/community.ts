@@ -52,16 +52,18 @@ community.get('/home', async (c) => {
     `${THREAD_SELECT} WHERE t.deleted = 0 AND t.id IN (SELECT thread_id FROM follows WHERE user_id = ?) ORDER BY t.last_post_at DESC LIMIT 5`, user.id, user.id);
   const members = await memberSummaries(c.env, weekly ? [weekly.user_id] : []);
   const feeds = await first<{ n: number }>(c.env, 'SELECT COUNT(*) AS n FROM data_feeds WHERE enabled = 1');
+  const guest = user.role === 'guest';
   return c.json({
+    guest,
     games: games.map(presentGame),
     live: live.map(presentGame),
     feedsConfigured: (feeds?.n ?? 0) > 0,
     stats: { unread: unread?.n ?? 0, replies: replies?.n ?? 0, chatting: chatting?.n ?? 0 },
     weekly: weekly ? { ...weekly, body: excerpt(weekly.body, 180), author: members.get(weekly.user_id) ?? null } : null,
-    online,
-    events,
+    online: guest ? [] : online,
+    events: guest ? [] : events,
     announcement,
-    birthdays,
+    birthdays: guest ? [] : birthdays,
     followed: await presentThreads(c.env, user, followed),
   });
 });

@@ -168,6 +168,31 @@ function BadgeModal({ member, onClose }: { member: { id: number; username: strin
   );
 }
 
+function Flagged() {
+  const { toast, refreshPulse } = useApp();
+  const { data, reload } = useApi<{ flagged: { id: number; thread_id: number; body: string; hidden: number; username: string | null; user_id: number | null; title: string; flags: number; flagged_by: string }[] }>('/admin/flagged');
+  const act = async (id: number, action: 'restore' | 'remove') => {
+    try { await api(`/admin/flagged/${id}`, { body: { action } }); toast(action === 'restore' ? 'Restored' : 'Removed'); refreshPulse(); reload(); } catch (e) { toast((e as Error).message); }
+  };
+  if (!data?.flagged.length) return null;
+  return (
+    <section className="card" style={{ marginBottom: 16 }}>
+      <div className="section-head"><h2>🚩 Troll flags</h2></div>
+      {data.flagged.map((f) => (
+        <div key={f.id} className="card-pad" style={{ borderBottom: '1px solid var(--line)' }}>
+          <div className="small"><strong>{f.username ?? 'member'}</strong> in <Link to={`/t/${f.thread_id}?post=${f.id}`}>“{f.title}”</Link> · {f.flags} flag{f.flags === 1 ? '' : 's'} by {f.flagged_by} {f.hidden ? <span className="chip gray">Hidden</span> : null}</div>
+          <blockquote className="quote-embed small">{f.body.slice(0, 500)}</blockquote>
+          <div className="row">
+            <button className="btn secondary small" onClick={() => act(f.id, 'restore')}>Not trolling: restore</button>
+            <button className="btn small" onClick={() => act(f.id, 'remove')}>Remove post</button>
+            {f.user_id && <Link className="btn ghost small" to="/admin/members">Suspend member…</Link>}
+          </div>
+        </div>
+      ))}
+    </section>
+  );
+}
+
 function Reports() {
   const { toast, refreshPulse } = useApp();
   const [status, setStatus] = useState('open');
@@ -182,6 +207,8 @@ function Reports() {
   const removePost = async (postId: number) => { if (!confirm('Remove this post?')) return; await api(`/posts/${postId}`, { method: 'DELETE' }); toast('Post removed'); };
   const removeChat = async (id: number) => { await api(`/chat/messages/${id}`, { method: 'DELETE' }); toast('Chat message removed'); };
   return (
+    <>
+    <Flagged />
     <section className="card">
       <div className="tabs">{['open', 'resolved', 'dismissed'].map((s) => <button key={s} className={`tab ${status === s ? 'active' : ''}`} onClick={() => setStatus(s)}>{s[0].toUpperCase() + s.slice(1)}</button>)}</div>
       {!data ? <Loading /> : data.reports.length ? data.reports.map((r) => (
@@ -200,6 +227,7 @@ function Reports() {
         </div>
       )) : <div className="empty">No {status} reports.</div>}
     </section>
+    </>
   );
 }
 
@@ -334,6 +362,18 @@ function SettingsTab() {
         <div className="field"><label htmlFor="ld">Official launch date</label><input id="ld" type="date" className="input" value={cur.launch_date} onChange={set('launch_date')} /><span className="hint">Members who join within 30 days of this date are Founding Members. Leave blank until launch — everyone who joins before launch is a founder.</span></div>
         <div className="field"><label htmlFor="ht">Honorary Founding Member threshold</label><input id="ht" type="number" min={0} className="input" value={cur.honorary_threshold} onChange={set('honorary_threshold')} /><span className="hint">Thumbs-up from this many <em>different</em> members earns a later member Honorary Founding Member automatically. 0 = off (admins can still award it by hand).</span></div>
         <div className="field"><label htmlFor="cw">Live chat window (messages)</label><input id="cw" type="number" min={10} max={500} className="input" value={cur.chat_window} onChange={set('chat_window')} /><span className="hint">How many recent messages show in a live room. Everything is archived permanently regardless.</span></div>
+        <h3>Who can join and read</h3>
+        <div className="field">
+          <label htmlFor="sm">Sign-up</label>
+          <select id="sm" className="select" value={cur.signup_mode || 'invite'} onChange={(e) => setS({ ...cur, signup_mode: e.target.value })}>
+            <option value="invite">Invitation only</option>
+            <option value="open">Open: anyone can join free</option>
+          </select>
+          <span className="hint">Open sign-up uses the human check and email confirmation when they're configured, and every newcomer's first post is reviewed.</span>
+        </div>
+        <label className="check"><input type="checkbox" checked={cur.public_read === '1'} onChange={(e) => setS({ ...cur, public_read: e.target.checked ? '1' : '0' })} /><span>Anyone can read discussions without an account<span className="hint" style={{ display: 'block' }}>Posting, reacting, chat, private messages, the member directory, map and calendar still require an account.</span></span></label>
+        <div className="field"><label htmlFor="tt">Troll flags needed to hide a post</label><input id="tt" type="number" min={1} max={99} className="input" value={cur.troll_threshold || '3'} onChange={(e) => setS({ ...cur, troll_threshold: e.target.value })} /><span className="hint">Different established members must flag it. An admin's flag hides it immediately.</span></div>
+        <h3>Posting</h3>
         <label className="check"><input type="checkbox" checked={cur.approve_first_post === '1'} onChange={(e) => setS({ ...cur, approve_first_post: e.target.checked ? '1' : '0' })} /><span>Approve each new member's first post<span className="hint" style={{ display: 'block' }}>New members' first post waits in Admin → Approvals. Once one post is approved, their posts appear right away.</span></span></label>
         <div className="field"><label htmlFor="an">Home page announcement</label><textarea id="an" className="textarea" style={{ minHeight: 70 }} value={cur.announcement} onChange={set('announcement')} maxLength={500} /></div>
         <button className="btn">Save settings</button>

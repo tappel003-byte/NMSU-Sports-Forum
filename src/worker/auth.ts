@@ -39,7 +39,7 @@ export async function userFromCookieHeader(env: Env, cookieHeader: string | null
 
 async function lookupSession(env: Env, sessionId: string): Promise<(SessionUser & { last_used_at: number }) | null> {
   const row = await first<SessionUser & { expires_at: number; last_used_at: number }>(env,
-    `SELECT u.id, u.username, u.role, u.status, u.display_name, u.avatar_key, u.prefs, u.marked_read_at, u.created_at, u.trusted,
+    `SELECT u.id, u.username, u.role, u.status, u.display_name, u.avatar_key, u.prefs, u.marked_read_at, u.created_at, u.trusted, u.email_verified, u.joined_open,
             s.expires_at, s.last_used_at
        FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.id = ?`, sessionId);
   if (!row || row.expires_at < now() || row.status !== 'active') return null;
@@ -74,7 +74,36 @@ export const loadSession: MiddlewareHandler<AppEnv> = async (c, next) => {
 };
 
 export const requireUser: MiddlewareHandler<AppEnv> = async (c, next) => {
-  if (!c.get('user')) throw new HttpError(401, 'Please sign in.');
+  const user = c.get('user');
+  if (!user || user.role === 'guest') throw new HttpError(401, 'Please sign in.');
+  await next();
+};
+
+export const GUEST: SessionUser = { id: 0, username: 'guest', role: 'guest', status: 'active', display_name: null, avatar_key: null, prefs: '{}', marked_read_at: 0, created_at: 0, trusted: 0, email_verified: 1 };
+
+// Read-only pages visitors may open when public reading is switched on.
+const PUBLIC_READ = /^\/api\/(forums(\/[\w-]+)?|feed|threads\/\d+(\/latest)?|games(\/\d+)?|time-machine|predictions\/standings|players(\/\d+)?|preview|files\/\w+|search|home)$/;
+
+/** Lets visitors read when public reading is on; everything else requires a signed-in member. */
+export const requireMemberOrPublicRead: MiddlewareHandler<AppEnv> = async (c, next) => {
+  const user = c.get('user');
+  if (!user) {
+    const path = new URL(c.req.url).pathname;
+    if (c.req.method === 'GET' && PUBLIC_READ.test(path)) {
+      const r = await first<{ value: string }>(c.env, "SELECT value FROM settings WHERE key = 'public_read'");
+      if (r?.value === '1') {
+        c.set('user', GUEST);
+        await next();
+        return;
+      }
+    }
+    throw new HttpError(401, 'Please sign in.');
+  }
+  // Members who haven't confirmed their email can read but not post.
+  if (user.email_verified === 0 && c.req.method !== 'GET') {
+    const path = new URL(c.req.url).pathname;
+    if (!path.startsWith('/api/me') && !path.startsWith('/api/push') && !path.startsWith('/api/drafts')) throw new HttpError(403, 'Please confirm your email address first. Check your inbox for the link.');
+  }
   await next();
 };
 

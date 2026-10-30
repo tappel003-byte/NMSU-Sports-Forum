@@ -6,7 +6,7 @@ import { TAGS } from '../../shared/forum';
 import { api } from '../api';
 import { useApi, useApp } from '../state';
 import { gameTime, matchup, sportName, timeAgo } from '../format';
-import { ErrorState, GameRow, Loading, ThreadList, type GameItem, type MemberLite, type ThreadItem } from '../components/ui';
+import { ErrorState, GameRow, JoinCta, Loading, ThreadList, type GameItem, type MemberLite, type ThreadItem } from '../components/ui';
 
 interface HomeData {
   games: GameItem[];
@@ -54,13 +54,13 @@ export function Feed({ initialTab = 'latest', compact = false }: { initialTab?: 
         <h2>{compact ? 'Community discussions' : 'All discussions'}</h2>
         <div className="row">
           {tab === 'unread' && <button className="btn ghost small" onClick={markAll}>Mark all read</button>}
-          <button className="btn ghost small" onClick={toggleCompact} aria-pressed={Boolean(me?.prefs?.compact)} title="Compact list">{me?.prefs?.compact ? <List size={16} /> : <Rows3 size={16} />}<span className="sr-only">Compact list</span></button>
-          <button className="btn secondary small" onClick={() => setShare(true)}>Share a tweet</button>
-          <Link to="/new" className="btn small desktop-only-inline"><Plus size={16} /> New thread</Link>
+          {me && <button className="btn ghost small" onClick={toggleCompact} aria-pressed={Boolean(me?.prefs?.compact)} title="Compact list">{me?.prefs?.compact ? <List size={16} /> : <Rows3 size={16} />}<span className="sr-only">Compact list</span></button>}
+          {me && <button className="btn secondary small" onClick={() => setShare(true)}>Share a tweet</button>}
+          {me && <Link to="/new" className="btn small desktop-only-inline"><Plus size={16} /> New thread</Link>}
         </div>
       </div>
       <div className="tabs" role="tablist">
-        {TABS.map(([k, label]) => (
+        {TABS.filter(([k]) => me || k === 'latest' || k === 'popular').map(([k, label]) => (
           <button key={k} role="tab" aria-selected={tab === k} className={`tab ${tab === k ? 'active' : ''}`} onClick={() => { setPage(1); setParams((p) => { p.set('tab', k); return p; }, { replace: true }); }}>{label}</button>
         ))}
       </div>
@@ -71,7 +71,7 @@ export function Feed({ initialTab = 'latest', compact = false }: { initialTab?: 
         ))}
       </div>
       {share && <ShareModal onClose={() => setShare(false)} />}
-      <Link to="/new" className="fab" aria-label="Start a new discussion"><Plus size={26} /></Link>
+      {me && <Link to="/new" className="fab" aria-label="Start a new discussion"><Plus size={26} /></Link>}
       {loading && !data ? <Loading /> : error ? <ErrorState error={error} retry={reload} /> : data?.needsSports ? (
         <div className="empty">Pick your favorite sports in <Link to="/settings">Settings</Link> to build your personal feed.</div>
       ) : (
@@ -99,11 +99,12 @@ export function Home() {
   return (
     <div className="stack">
       <div className="page-head">
-        <div className="eyebrow">Welcome back</div>
-        <h1>{greeting()}, {me?.display_name || me?.username}.</h1>
+        <div className="eyebrow">{me ? 'Welcome back' : 'Welcome, Aggie fans'}</div>
+        <h1>{me ? `${greeting()}, ${me.display_name || me.username}.` : 'NMSU Sports Forum'}</h1>
         <div className="muted small">The latest from your NMSU sports community.</div>
       </div>
 
+      {!me && <JoinCta text="Free, no ads. Join to post, react, chat on game day and track recruits." />}
       {data?.announcement && <div className="note-box"><strong>Announcement:</strong> {data.announcement}</div>}
 
       <section className="hero" aria-label="Next game">
@@ -133,11 +134,11 @@ export function Home() {
         <img src="/brand/crest-480.webp" alt="" className="hero-crest" width={92} height={92} />
       </section>
 
-      <div className="stat-grid">
+      {me && <div className="stat-grid">
         <Link to="/?tab=unread" className="stat"><b>{data?.stats.unread ?? '–'}</b><span>Unread discussions</span></Link>
         <Link to="/notifications" className="stat"><b>{data?.stats.replies ?? '–'}</b><span>Replies to you</span></Link>
         <Link to="/chat" className="stat"><b>{data?.stats.chatting ?? '–'}</b><span>Chatting now</span></Link>
-      </div>
+      </div>}
 
       {data && data.birthdays.length > 0 && (
         <div className="note-box small">🎂 Happy birthday to {data.birthdays.map((b, i) => <span key={b.id}>{i > 0 && ', '}<Link to={`/members/${b.id}`}>{b.username}</Link></span>)}!</div>

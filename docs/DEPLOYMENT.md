@@ -38,6 +38,11 @@ Everything happens in web browsers; no command line needed.
 - **Football recruiting and transfer portal:** create a free key at collegefootballdata.com and store it as the `CFBD_API_KEY` secret. The forum syncs once a day (a few API calls, inside the free tier); admins can press **Admin → Sports data → Update now**. Confirm CollegeFootballData's terms allow display on the forum before launch.
 - **Tweet cards** use X's free embed service (`publish.twitter.com`); no key needed.
 
+## Before switching on open sign-up
+- **Human check (Cloudflare Turnstile, free):** in the Cloudflare dashboard create a Turnstile widget for nmsusportsforum.com. Put the **site key** in `wrangler.jsonc` `vars` as `TURNSTILE_SITE_KEY` and store the **secret** with `npx wrangler secret put TURNSTILE_SECRET`.
+- **Email confirmation:** set up Resend (free tier) as described above (`RESEND_API_KEY` secret and `MAIL_FROM`). With email on, open sign-ups must confirm their address before posting; without it they can post right away (first post still reviewed).
+- Then an admin flips **Admin → Settings → Sign-up** to *Open* and, if wanted, ticks **Anyone can read discussions without an account**.
+
 ## Optional: R2 for photos
 Only worth doing if photo volume grows. Enable R2 in the dashboard, run `npx wrangler r2 bucket create nmsu-sports-forum-uploads`, then uncomment `r2_buckets` in `wrangler.jsonc`. New photos go to R2; existing ones stay readable only from D1, so do this early or not at all.
 

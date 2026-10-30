@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import type { AppEnv, Env } from './env';
-import { loadSession, requireUser } from './auth';
+import { loadSession, requireMemberOrPublicRead } from './auth';
 import { HttpError } from './util';
 import { auth } from './routes/auth';
 import { forum } from './routes/forum';
@@ -37,8 +37,8 @@ app.use('*', loadSession);
 app.get('/health', (c) => c.json({ ok: true }));
 app.route('/auth', auth);
 
-// Everything below requires a signed-in, active member.
-app.use('*', requireUser);
+// Everything below requires a signed-in member, except read-only pages when public reading is on.
+app.use('*', requireMemberOrPublicRead);
 app.route('/admin', admin);
 app.route('/', forum);
 app.route('/', games);

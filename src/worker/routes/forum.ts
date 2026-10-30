@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import type { AppEnv } from '../env';
-import { all, first, run, stmt, userPrefs } from '../db';
+import { all, first, getSetting, logMod, notify, run, stmt, userPrefs } from '../db';
 import { HttpError, now, parse } from '../util';
 import { TAGS, cleanTags } from '../../shared/forum';
 import { SPORT_BY_KEY } from '../../shared/sports';
@@ -187,8 +187,8 @@ forum.get('/threads/:id', async (c) => {
     page = Math.floor(before / PAGE_SIZE) + 1;
   }
   page = Math.min(Math.max(page || 1, 1), pages);
-  const posts = await all<{ id: number; user_id: number | null; body: string; quote_post_id: number | null; created_at: number; edited_at: number | null; edit_count: number; deleted: number; pending: number }>(c.env,
-    `SELECT id, user_id, body, quote_post_id, created_at, edited_at, edit_count, deleted, pending FROM posts WHERE thread_id = ? AND ${visibleSql} ORDER BY id LIMIT ? OFFSET ?`,
+  const posts = await all<{ id: number; user_id: number | null; body: string; quote_post_id: number | null; created_at: number; edited_at: number | null; edit_count: number; deleted: number; pending: number; hidden: number }>(c.env,
+    `SELECT id, user_id, body, quote_post_id, created_at, edited_at, edit_count, deleted, pending, hidden FROM posts WHERE thread_id = ? AND ${visibleSql} ORDER BY id LIMIT ? OFFSET ?`,
     t.id, PAGE_SIZE, (page - 1) * PAGE_SIZE);
   const postIds = posts.map((p) => p.id);
   const ph = postIds.map(() => '?').join(',') || 'NULL';
@@ -214,9 +214,9 @@ forum.get('/threads/:id', async (c) => {
   const bmMap = new Map(bookmarks.map((b) => [b.post_id, b]));
   const qMap = new Map(quotes.map((q) => [q.id, q]));
   const archived = isArchived(t);
-  const canReply = user.role === 'admin' || (!t.locked && !archived && !t.deleted);
+  const canReply = user.role === 'admin' || (user.role !== 'guest' && !t.locked && !archived && !t.deleted);
   // Mark read up to the last post shown.
-  if (posts.length) {
+  if (posts.length && user.role !== 'guest') {
     const lastShown = posts[posts.length - 1].id;
     c.executionCtx.waitUntil(run(c.env, `INSERT INTO thread_reads (user_id, thread_id, last_read_post_id) VALUES (?, ?, ?)
       ON CONFLICT(user_id, thread_id) DO UPDATE SET last_read_post_id = MAX(last_read_post_id, excluded.last_read_post_id)`, user.id, t.id, lastShown));
@@ -238,7 +238,9 @@ forum.get('/threads/:id', async (c) => {
       return {
         id: p.id,
         author: author ?? null,
-        body: p.deleted ? '' : p.body,
+        // Posts hidden by troll flags stay visible to admins and their author only.
+        body: p.deleted || (p.hidden && user.role !== 'admin' && p.user_id !== user.id) ? '' : p.body,
+        hidden: Boolean(p.hidden),
         deleted: Boolean(p.deleted),
         pending: Boolean(p.pending),
         created_at: p.created_at,
@@ -250,9 +252,10 @@ forum.get('/threads/:id', async (c) => {
         bookmarked: bmMap.has(p.id),
         muted: Boolean(p.user_id && muted.users.has(p.user_id)),
         quote: q ? { id: q.id, thread_id: q.thread_id, username: q.user_id ? members.get(q.user_id)?.username ?? 'member' : 'member', body: q.deleted ? '' : q.body.slice(0, 600), deleted: Boolean(q.deleted) } : null,
-        attachments: attachments.filter((a) => a.post_id === p.id && !a.deleted).map((a) => ({ id: a.id, content_type: a.content_type, expires_at: a.expires_at })),
+        attachments: p.hidden && user.role !== 'admin' && p.user_id !== user.id ? [] : attachments.filter((a) => a.post_id === p.id && !a.deleted).map((a) => ({ id: a.id, content_type: a.content_type, expires_at: a.expires_at })),
         expired_attachments: attachments.filter((a) => a.post_id === p.id && a.deleted).length,
         can_edit: !p.deleted && (user.role === 'admin' || (p.user_id === user.id && canReply)),
+        can_flag: user.role === 'admin' || (user.role !== 'guest' && (Boolean(user.trusted) || !user.joined_open) && p.user_id !== user.id && !p.hidden),
       };
     }),
   });
@@ -388,6 +391,32 @@ forum.post('/posts/:id/report', async (c) => {
   return c.json({ ok: true });
 });
 
+// Troll flag: established members can flag; enough flags hide the post at once and hold the poster's next posts.
+forum.post('/posts/:id/troll', async (c) => {
+  const user = c.get('user');
+  const p = await loadPost(c.env, idParam(c.req.param('id')));
+  await loadThread(c.env, user, p.thread_id);
+  if (p.user_id === user.id) throw new HttpError(400, "You can't flag your own post.");
+  // Invited members are vouched for; open sign-ups can flag once their first post is approved.
+  if (user.role !== 'admin' && !user.trusted && user.joined_open) throw new HttpError(403, 'Flagging opens up once your first post has been approved.');
+  await run(c.env, `INSERT OR IGNORE INTO reports (reporter_id, post_id, snapshot, reason, kind, created_at) VALUES (?, ?, ?, 'Flagged as trolling', 'troll', ?)`, user.id, p.id, p.body.slice(0, 2000), now());
+  const threshold = Math.max(1, Number(await getSetting(c.env, 'troll_threshold')) || 3);
+  const flags = (await first<{ n: number }>(c.env, "SELECT COUNT(DISTINCT reporter_id) AS n FROM reports WHERE post_id = ? AND kind = 'troll' AND status = 'open'", p.id))?.n ?? 0;
+  const hide = user.role === 'admin' || flags >= threshold;
+  const already = await first<{ hidden: number }>(c.env, 'SELECT hidden FROM posts WHERE id = ?', p.id);
+  if (hide && !already?.hidden) {
+    await run(c.env, 'UPDATE posts SET hidden = 1 WHERE id = ?', p.id);
+    if (p.user_id) {
+      const author = await first<{ role: string; username: string }>(c.env, 'SELECT role, username FROM users WHERE id = ?', p.user_id);
+      if (author && author.role !== 'admin') await run(c.env, 'UPDATE users SET trusted = 0 WHERE id = ?', p.user_id);
+      await logMod(c.env, null, 'troll_auto_hide', 'post', p.id, `${author?.username ?? 'member'} — ${flags} flag(s)`);
+      const admins = await all<{ id: number }>(c.env, "SELECT id FROM users WHERE role = 'admin' AND status = 'active'");
+      for (const a of admins) await notify(c.env, a.id, 'troll', `A post by ${author?.username ?? 'a member'} was hidden after ${flags} troll flag${flags === 1 ? '' : 's'}. Please review.`, '/admin/reports');
+    }
+  }
+  return c.json({ ok: true, hidden: hide, flags, threshold });
+});
+
 // ---------- Polls ----------
 
 forum.post('/polls/:id/vote', async (c) => {
@@ -491,11 +520,11 @@ forum.get('/search', async (c) => {
   const posts = await all<{ id: number; thread_id: number; body: string; created_at: number; username: string; title: string; forum_name: string }>(c.env,
     `SELECT p.id, p.thread_id, p.body, p.created_at, u.username, t.title, f.name AS forum_name
        FROM posts p JOIN threads t ON t.id = p.thread_id JOIN forums f ON f.id = t.forum_id LEFT JOIN users u ON u.id = p.user_id
-      WHERE p.deleted = 0 AND p.pending = 0 AND t.deleted = 0 AND t.pending = 0 AND p.body LIKE ? ESCAPE '\\'${fWhere} ORDER BY p.id DESC LIMIT 40`, like, ...fParams);
+      WHERE p.deleted = 0 AND p.pending = 0 AND p.hidden = 0 AND t.deleted = 0 AND t.pending = 0 AND p.body LIKE ? ESCAPE '\\'${fWhere} ORDER BY p.id DESC LIMIT 40`, like, ...fParams);
   const members = await all(c.env,
     `SELECT id, username, display_name, legacy_moniker, avatar_key FROM users
       WHERE status = 'active' AND (username LIKE ? ESCAPE '\\' OR display_name LIKE ? ESCAPE '\\' OR legacy_moniker LIKE ? ESCAPE '\\') LIMIT 10`, like, like, like);
-  return c.json({ threads: await presentThreads(c.env, user, threads), posts, members });
+  return c.json({ threads: await presentThreads(c.env, user, threads), posts, members: user.role === 'guest' ? [] : members });
 });
 
 // ---------- Mutes ----------
@@ -546,7 +575,7 @@ forum.get('/pulse', async (c) => {
       `SELECT COUNT(*) AS n FROM threads t LEFT JOIN thread_reads tr ON tr.thread_id = t.id AND tr.user_id = ?
         WHERE t.deleted = 0 AND t.pending = 0 AND t.last_post_at > ? AND (tr.last_read_post_id IS NULL OR tr.last_read_post_id < t.last_post_id)
           AND t.forum_id NOT IN (SELECT target_id FROM mutes WHERE user_id = ? AND target_type = 'forum')`, user.id, unreadBaseline(user), user.id),
-    user.role === 'admin' ? first<{ n: number }>(c.env, "SELECT (SELECT COUNT(*) FROM reports WHERE status = 'open') + (SELECT COUNT(*) FROM posts WHERE pending = 1 AND deleted = 0) AS n") : Promise.resolve({ n: 0 }),
+    user.role === 'admin' ? first<{ n: number }>(c.env, "SELECT (SELECT COUNT(*) FROM reports WHERE status = 'open' AND kind = 'report') + (SELECT COUNT(*) FROM posts WHERE pending = 1 AND deleted = 0) + (SELECT COUNT(*) FROM posts WHERE hidden = 1 AND deleted = 0) AS n") : Promise.resolve({ n: 0 }),
   ]);
   return c.json({ notifications: n?.n ?? 0, messages: dm?.n ?? 0, unread_threads: unread?.n ?? 0, open_reports: reports?.n ?? 0 });
 });

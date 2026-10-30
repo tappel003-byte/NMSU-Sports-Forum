@@ -26,7 +26,7 @@ admin.get('/overview', async (c) => {
   const [members, reports, pendingPosts, invites, feeds, log] = await Promise.all([
     first<{ total: number; admins: number; suspended: number }>(c.env,
       "SELECT COUNT(*) AS total, SUM(role = 'admin') AS admins, SUM(status = 'suspended') AS suspended FROM users"),
-    first<{ n: number }>(c.env, "SELECT COUNT(*) AS n FROM reports WHERE status = 'open'"),
+    first<{ n: number }>(c.env, "SELECT (SELECT COUNT(*) FROM reports WHERE status = 'open' AND kind = 'report') + (SELECT COUNT(*) FROM posts WHERE hidden = 1 AND deleted = 0) AS n"),
     first<{ n: number }>(c.env, 'SELECT COUNT(*) AS n FROM posts WHERE pending = 1 AND deleted = 0'),
     first<{ n: number }>(c.env, 'SELECT COUNT(*) AS n FROM invites WHERE revoked = 0 AND uses < max_uses AND expires_at > ?', now()),
     all(c.env, 'SELECT id, sport, url, enabled, last_ok_at, last_error, last_error_at, failing, last_counts FROM data_feeds ORDER BY sport'),
@@ -209,6 +209,36 @@ admin.post('/pending/:id', async (c) => {
   return c.json({ ok: true });
 });
 
+// ---------- Troll flags ----------
+
+admin.get('/flagged', async (c) => {
+  const rows = await all(c.env,
+    `SELECT p.id, p.thread_id, p.body, p.hidden, p.created_at, u.id AS user_id, u.username, t.title,
+            COUNT(DISTINCT r.reporter_id) AS flags, group_concat(DISTINCT ru.username) AS flagged_by
+       FROM reports r JOIN posts p ON p.id = r.post_id JOIN threads t ON t.id = p.thread_id
+       LEFT JOIN users u ON u.id = p.user_id LEFT JOIN users ru ON ru.id = r.reporter_id
+      WHERE r.kind = 'troll' AND r.status = 'open' AND p.deleted = 0 GROUP BY p.id ORDER BY p.hidden DESC, flags DESC`);
+  return c.json({ flagged: rows });
+});
+
+admin.post('/flagged/:id', async (c) => {
+  const actor = c.get('user');
+  const postId = num(c.req.param('id'));
+  const { action } = parse(z.object({ action: z.enum(['restore', 'remove']) }), await c.req.json());
+  const p = await first<{ id: number; user_id: number | null; body: string }>(c.env, 'SELECT id, user_id, body FROM posts WHERE id = ?', postId);
+  if (!p) throw new HttpError(404, 'Post not found.');
+  if (action === 'restore') {
+    await run(c.env, 'UPDATE posts SET hidden = 0 WHERE id = ?', postId);
+    if (p.user_id) await run(c.env, 'UPDATE users SET trusted = 1 WHERE id = ?', p.user_id);
+  } else {
+    await run(c.env, 'UPDATE posts SET deleted = 1, deleted_by = ?, hidden = 0 WHERE id = ?', actor.id, postId);
+  }
+  await run(c.env, "UPDATE reports SET status = ?, resolved_by = ?, resolved_at = ? WHERE post_id = ? AND kind = 'troll' AND status = 'open'",
+    action === 'restore' ? 'dismissed' : 'resolved', actor.id, now(), postId);
+  await logMod(c.env, actor.id, action === 'restore' ? 'troll_restore' : 'troll_remove', 'post', postId, p.body.slice(0, 200));
+  return c.json({ ok: true });
+});
+
 // ---------- Reports ----------
 
 admin.get('/reports', async (c) => {
@@ -216,7 +246,7 @@ admin.get('/reports', async (c) => {
   const rows = await all(c.env,
     `SELECT r.*, u.username AS reporter, ru.username AS resolver, p.thread_id
        FROM reports r LEFT JOIN users u ON u.id = r.reporter_id LEFT JOIN users ru ON ru.id = r.resolved_by LEFT JOIN posts p ON p.id = r.post_id
-      WHERE r.status = ? ORDER BY r.id DESC LIMIT 200`, status);
+      WHERE r.status = ? AND r.kind = 'report' ORDER BY r.id DESC LIMIT 200`, status);
   return c.json({ reports: rows });
 });
 
@@ -247,7 +277,7 @@ admin.delete('/badges/:id', async (c) => {
 
 // ---------- Settings ----------
 
-const SETTING_KEYS = ['launch_date', 'honorary_threshold', 'chat_window', 'announcement', 'approve_first_post'] as const;
+const SETTING_KEYS = ['launch_date', 'honorary_threshold', 'chat_window', 'announcement', 'approve_first_post', 'signup_mode', 'public_read', 'troll_threshold'] as const;
 
 admin.get('/settings', async (c) => {
   const out: Record<string, string> = {};
@@ -262,6 +292,9 @@ admin.put('/settings', async (c) => {
     chat_window: z.string().regex(/^\d{2,3}$/).optional(),
     announcement: z.string().max(500).optional(),
     approve_first_post: z.enum(['0', '1']).optional(),
+    signup_mode: z.enum(['invite', 'open']).optional(),
+    public_read: z.enum(['0', '1']).optional(),
+    troll_threshold: z.string().regex(/^[1-9]\d?$/, 'use a number from 1 to 99').optional(),
   }), await c.req.json());
   for (const [k, v] of Object.entries(body)) if (v !== undefined) await setSetting(c.env, k, v);
   await logMod(c.env, c.get('user').id, 'update_settings', 'settings', null, JSON.stringify(body).slice(0, 500));

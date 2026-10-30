@@ -16,7 +16,7 @@ function useForums() {
 }
 
 function Header() {
-  const { me, pulse, refresh } = useApp();
+  const { me, pulse, refresh, site } = useApp();
   const [open, setOpen] = useState(false);
   const nav = useNavigate();
   const loc = useLocation();
@@ -49,6 +49,12 @@ function Header() {
           <NavLink to="/chat">Live Chat</NavLink>
           <NavLink to="/members">Members</NavLink>
         </nav>
+        {!me ? (
+          <div className="header-actions">
+            <Link to="/login" className="btn on-crimson outline small">Sign in</Link>
+            {site.signupMode === 'open' && <Link to="/join" className="btn on-crimson small">Join</Link>}
+          </div>
+        ) : (
         <div className="header-actions">
           <Link to="/search" className="icon-btn" aria-label="Search"><Search size={20} /></Link>
           <Link to="/messages" className="icon-btn" aria-label={`Private messages${pulse.messages ? `, ${pulse.messages} unread` : ''}`}>
@@ -75,6 +81,7 @@ function Header() {
             )}
           </div>
         </div>
+        )}
       </div>
     </header>
   );
@@ -188,7 +195,7 @@ export function Layout({ children, rail = true }: { children: ReactNode; rail?: 
       <PullToRefresh />
       <div className={`shell ${rail ? '' : 'wide'}`}>
         <LeftRail />
-        <main id="main" className="main">{children}</main>
+        <main id="main" className="main"><VerifyBanner />{children}</main>
         {rail && <RightRail />}
       </div>
       <BottomNav />
@@ -202,4 +209,11 @@ export function SettingsLink() {
 
 export function BookmarksLink() {
   return <Link to="/bookmarks" className="row small"><Bookmark size={16} /> Bookmarks</Link>;
+}
+
+function VerifyBanner() {
+  const { me, site, toast } = useApp();
+  if (!me || site.emailVerified) return null;
+  const resend = () => api('/auth/verify/resend', { method: 'POST' }).then(() => toast('Sent. Check your email (and spam folder).')).catch((e) => toast((e as Error).message));
+  return <div className="notice small spread" style={{ marginBottom: 12 }}><span>Confirm your email to start posting. We sent you a link.</span><button className="btn secondary small" onClick={resend}>Send again</button></div>;
 }

@@ -14,12 +14,14 @@ export interface Env {
   VAPID_SUBJECT?: string;
   CFBD_API_KEY?: string;
   CFBD_BASE?: string;
+  TURNSTILE_SITE_KEY?: string;
+  TURNSTILE_SECRET?: string;
 }
 
 export interface SessionUser {
   id: number;
   username: string;
-  role: 'member' | 'admin';
+  role: 'member' | 'admin' | 'guest';
   status: 'active' | 'suspended';
   display_name: string | null;
   avatar_key: string | null;
@@ -27,6 +29,8 @@ export interface SessionUser {
   marked_read_at: number;
   created_at: number;
   trusted: number;
+  email_verified?: number;
+  joined_open?: number;
 }
 
 export type AppEnv = { Bindings: Env; Variables: { user: SessionUser; sessionId: string } };

@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import type { AppEnv } from '../env';
 import { clientIp, createSession, destroySession, liftExpiredSuspension, rateLimit, requireUser } from '../auth';
-import { first, logMod, run } from '../db';
+import { first, getSetting, logMod, run } from '../db';
 import { emailEnabled, sendEmail } from '../email';
 import { HttpError, DAY, hashPassword, now, parse, passwordSchema, randomToken, sha256, usernameSchema, verifyPassword } from '../util';
 
@@ -17,6 +17,10 @@ auth.get('/me', async (c) => {
     user: user ? { id: user.id, username: user.username, role: user.role, display_name: user.display_name, avatar_key: user.avatar_key, prefs: JSON.parse(user.prefs || '{}') } : null,
     setupNeeded: !anyUser,
     emailEnabled: emailEnabled(c.env),
+    signupMode: (await getSetting(c.env, 'signup_mode')) || 'invite',
+    publicRead: (await getSetting(c.env, 'public_read')) === '1',
+    turnstileSiteKey: c.env.TURNSTILE_SITE_KEY || null,
+    emailVerified: user ? (await first<{ v: number }>(c.env, 'SELECT email_verified AS v FROM users WHERE id = ?', user.id))?.v !== 0 : true,
   });
 });
 
@@ -49,29 +53,79 @@ async function validInvite(env: AppEnv['Bindings'], token: string) {
   return inv;
 }
 
+/** Cloudflare Turnstile human check for open sign-up (skipped when no key is configured). */
+async function verifyTurnstile(env: AppEnv['Bindings'], token: string | undefined, ip: string): Promise<void> {
+  if (!env.TURNSTILE_SECRET) return;
+  if (!token) throw new HttpError(400, 'Please complete the "verify you are human" check.');
+  const form = new FormData();
+  form.append('secret', env.TURNSTILE_SECRET);
+  form.append('response', token);
+  form.append('remoteip', ip);
+  const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', { method: 'POST', body: form, signal: AbortSignal.timeout(8000) });
+  const data = (await res.json().catch(() => ({}))) as { success?: boolean };
+  if (!data.success) throw new HttpError(400, 'The human check failed. Please try again.');
+}
+
+export async function sendVerification(env: AppEnv['Bindings'], origin: string, userId: number, email: string): Promise<boolean> {
+  const token = randomToken();
+  await run(env, 'INSERT INTO email_verifications (token_hash, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)', await sha256(token), userId, now() + 3 * DAY, now());
+  return sendEmail(env, email, 'Confirm your NMSU Sports Forum account',
+    `Welcome to NMSU Sports Forum!\n\nConfirm your email to start posting (link expires in 3 days):\n${origin}/verify/${token}\n\nIf you didn't sign up, ignore this email.`);
+}
+
 auth.post('/register', async (c) => {
   await rateLimit(c.env, `register:${clientIp(c)}`, 10, 900_000);
   const body = parse(z.object({
-    token: z.string().min(10),
+    token: z.string().optional(),
     username: usernameSchema,
     email: emailSchema,
     password: passwordSchema,
     display_name: z.string().trim().max(60).optional(),
+    turnstile: z.string().optional(),
   }), await c.req.json());
-  const inv = await validInvite(c.env, body.token);
-  if (!inv) throw new HttpError(400, 'This invitation is invalid, expired or already used. Ask an administrator for a new one.');
-  if (inv.email && inv.email.toLowerCase() !== body.email.toLowerCase()) throw new HttpError(400, 'This invitation was issued for a different email address.');
+  const open = !body.token && (await getSetting(c.env, 'signup_mode')) === 'open';
+  const inv = body.token ? await validInvite(c.env, body.token) : null;
+  if (!open && !inv) throw new HttpError(400, body.token ? 'This invitation is invalid, expired or already used. Ask an administrator for a new one.' : 'Sign-up is by invitation right now. Ask a member or administrator for an invite link.');
+  if (inv?.email && inv.email.toLowerCase() !== body.email.toLowerCase()) throw new HttpError(400, 'This invitation was issued for a different email address.');
+  if (open) {
+    await rateLimit(c.env, `signup-open:${clientIp(c)}`, 3, 86_400_000);
+    await verifyTurnstile(c.env, body.turnstile, clientIp(c));
+  }
   if (await first(c.env, 'SELECT id FROM users WHERE username = ?', body.username)) throw new HttpError(409, 'That username is taken.');
   if (await first(c.env, 'SELECT id FROM users WHERE email = ?', body.email)) throw new HttpError(409, 'An account already uses that email.');
-  // Claim the invite atomically so it cannot be used twice concurrently.
-  const claim = await run(c.env, 'UPDATE invites SET uses = uses + 1 WHERE id = ? AND uses < max_uses AND revoked = 0', inv.id);
-  if (!claim.meta.changes) throw new HttpError(400, 'This invitation has already been used.');
+  if (inv) {
+    // Claim the invite atomically so it cannot be used twice concurrently.
+    const claim = await run(c.env, 'UPDATE invites SET uses = uses + 1 WHERE id = ? AND uses < max_uses AND revoked = 0', inv.id);
+    if (!claim.meta.changes) throw new HttpError(400, 'This invitation has already been used.');
+  }
   const t = now();
-  const r = await run(c.env, 'INSERT INTO users (username, email, password_hash, display_name, created_at) VALUES (?, ?, ?, ?, ?)',
-    body.username, body.email, await hashPassword(body.password), body.display_name || null, t);
+  // Open sign-ups confirm their email before posting (when email is set up) and their first post is reviewed.
+  const needsVerify = open && emailEnabled(c.env);
+  const r = await run(c.env, 'INSERT INTO users (username, email, password_hash, display_name, created_at, joined_open, email_verified) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    body.username, body.email, await hashPassword(body.password), body.display_name || null, t, open ? 1 : 0, needsVerify ? 0 : 1);
   const id = r.meta.last_row_id;
-  await run(c.env, 'INSERT INTO invite_uses (invite_id, user_id, used_at) VALUES (?, ?, ?)', inv.id, id, t);
+  if (inv) await run(c.env, 'INSERT INTO invite_uses (invite_id, user_id, used_at) VALUES (?, ?, ?)', inv.id, id, t);
+  if (needsVerify) await sendVerification(c.env, new URL(c.req.url).origin, id, body.email);
   await createSession(c, id);
+  return c.json({ ok: true, verifyEmail: needsVerify });
+});
+
+auth.post('/verify', async (c) => {
+  const { token } = parse(z.object({ token: z.string().min(10) }), await c.req.json());
+  const hash = await sha256(token);
+  const v = await first<{ user_id: number; expires_at: number }>(c.env, 'SELECT user_id, expires_at FROM email_verifications WHERE token_hash = ?', hash);
+  if (!v || v.expires_at < now()) throw new HttpError(400, 'This confirmation link is invalid or expired. Sign in and ask for a new one.');
+  await run(c.env, 'UPDATE users SET email_verified = 1 WHERE id = ?', v.user_id);
+  await run(c.env, 'DELETE FROM email_verifications WHERE user_id = ?', v.user_id);
+  return c.json({ ok: true });
+});
+
+auth.post('/verify/resend', requireUser, async (c) => {
+  const user = c.get('user');
+  await rateLimit(c.env, `verify-resend:${user.id}`, 3, 3_600_000);
+  const u = await first<{ email: string; email_verified: number }>(c.env, 'SELECT email, email_verified FROM users WHERE id = ?', user.id);
+  if (!u || u.email_verified) return c.json({ ok: true });
+  await sendVerification(c.env, new URL(c.req.url).origin, user.id, u.email);
   return c.json({ ok: true });
 });
 

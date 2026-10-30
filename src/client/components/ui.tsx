@@ -117,9 +117,9 @@ export function ThreadList({ threads, showForum = true, empty, compact }: { thre
             </Link>
             {t.description && <div className="thread-desc">{t.description}</div>}
             <div className="thread-meta">
-              <span>{t.author ? t.author.display_name || t.author.username : 'NMSU Sports Forum'}</span>
+              <span>{t.author ? (t.author.username.startsWith('former_member_') ? 'Former member' : t.author.display_name || t.author.username) : 'NMSU Sports Forum'}</span>
               <span>·</span>
-              <span>{t.last_poster && t.reply_count > 0 ? `last by ${t.last_poster.username} ${timeAgo(t.last_post_at)}` : timeAgo(t.last_post_at)}</span>
+              <span>{t.last_poster && t.reply_count > 0 ? `last by ${t.last_poster.username.startsWith('former_member_') ? 'Former member' : t.last_poster.username} ${timeAgo(t.last_post_at)}` : timeAgo(t.last_post_at)}</span>
               {t.thumbs_up > 0 && <span>· 👍 {t.thumbs_up}</span>}
               {t.game_phase && <span className="chip">{t.game_phase === 'pregame' ? 'Pregame' : 'Postgame'}</span>}
               {t.archived && <span className="chip gray">Archived</span>}
@@ -183,5 +183,16 @@ export function Pager({ page, pages, onPage }: { page: number; pages: number; on
       <span className="small muted" style={{ alignSelf: 'center' }}>Page {page} of {pages}</span>
       <button className="btn secondary small" disabled={page >= pages} onClick={() => onPage(page + 1)}>Next</button>
     </nav>
+  );
+}
+
+/** Shown to visitors in place of posting controls. */
+export function JoinCta({ text = 'Join free to post, react and chat.' }: { text?: string }) {
+  const { site } = useApp();
+  return (
+    <div className="note-box small spread">
+      <span>{site.signupMode === 'open' ? text : 'Members can post, react and chat. Membership is by invitation right now.'}</span>
+      <span className="row">{site.signupMode === 'open' && <Link className="btn small" to="/join">Join free</Link>}<Link className="btn secondary small" to="/login">Sign in</Link></span>
+    </div>
   );
 }

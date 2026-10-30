@@ -2,6 +2,15 @@
 
 Community administrators run the forum day to day. You don't need any technical access, and nothing needs doing every day.
 
+## Opening the forum
+**Admin → Settings → Who can join and read:**
+- **Sign-up:** *Invitation only* or *Open*. The plan is invitation-only for the first few weeks, then open.
+- **Anyone can read without an account:** visitors can browse discussions, games and recruiting; they must join to post.
+- **Troll flags needed to hide a post** (default 3).
+
+## Troll flags
+Established members can tap **Troll** on a post. When enough different members flag it, the post is hidden immediately, that member's next posts wait for approval, and every admin is notified. Review it in **Admin → Reports → Troll flags**: *Not trolling: restore* or *Remove post*, and suspend the member from **Admin → Members** if needed. An admin's own flag hides a post at once.
+
 ## Inviting members
 **Admin → Invitations → Create invitation.** Optionally enter the person's email (then only that address can use it) and a private note so you remember who it's for. Copy the link and send it by text or email. Links work once and expire after 14 days by default; revoke unused ones any time.
 

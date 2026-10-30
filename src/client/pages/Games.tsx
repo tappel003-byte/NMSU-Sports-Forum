@@ -3,7 +3,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../api';
 import { useApi, useApp } from '../state';
 import { Score, fullTime, gameTime, matchup, sportIcon, sportName } from '../format';
-import { ErrorState, GameRow, Loading, ThreadList, type GameItem, type ThreadItem } from '../components/ui';
+import { ErrorState, GameRow, JoinCta, Loading, ThreadList, type GameItem, type ThreadItem } from '../components/ui';
 import { SPORTS, SPORT_BY_KEY } from '../../shared/sports';
 
 export function Games() {
@@ -98,7 +98,7 @@ export function GamePage() {
 
       <section className="card card-pad">
         <h2>🔮 Predictions</h2>
-        {!p.locked ? (
+        {!me && !p.locked ? <JoinCta text="Join free to make your pick and climb the season standings." /> : !p.locked ? (
           <>
             <p className="small muted" style={{ marginTop: 0 }}>Pick the winner (1 point). Nail the exact score for 2 bonus points. Picks lock at game time and are scored automatically when the final arrives. {p.count} member{p.count === 1 ? '' : 's'} picked so far.</p>
             {p.mine && <div className="note-box small" style={{ marginBottom: 10 }}>Your pick: <strong>{p.mine.pick === 'nmsu' ? 'NM State' : g.opponent}</strong>{p.mine.nmsu_score !== null ? ` (${p.mine.nmsu_score}–${p.mine.opp_score})` : ''}</div>}

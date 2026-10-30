@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api';
 import { useApp } from '../state';
@@ -30,7 +30,7 @@ function useSubmit(fn: () => Promise<void>) {
 }
 
 export function Login() {
-  const { refresh, setupNeeded } = useApp();
+  const { refresh, setupNeeded, site } = useApp();
   const nav = useNavigate();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -49,7 +49,10 @@ export function Login() {
         <button className="btn block" disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button>
       </form>
       <p className="small" style={{ textAlign: 'center' }}><Link to="/forgot">Forgot your password?</Link></p>
-      <p className="small muted" style={{ textAlign: 'center' }}>New here? Membership is by invitation. Ask a member or administrator for an invite link.</p>
+      {site.signupMode === 'open'
+        ? <p className="small" style={{ textAlign: 'center' }}>New here? <Link to="/join"><strong>Join free</strong></Link></p>
+        : <p className="small muted" style={{ textAlign: 'center' }}>New here? Membership is by invitation right now. Ask a member or administrator for an invite link.</p>}
+      {site.publicRead && <p className="small" style={{ textAlign: 'center' }}><Link to="/">Look around first →</Link></p>}
     </AuthShell>
   );
 }
@@ -158,6 +161,77 @@ export function Reset() {
         {error && <div className="error-box" style={{ marginBottom: 12 }}>{error}</div>}
         <button className="btn block" disabled={busy}>Save password and sign in</button>
       </form>
+    </AuthShell>
+  );
+}
+
+declare global {
+  interface Window { turnstile?: { render: (el: HTMLElement, opts: Record<string, unknown>) => string; reset: (id?: string) => void } }
+}
+
+/** Cloudflare Turnstile "verify you're human" box (free; shown only when a site key is configured). */
+function Turnstile({ siteKey, onToken }: { siteKey: string; onToken: (t: string) => void }) {
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    let cancelled = false;
+    const render = () => { if (!cancelled && box.current && window.turnstile) window.turnstile.render(box.current, { sitekey: siteKey, callback: onToken, theme: 'auto' }); };
+    if (window.turnstile) render();
+    else {
+      const sc = document.createElement('script');
+      sc.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
+      sc.async = true;
+      sc.onload = render;
+      document.head.appendChild(sc);
+    }
+    return () => { cancelled = true; };
+  }, [siteKey, onToken]);
+  return <div ref={box} style={{ margin: '4px 0 14px' }} />;
+}
+
+export function SignUp() {
+  const { refresh, site } = useApp();
+  const nav = useNavigate();
+  const [f, setF] = useState({ username: '', email: '', password: '', confirm: '', display_name: '' });
+  const [captcha, setCaptcha] = useState('');
+  const { error, busy, submit } = useSubmit(async () => {
+    if (f.password !== f.confirm) throw new Error('Passwords do not match.');
+    const r = await api<{ verifyEmail: boolean }>('/auth/register', { body: { username: f.username, email: f.email, password: f.password, display_name: f.display_name || undefined, turnstile: captcha || undefined } });
+    await refresh();
+    nav(r.verifyEmail ? '/settings?welcome=1&verify=1' : '/settings?welcome=1');
+  });
+  if (site.signupMode !== 'open') {
+    return <AuthShell title="Join by invitation" subtitle="Sign-up is by invitation right now. Ask a member or administrator for an invite link."><Link className="btn block" to="/login">Sign in</Link></AuthShell>;
+  }
+  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value });
+  return (
+    <AuthShell title="Join NMSU Sports Forum" subtitle="Free, no ads. The Aggie fan community, built for your phone.">
+      <form onSubmit={submit}>
+        <div className="field"><label htmlFor="un">Username</label><input id="un" className="input" autoComplete="username" value={f.username} onChange={set('username')} required pattern="[A-Za-z0-9_]{3,24}" /><span className="hint">3–24 letters, numbers or underscores. Your old Aggie Alert moniker works great.</span></div>
+        <div className="field"><label htmlFor="dn">Display name (optional)</label><input id="dn" className="input" value={f.display_name} onChange={set('display_name')} maxLength={60} /></div>
+        <div className="field"><label htmlFor="em">Email</label><input id="em" className="input" type="email" autoComplete="email" value={f.email} onChange={set('email')} required /><span className="hint">Private. Used to confirm your account and reset your password.</span></div>
+        <div className="field"><label htmlFor="pw">Password</label><input id="pw" className="input" type="password" autoComplete="new-password" value={f.password} onChange={set('password')} required minLength={10} /><span className="hint">At least 10 characters.</span></div>
+        <div className="field"><label htmlFor="pc">Confirm password</label><input id="pc" className="input" type="password" autoComplete="new-password" value={f.confirm} onChange={set('confirm')} required /></div>
+        {site.turnstileSiteKey && <Turnstile siteKey={site.turnstileSiteKey} onToken={setCaptcha} />}
+        <p className="tiny muted">Be respectful. Trolling gets flagged by members and hidden quickly. Your first post is reviewed by an admin.</p>
+        {error && <div className="error-box" style={{ marginBottom: 12 }}>{error}</div>}
+        <button className="btn block" disabled={busy || Boolean(site.turnstileSiteKey && !captcha)}>{busy ? 'Creating account…' : 'Join free'}</button>
+      </form>
+      <p className="small" style={{ textAlign: 'center' }}>Already a member? <Link to="/login">Sign in</Link></p>
+    </AuthShell>
+  );
+}
+
+export function Verify() {
+  const { token = '' } = useParams();
+  const { refresh } = useApp();
+  const [state, setState] = useState<'working' | 'ok' | 'bad'>('working');
+  useEffect(() => {
+    api('/auth/verify', { body: { token } }).then(() => { setState('ok'); refresh(); }).catch(() => setState('bad'));
+  }, [token, refresh]);
+  return (
+    <AuthShell title={state === 'ok' ? 'Email confirmed' : state === 'bad' ? 'Link expired' : 'Confirming…'}
+      subtitle={state === 'ok' ? "You're all set. Jump into the conversation." : state === 'bad' ? 'This confirmation link is invalid or expired. Sign in and ask for a new one in Settings.' : undefined}>
+      <Link className="btn block" to="/">Go to the forum</Link>
     </AuthShell>
   );
 }

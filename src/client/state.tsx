@@ -26,6 +26,8 @@ export interface Prefs {
   push?: boolean;
 }
 
+export interface SiteInfo { signupMode: 'invite' | 'open'; publicRead: boolean; turnstileSiteKey: string | null; emailVerified: boolean }
+
 export interface Pulse { notifications: number; messages: number; unread_threads: number; open_reports: number }
 
 interface AppState {
@@ -33,6 +35,7 @@ interface AppState {
   loading: boolean;
   setupNeeded: boolean;
   emailEnabled: boolean;
+  site: SiteInfo;
   pulse: Pulse;
   refresh: () => Promise<void>;
   refreshPulse: () => void;
@@ -47,12 +50,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [setupNeeded, setSetupNeeded] = useState(false);
   const [emailEnabled, setEmailEnabled] = useState(false);
+  const [site, setSite] = useState<SiteInfo>({ signupMode: 'invite', publicRead: false, turnstileSiteKey: null, emailVerified: true });
   const [pulse, setPulse] = useState<Pulse>({ notifications: 0, messages: 0, unread_threads: 0, open_reports: 0 });
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const toastTimer = useRef<number | undefined>(undefined);
 
   const refresh = useCallback(async () => {
-    const r = await api<{ user: Me | null; setupNeeded: boolean; emailEnabled: boolean }>('/auth/me');
+    const r = await api<{ user: Me | null; setupNeeded: boolean; emailEnabled: boolean } & SiteInfo>('/auth/me');
+    setSite({ signupMode: r.signupMode, publicRead: r.publicRead, turnstileSiteKey: r.turnstileSiteKey, emailVerified: r.emailVerified });
     setMe(r.user);
     setSetupNeeded(r.setupNeeded);
     setEmailEnabled(r.emailEnabled);
@@ -104,7 +109,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <Ctx.Provider value={{ me, loading, setupNeeded, emailEnabled, pulse, refresh, refreshPulse, toast }}>
+    <Ctx.Provider value={{ me, loading, setupNeeded, emailEnabled, site, pulse, refresh, refreshPulse, toast }}>
       {children}
       {toastMsg && <div className="toast" role="status">{toastMsg}</div>}
     </Ctx.Provider>

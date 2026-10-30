@@ -113,6 +113,8 @@ export function assertWritable(t: ThreadRow, user: SessionUser): void {
 /** True when this member's posts must be approved by an admin first (setting `approve_first_post`). */
 export async function needsApproval(env: Env, user: SessionUser): Promise<boolean> {
   if (user.role === 'admin' || user.trusted) return false;
+  // Newcomers from open sign-up always have their first post reviewed.
+  if (user.joined_open) return true;
   return (await getSetting(env, 'approve_first_post')) === '1';
 }
 

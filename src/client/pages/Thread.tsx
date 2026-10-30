@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { Bookmark, BookmarkCheck, Flag, History, MoreHorizontal, Pencil, Quote, ThumbsDown, ThumbsUp, Trash2, Star, VolumeX } from 'lucide-react';
+import { Bookmark, BookmarkCheck, Flag, History, MoreHorizontal, Pencil, Quote, ShieldAlert, ThumbsDown, ThumbsUp, Trash2, Star, VolumeX } from 'lucide-react';
 import { api } from '../api';
 import { useApi, useApp } from '../state';
 import { PostBody, fullTime, matchup, sportName, timeAgo } from '../format';
-import { Avatar, Badges, ErrorState, Loading, MemberName, Modal, Pager, SUGGESTION_LABELS, type MemberLite } from '../components/ui';
+import { Avatar, Badges, ErrorState, JoinCta, Loading, MemberName, Modal, Pager, SUGGESTION_LABELS, type MemberLite } from '../components/ui';
 import { ReplyComposer, type QuoteRef } from '../components/Composer';
 import { ShareModal } from '../components/Share';
 import { TAGS, rankFor } from '../../shared/forum';
@@ -23,6 +23,8 @@ interface Post {
   bookmarked: boolean;
   muted: boolean;
   pending: boolean;
+  hidden: boolean;
+  can_flag: boolean;
   quote: { id: number; thread_id: number; username: string; body: string; deleted: boolean } | null;
   attachments: { id: string; content_type: string; expires_at: number | null }[];
   expired_attachments: number;
@@ -73,6 +75,7 @@ export function ThreadPage() {
   }, [data]);
   const onLastPage = data ? data.page >= data.pages : false;
   useEffect(() => {
+    if (!me) return;
     let closed = false;
     let sock: WebSocket | null = null;
     let timer: number | undefined;
@@ -99,7 +102,7 @@ export function ThreadPage() {
     connect();
     return () => { closed = true; window.clearTimeout(timer); sock?.close(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, onLastPage]);
+  }, [id, onLastPage, me]);
 
   useEffect(() => {
     if (!data) return;
@@ -179,6 +182,15 @@ export function ThreadPage() {
 
   const goPage = (n: number) => setParams({ page: String(n) });
 
+  const flagTroll = async (p: Post) => {
+    if (!confirm('Flag this post as trolling? When enough members flag it, it is hidden right away and the admins review it.')) return;
+    try {
+      const r = await api<{ hidden: boolean; flags: number; threshold: number }>(`/posts/${p.id}/troll`, { method: 'POST' });
+      toast(r.hidden ? 'Hidden. The admins have been notified.' : `Flagged (${r.flags} of ${r.threshold} needed to hide it).`);
+      if (r.hidden) reload();
+    } catch (e) { toast((e as Error).message); }
+  };
+
   return (
     <div className="stack thread-page">
       {newPosts > 0 && (
@@ -215,14 +227,14 @@ export function ThreadPage() {
               🏟️ {sportName(t.game.sport)}: NM State {matchup(t.game)} — open the game page for chat, predictions and official links
             </Link>
           )}
-          <div className="row" style={{ marginTop: 12 }}>
+          {me && <div className="row" style={{ marginTop: 12 }}>
             <button className="btn secondary small" onClick={follow}>{t.followed ? 'Following ✓' : 'Follow'}</button>
             {t.first_unread_post_id && <Link className="btn secondary small" to={`/t/${t.id}?post=${t.first_unread_post_id}`}>Jump to first unread</Link>}
             {t.can_reply && <button className="btn secondary small desktop-only" onClick={() => { setReplyOpen(true); document.getElementById('reply')?.scrollIntoView({ behavior: 'smooth' }); }}>Reply</button>}
             {t.can_reply && <button className="btn secondary small" onClick={() => setShare(true)}>Share a tweet</button>}
             {(t.user_id === me?.id || isAdmin) && !editTitle && <button className="btn ghost small" onClick={() => setEditTitle(true)}>Edit title</button>}
             {isAdmin && <button className="btn ghost small" onClick={() => setAdminOpen(true)}><MoreHorizontal size={16} /> Moderate</button>}
-          </div>
+          </div>}
         </div>
 
         {data.poll && (
@@ -268,7 +280,8 @@ export function ThreadPage() {
                 <span className="tiny muted">· <a href={`#p${p.id}`} title={fullTime(p.created_at)} style={{ color: 'inherit' }}>{timeAgo(p.created_at)}</a></span>
                 {p.edit_count > 0 && <button className="tiny muted" style={{ border: 0, background: 'none', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => api(`/posts/${p.id}/history`).then(setHistory)}>edited</button>}
               </div>
-              {p.deleted ? <div className="muted small"><em>This post was removed.</em></div> : editing?.id === p.id ? (
+              {p.hidden && <div className="chip gray" style={{ marginBottom: 6 }}>Hidden after members flagged it as trolling. An admin will review it.</div>}
+              {p.hidden && !p.body ? null : p.deleted ? <div className="muted small"><em>This post was removed.</em></div> : editing?.id === p.id ? (
                 <div>
                   <textarea className="textarea" value={editing.body} onChange={(e) => setEditing({ ...editing, body: e.target.value })} aria-label="Edit post" />
                   <div className="row" style={{ marginTop: 8 }}><button className="btn small" onClick={saveEdit}>Save</button><button className="btn ghost small" onClick={() => setEditing(null)}>Cancel</button></div>
@@ -290,7 +303,7 @@ export function ThreadPage() {
                   {p.expired_attachments > 0 && <div className="tiny muted">{p.expired_attachments} photo{p.expired_attachments > 1 ? 's' : ''} expired (photos are kept 90 days).</div>}
                 </>
               )}
-              {!p.deleted && editing?.id !== p.id && (
+              {me && !p.deleted && !(p.hidden && !p.body) && editing?.id !== p.id && (
                 <div className="post-actions">
                   <button className={`react ${p.my_reaction === 1 ? 'on' : ''}`} aria-pressed={p.my_reaction === 1} aria-label={`Thumbs up, ${p.up}`} disabled={!p.author || p.author.id === me?.id} onClick={() => react(p, 1)}><ThumbsUp size={16} /> {p.up}</button>
                   <button className={`react down ${p.my_reaction === -1 ? 'on' : ''}`} aria-pressed={p.my_reaction === -1} aria-label={`Thumbs down, ${p.down}`} disabled={!p.author || p.author.id === me?.id} onClick={() => react(p, -1)}><ThumbsDown size={16} /> {p.down}</button>
@@ -301,6 +314,7 @@ export function ThreadPage() {
                   {p.can_edit && <button onClick={() => setEditing({ id: p.id, body: p.body })} aria-label="Edit"><Pencil size={15} /></button>}
                   {(p.author?.id === me?.id || isAdmin) && <button onClick={() => remove(p)} aria-label="Remove"><Trash2 size={15} /></button>}
                   {p.author?.id === me?.id && <button onClick={() => feature(p)} title="Highlight on my profile" aria-label="Highlight on my profile"><Star size={15} /></button>}
+                  {p.can_flag && <button onClick={() => flagTroll(p)} title="Flag as trolling" aria-label="Flag as trolling"><ShieldAlert size={15} /> Troll</button>}
                   {p.author && p.author.id !== me?.id && <button onClick={() => setReport(p.id)} aria-label="Report"><Flag size={15} /></button>}
                   {p.author && p.author.id !== me?.id && <button onClick={() => muteUser(p.author!)} title={`Mute ${p.author.username}`} aria-label={`Mute ${p.author.username}`}><VolumeX size={15} /></button>}
                 </div>
@@ -311,7 +325,7 @@ export function ThreadPage() {
 
         <Pager page={data.page} pages={data.pages} onPage={goPage} />
 
-        {t.can_reply ? (
+        {!me ? <div className="composer"><JoinCta text="Join free to reply, react and follow this discussion." /></div> : t.can_reply ? (
           <ReplyComposer threadId={t.id} quote={quote} clearQuote={() => setQuote(null)} open={replyOpen} setOpen={setReplyOpen}
             onPosted={(pid, pending) => { if (pending) toast('Thanks! Your first post will appear once an admin approves it.'); setParams({ post: String(pid) }); reload(); }} />
         ) : (
