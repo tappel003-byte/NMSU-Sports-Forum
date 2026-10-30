@@ -5,7 +5,8 @@ import { Layout } from './components/Layout';
 import { Loading } from './components/ui';
 import { Forgot, Join, Login, Reset, Setup, SignUp, Verify } from './pages/Auth';
 import { Feed, Home } from './pages/Home';
-import { ForumPage, Forums, NewThread } from './pages/Forums';
+import { ForumPage, NewThread } from './pages/Forums';
+import { Rosters } from './pages/Rosters';
 import { ThreadPage } from './pages/Thread';
 import { GamePage, Games, Predictions, TimeMachine } from './pages/Games';
 import { ChatArchive, ChatRoomPage, ChatRooms } from './pages/Chat';
@@ -37,7 +38,7 @@ export function App() {
       <Route path="/reset/:token" element={<Reset />} />
       <Route path="/" element={<Private publicOk><Home /></Private>} />
       <Route path="/feed" element={<Private publicOk><Feed /></Private>} />
-      <Route path="/forums" element={<Private publicOk><Forums /></Private>} />
+      <Route path="/forums" element={<Navigate to="/feed" replace />} />
       <Route path="/f/:slug" element={<Private publicOk><ForumPage /></Private>} />
       <Route path="/new" element={<Private><NewThread /></Private>} />
       <Route path="/t/:id" element={<Private publicOk><ThreadPage /></Private>} />
@@ -63,6 +64,7 @@ export function App() {
       <Route path="/year-in-review" element={<Private><YearInReview /></Private>} />
       <Route path="/contributions" element={<Private><Contributions /></Private>} />
       <Route path="/map" element={<Private><MapPage /></Private>} />
+      <Route path="/rosters" element={<Private publicOk><Rosters /></Private>} />
       <Route path="/recruiting" element={<Private publicOk><Recruiting /></Private>} />
       <Route path="/recruiting/:id" element={<Private publicOk><PlayerPage /></Private>} />
       <Route path="/share" element={<Private><SharePage /></Private>} />

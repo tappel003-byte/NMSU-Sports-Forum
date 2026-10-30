@@ -89,7 +89,7 @@ forum.get('/feed', async (c) => {
   if (tag && tag in TAGS) { where += " AND (',' || t.tags || ',') LIKE ?"; params.push(`%,${tag},%`); }
   // Automatic game threads are grouped under their game card instead of filling the main list.
   if ((tab === 'latest' || tab === 'popular') && c.req.query('games') !== '1') where += ' AND NOT (t.user_id IS NULL AND t.game_id IS NOT NULL)';
-  let order = 't.last_post_at DESC';
+  let order = tab === 'latest' ? 't.pinned DESC, t.last_post_at DESC' : 't.last_post_at DESC';
   if (tab === 'following') {
     where += ' AND t.id IN (SELECT thread_id FROM follows WHERE user_id = ?)';
     params.push(user.id);

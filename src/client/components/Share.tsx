@@ -18,12 +18,10 @@ export function ShareForm({ initialUrl = '', initialText = '', target = null, on
   const [comment, setComment] = useState(initialText);
   const [dest, setDest] = useState<'existing' | 'new'>(target ? 'existing' : 'new');
   const [threadId, setThreadId] = useState<number | ''>(target?.kind === 'thread' ? target.id : '');
-  const [forum, setForum] = useState('');
   const [title, setTitle] = useState('');
   const [tag, setTag] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const { data: forums } = useApi<{ forums: { slug: string; name: string; sport_label: string }[] }>(target ? null : '/forums');
   const { data: recent } = useApi<{ threads: ThreadItem[] }>(target ? null : '/feed?tab=latest&games=1');
   const validUrl = /^https?:\/\/\S+$/.test(url.trim());
   const isTweet = Boolean(parseTweetUrl(url.trim()));
@@ -59,7 +57,7 @@ export function ShareForm({ initialUrl = '', initialText = '', target = null, on
         onDone?.();
         nav(`/t/${threadId}?post=${r.id}`);
       } else {
-        const r = await api<{ id: number }>('/threads', { body: { forum, title, description: isTweet ? 'Shared from X' : 'Shared link', body, tags: tag ? [tag] : [] } });
+        const r = await api<{ id: number }>('/threads', { body: { title, description: isTweet ? 'Shared from X' : 'Shared link', body, tags: tag ? [tag] : [] } });
         toast('Shared');
         onDone?.();
         nav(`/t/${r.id}`);
@@ -101,13 +99,6 @@ export function ShareForm({ initialUrl = '', initialText = '', target = null, on
             </div>
           ) : (
             <>
-              <div className="field">
-                <label htmlFor="share-forum">File under <span className="muted small">(optional)</span></label>
-                <select id="share-forum" className="select" value={forum} onChange={(e) => setForum(e.target.value)}>
-                  <option value="">General Discussion — Aggie Talk</option>
-                  {forums?.forums.filter((f) => f.slug !== 'general').map((f) => <option key={f.slug} value={f.slug}>{f.name} — {f.sport_label}</option>)}
-                </select>
-              </div>
               <div className="field"><label htmlFor="share-title">Title</label><input id="share-title" className="input" value={title} onChange={(e) => setTitle(e.target.value)} required minLength={4} maxLength={140} placeholder={isTweet ? 'e.g. 3-star WR commits to NM State' : ''} /></div>
               <div className="field">
                 <label htmlFor="share-tag">Tag</label>

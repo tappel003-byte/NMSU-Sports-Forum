@@ -133,7 +133,6 @@ try {
   await member.goto(BASE + '/share?url=' + encodeURIComponent('https://x.com/SampleReporter/status/1851234567890123999'));
   await member.waitForSelector('#share-url');
   check('Share page (for the iPhone Shortcut) arrives with the link filled in', (await member.inputValue('#share-url')).includes('1851234567890123999'));
-  await member.selectOption('#share-forum', 'aggie-memorial');
   await member.fill('#share-title', 'Sample reporter on the WR target');
   await member.click('button:has-text("Share")');
   await member.waitForURL(/\/t\/\d+/);

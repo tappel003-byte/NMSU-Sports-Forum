@@ -39,6 +39,22 @@ export function officialScheduleUrl(key: string): string {
   return s ? `${OFFICIAL_SITE}/sports/${s.schedulePath}/schedule` : `${OFFICIAL_SITE}/calendar`;
 }
 
+export function officialRosterUrl(key: string): string {
+  const s = SPORT_BY_KEY[key];
+  return s ? `${OFFICIAL_SITE}/sports/${s.schedulePath}/roster` : `${OFFICIAL_SITE}/`;
+}
+
+/** Parses the admin-maintained hub links: one "Label | https://url" per line; anything else is ignored. */
+export function parseHubLinks(raw: string): { label: string; url: string }[] {
+  return raw.split('\n').map((line) => {
+    const i = line.lastIndexOf('|');
+    if (i < 0) return null;
+    const label = line.slice(0, i).trim();
+    const url = line.slice(i + 1).trim();
+    return label && /^https:\/\/[^\s]+$/.test(url) ? { label: label.slice(0, 80), url } : null;
+  }).filter((x): x is { label: string; url: string } => x !== null).slice(0, 40);
+}
+
 export const TIME_ZONE = 'America/Denver';
 
 export const BADGES: Record<string, { label: string; description: string }> = {

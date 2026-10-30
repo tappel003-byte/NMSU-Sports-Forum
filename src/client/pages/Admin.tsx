@@ -502,6 +502,8 @@ function SettingsTab() {
         <h3>Posting</h3>
         <label className="check"><input type="checkbox" checked={cur.approve_first_post === '1'} onChange={(e) => setS({ ...cur, approve_first_post: e.target.checked ? '1' : '0' })} /><span>Approve each new member's first post<span className="hint" style={{ display: 'block' }}>New members' first post waits in Admin → Approvals. Once one post is approved, their posts appear right away.</span></span></label>
         <div className="field"><label htmlFor="an">Home page announcement</label><textarea id="an" className="textarea" style={{ minHeight: 70 }} value={cur.announcement} onChange={set('announcement')} maxLength={500} /></div>
+        <h3>Rosters &amp; links page</h3>
+        <div className="field"><label htmlFor="hl">Useful links (radio, streams, tickets…)</label><textarea id="hl" className="textarea" style={{ minHeight: 110 }} value={cur.hub_links ?? ''} onChange={set('hub_links')} maxLength={4000} placeholder={'Aggie radio | https://…\nTickets | https://…'} /><span className="hint">One per line: a name, a | bar, then the web address (https). Rosters for every sport are linked automatically.</span></div>
         <button className="btn">Save settings</button>
       </form>
     </section>

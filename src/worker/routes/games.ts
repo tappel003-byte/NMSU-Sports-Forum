@@ -1,9 +1,9 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import type { AppEnv } from '../env';
-import { all, first, run } from '../db';
+import { all, first, getSetting, run } from '../db';
 import { HttpError, now, parse } from '../util';
-import { officialScheduleUrl, SPORT_BY_KEY } from '../../shared/sports';
+import { officialRosterUrl, officialScheduleUrl, parseHubLinks, SPORTS, SPORT_BY_KEY } from '../../shared/sports';
 import { memberSummaries } from '../lib/members';
 import { THREAD_SELECT, presentThreads, type ThreadRow } from '../lib/threads';
 import { seasonOf, seasonRange, type GameRow } from '../lib/sports';
@@ -39,6 +39,22 @@ games.get('/games', async (c) => {
   const feeds = await first<{ n: number; ok: number }>(c.env, 'SELECT COUNT(*) AS n, SUM(last_ok_at IS NOT NULL) AS ok FROM data_feeds WHERE enabled = 1');
   return c.json({ games: rows.map(presentGame), feedsConfigured: (feeds?.n ?? 0) > 0, feedsSynced: (feeds?.ok ?? 0) > 0 });
 });
+
+// Compact strip on top of the Board: latest results and the next game.
+games.get('/scoreboard', async (c) => {
+  const t = now();
+  const [recent, next] = await Promise.all([
+    all<GameRow>(c.env, "SELECT * FROM games WHERE removed = 0 AND status = 'final' AND starts_at > ? ORDER BY starts_at DESC LIMIT 3", t - 30 * 86_400_000),
+    all<GameRow>(c.env, "SELECT * FROM games WHERE removed = 0 AND status = 'scheduled' AND starts_at > ? ORDER BY starts_at LIMIT 2", t - 4 * 3_600_000),
+  ]);
+  return c.json({ recent: recent.map(presentGame), next: next.map(presentGame) });
+});
+
+// Rosters & links hub: official roster/schedule pages per sport plus admin-curated links (radio, streams).
+games.get('/hub', async (c) => c.json({
+  sports: SPORTS.map((s) => ({ key: s.key, label: s.label, icon: s.icon, roster_url: officialRosterUrl(s.key), schedule_url: officialScheduleUrl(s.key) })),
+  links: parseHubLinks(await getSetting(c.env, 'hub_links')),
+}));
 
 games.get('/games/:id', async (c) => {
   const user = c.get('user');
