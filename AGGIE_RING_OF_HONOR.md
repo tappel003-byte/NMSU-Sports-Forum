@@ -14,15 +14,15 @@ This is a permanent, respectful memorial space, separate from reputation, achiev
 
 ## Ring of Honor index
 
-The public-facing index will display approved memorial entries alphabetically by **Aggie Alert moniker**. The entries below are deliberately empty until names and information are supplied and respectfully confirmed.
+The public-facing index will display approved memorial entries alphabetically by **Aggie Alert moniker**. The directory below tracks nominations as drafts, clearly marked pending until respectfully verified and approved. A nomination is **not** a published memorial.
 
 | Aggie Alert moniker | Community remembrance | Memorial page |
 | --- | --- | --- |
-| _Awaiting first confirmed entry_ | _—_ | _—_ |
+| **Rojo** — nominated, pending verification and memorial approval | _Remembrance to be written_ | _Not yet published_ |
 
 Do **not** populate this list from rumor, inactivity, guesses, social media speculation, or inferred identity. Administrators must review each nomination before publication.
 
-## Memorial entry template
+## First nomination: Rojo (draft only)\n\n**Aggie Alert moniker:** Rojo  \n**Status:** Community nomination; verification and memorial approval pending.  \n**Tribute:** Not yet supplied.\n\nDo not publish an obituary, imply independent verification, or invent any personal details.\n\n## Memorial entry template
 
 ### [Aggie Alert moniker]
 
@@ -80,6 +80,6 @@ A real name, exact date of death, location, cause of death, and family informati
 
 ## Editorial notes
 
-This file is a **product and content blueprint**, not a verified obituary list. No deceased members have been identified or confirmed in this document. Do not use placeholder names as real memorial entries.
+This file is a **product and content blueprint**, not a verified obituary list. Rojo was nominated by a community member as someone to remember; the death and memorial publication have not been independently verified here. Do not use placeholder names as real memorial entries.
 
 **Working principle:** *We remember them as we knew them — by their Aggie Alert names.*
