@@ -236,6 +236,35 @@ try {
   await api(admin, '/admin/settings', { method: 'PUT', body: { member_invites: '1' } });
   check('Admins can switch member invitations off', off.status === 403);
 
+  // ---------- Start a game thread (members pick the game) ----------
+  await api(admin, '/admin/settings', { method: 'PUT', body: { auto_game_threads: '0' } });
+  // The test feed's upcoming games already got automatic threads; a moderator removing one frees the game for a member-started thread.
+  const before = (await api(reg, '/games/pickable')).body.games.find((g) => g.status === 'scheduled' && g.starts_at > Date.now());
+  if (before?.pregame_thread_id) await api(admin, `/admin/threads/${before.pregame_thread_id}`, { method: 'PATCH', body: { deleted: true } });
+  const pickable = (await api(reg, '/games/pickable')).body.games;
+  const target = pickable.find((g) => g.status === 'scheduled' && g.starts_at > Date.now() && !g.pregame_thread_id);
+  let pickOk = false;
+  if (target) {
+    await reg.goto(BASE + '/new');
+    await reg.waitForSelector('text=Start a game thread');
+    const row = reg.locator('.game-picker li', { hasText: target.opponent }).first();
+    if (!(await row.isVisible())) await reg.click('.more-sports summary');
+    await row.locator('a:has-text("Start pregame thread")').click();
+    await reg.waitForFunction(() => document.querySelector('#title')?.value.startsWith('Pregame:'));
+    await reg.screenshot({ path: `${SHOTS}/iphone-game-thread.png` });
+    await reg.fill('#body', 'Who starts at quarterback?');
+    await reg.click('button:has-text("Post discussion")');
+    await reg.waitForURL(/\/t\/\d+/);
+    const gtid = Number(reg.url().split('/t/')[1].split('?')[0]);
+    const linked = (await api(reg, `/games/${target.id}`)).body.game.pregame_thread_id === gtid;
+    const dup = await api(reg, '/threads', { body: { title: 'Another pregame', body: 'x', game_id: target.id, game_phase: 'pregame' } });
+    pickOk = linked && dup.status === 409;
+  }
+  check('Members start a game thread by picking the game; it links to the game page and duplicates are refused', pickOk, target ? '' : 'no pickable game');
+  await reg.goto(BASE + '/new');
+  await reg.waitForSelector('text=Start a game thread');
+  await reg.screenshot({ path: `${SHOTS}/iphone-game-picker.png`, fullPage: true });
+
   // ---------- Posting without gatekeeping ----------
   await reg.goto(BASE + '/new');
   await reg.fill('#title', 'Tailgate spot this Saturday?');

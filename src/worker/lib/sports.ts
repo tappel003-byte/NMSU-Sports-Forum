@@ -1,5 +1,5 @@
 import type { Env } from '../env';
-import { all, first, notify, run, userPrefs } from '../db';
+import { all, first, getSetting, notify, run, userPrefs } from '../db';
 import { DAY, now } from '../util';
 import { SPORT_BY_KEY, TIME_ZONE, officialScheduleUrl, sportLabel } from '../../shared/sports';
 import { parseIcs, toGame, type ParsedGame } from './ics';
@@ -116,6 +116,13 @@ async function systemThread(env: Env, sport: string, title: string, description:
 
 /** Automatic game-day lifecycle: pregame threads, postgame threads, prediction scoring and game reminders. */
 export async function runGameLifecycle(env: Env): Promise<void> {
+  // Members start game threads from "Start a game thread"; automatic ones only when an admin switches them on.
+  if ((await getSetting(env, 'auto_game_threads')) === '1') await createAutomaticGameThreads(env);
+  await scorePredictions(env);
+  await sendGameReminders(env);
+}
+
+async function createAutomaticGameThreads(env: Env): Promise<void> {
   const t = now();
   const pregame = await all<GameRow>(env,
     `SELECT * FROM games WHERE removed = 0 AND pregame_thread_id IS NULL AND status = 'scheduled' AND starts_at BETWEEN ? AND ?`, t, t + 3 * DAY);
@@ -138,8 +145,6 @@ export async function runGameLifecycle(env: Env): Promise<void> {
     await run(env, "INSERT INTO polls (thread_id, question, closes_at, created_at, allow_add, kind) VALUES (?, ?, ?, ?, 1, 'potg')",
       id, `Player of the Game: ${matchup(g)}`, now() + 2 * DAY, now());
   }
-  await scorePredictions(env);
-  await sendGameReminders(env);
 }
 
 /** 1 point for the correct winner, 2 bonus points for the exact score. */

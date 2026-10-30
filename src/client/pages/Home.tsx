@@ -77,6 +77,7 @@ export function Feed({ initialTab = 'latest', compact = false }: { initialTab?: 
           {tab === 'unread' && <button className="btn ghost small" onClick={markAll}>Mark all read</button>}
           {me && <button className="btn ghost small" onClick={toggleCompact} aria-pressed={Boolean(me?.prefs?.compact)} title="Compact list">{me?.prefs?.compact ? <List size={16} /> : <Rows3 size={16} />}<span className="sr-only">Compact list</span></button>}
           {me && <button className="btn secondary small" onClick={() => setShare(true)}>Share a tweet</button>}
+          {me && <Link to="/new" className="btn secondary small">🏟️ Game thread</Link>}
           {me && <Link to="/new" className="btn small desktop-only-inline"><Plus size={16} /> New thread</Link>}
         </div>
       </div>
