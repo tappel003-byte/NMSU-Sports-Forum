@@ -8,10 +8,13 @@ import { SPORTS, SPORT_BY_KEY } from '../../shared/sports';
 
 export function Games() {
   const [params, setParams] = useSearchParams();
-  const sport = params.get('sport') ?? '';
+  // Football and men's basketball by default; "all" or a single sport on request.
+  const sport = params.get('sport') ?? 'featured';
   const range = params.get('range') ?? 'upcoming';
-  const { data, error, loading, reload } = useApi<{ games: GameItem[]; feedsConfigured: boolean; feedsSynced: boolean }>(`/games?range=${range}${sport ? `&sport=${sport}` : ''}`);
-  const set = (k: string, v: string) => setParams((p) => { if (v) p.set(k, v); else p.delete(k); return p; }, { replace: true });
+  const { data, error, loading, reload } = useApi<{ games: GameItem[]; feedsConfigured: boolean; feedsSynced: boolean }>(`/games?range=${range}${sport !== 'all' ? `&sport=${sport}` : ''}`);
+  const [shown, setShown] = useState(15);
+  const set = (k: string, v: string) => { setShown(15); setParams((p) => { if (v) p.set(k, v); else p.delete(k); return p; }, { replace: true }); };
+  const single = sport !== 'featured' && sport !== 'all' ? sport : '';
   return (
     <div className="stack">
       <div className="page-head">
@@ -26,11 +29,18 @@ export function Games() {
           ))}
         </div>
         <div className="filter-row">
-          <button className={`btn small ${sport ? 'secondary' : ''}`} onClick={() => set('sport', '')}>All sports</button>
-          {SPORTS.map((s) => <button key={s.key} className={`btn small ${sport === s.key ? '' : 'secondary'}`} onClick={() => set('sport', s.key)}>{s.icon} {s.short}</button>)}
+          <button className={`btn small ${sport === 'featured' ? '' : 'secondary'}`} onClick={() => set('sport', '')}>🏈 Football &amp; 🏀 Men's Hoops</button>
+          <button className={`btn small ${sport === 'all' ? '' : 'secondary'}`} onClick={() => set('sport', 'all')}>All sports</button>
+          <select className="select small-select" aria-label="Another sport" value={single} onChange={(e) => set('sport', e.target.value || '')}>
+            <option value="">Another sport…</option>
+            {SPORTS.map((s) => <option key={s.key} value={s.key}>{s.icon} {s.label}</option>)}
+          </select>
         </div>
         {loading && !data ? <Loading /> : error ? <ErrorState error={error} retry={reload} /> : data && data.games.length ? (
-          data.games.map((g) => <GameRow key={g.id} game={g} />)
+          <>
+            {data.games.slice(0, shown).map((g) => <GameRow key={g.id} game={g} />)}
+            {data.games.length > shown && <div className="card-pad"><button className="btn secondary block" onClick={() => setShown(shown + 15)}>Show more ({data.games.length - shown} more)</button></div>}
+          </>
         ) : (
           <div className="empty">
             {!data?.feedsConfigured
