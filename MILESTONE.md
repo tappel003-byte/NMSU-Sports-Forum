@@ -14,10 +14,12 @@ Read README.md, CLAUDE.md, VISION.md, DECISIONS.md, BRAND_COLORS.md, AGGIE_RING_
 6. Thumbs-up/down reactions; earned reputation counts thumbs-up only, never subtracts on thumbs-down; most appreciated post on member profile and weekly highlights if practical.
 7. Member directory and profiles, profile edits/avatar, optional self-reported Aggie Alert moniker and old post count separate from forum-created count; Founding Member logic with configurable official launch date.
 8. Multiple admins, member invitations, basic report handling, lock/pin/move/remove threads, member moderation. Owner/hosting control must be distinct from community admin authority.
-9. Game Center: sports-specific schedules/event pages, opponent/date/time/venue, helpful outbound official broadcast/ticket links, pregame/game/postgame discussions. Use licensed/authorized data or clearly marked admin-managed entries; **do not fabricate live scores or rely on unsupported APIs**.
-10. Functional authenticated game-day live chat, game room moderation, reconnect handling. Select suitable Cloudflare architecture and make prudent cost choices.
+9. Game Center: sports-specific schedules/event pages, opponent/date/time/venue, official broadcast/ticket/live-stats links, automatic pregame → live chat → postgame lifecycle. **All schedule and result data self-populates from external official sources per [SPORTS_DATA.md](SPORTS_DATA.md). Admin entry is an emergency override only, never the normal workflow.** Do not fabricate scores or rely on unsupported APIs. No live in-game scores at launch; link to official live stats.
+10. Functional authenticated game-day live chat, game room moderation, reconnect handling. Chat shows a rolling recent window while live; **every game's full chat is archived permanently** and linked to its game page (general lounge archived by day). Members can turn a chat moment into a permanent thread.
 11. Polls, bookmarks, notifications and thoughtful user preferences where feasible, implemented end-to-end rather than decorative controls.
 12. Persistent data, migrations, secure environment secrets, backup/export approach, sensible logs and test coverage.
+13. **Additional features approved Oct 30, 2026 — all in the first build:** auto-saved drafts; jump to first unread; spoiler-free scores mode; personal feed (my sports / following / unread); bookmarks with reminders; mute a member or a whole forum; **strictly private 1:1 messages** (admins cannot read them; recipients can block and may voluntarily report a specific message); predictions (pick winners/scores, season standings, auto-scored); community calendar (games, watch parties, gatherings, opt-in birthdays); Aggie History forum exempt from archiving; Aggie Time Machine (past games with their pregame predictions, chat archive, postgame thread and most appreciated posts); Year in Review; Suggestions & Improvements board with Under Consideration / Planned / Implemented statuses and automatic Idea Contributor credit; recognition badges with recorded reasons and a community contribution history; opt-in approximate member map.
+14. **Low maintenance by design:** schedules, game threads, archiving, photo expiry, reminders and backups run automatically. The owner has no daily chores; admins handle invitations and reports only.
 
 If a feature is blocked by unavailable credentials, licensing or a consequential owner decision, deliver the rest fully and name that specific blocker clearly. The owner does not want to approve trivial stages; make normal engineering choices independently.
 
@@ -25,7 +27,7 @@ If a feature is blocked by unavailable credentials, licensing or a consequential
 - **Ring of Honor:** future simple moniker list; Rojo is first. Do NOT place it in launch navigation or public UI until requested.
 - Politics forum: not approved for initial launch until opt-in/visibility decision.
 - Payments/subscriptions and elaborate memorial systems: not required.
-- Approximate member map and advanced gamification can follow functioning essentials; never reveal precise locations.
+- Advanced gamification beyond the features above. The member map is in scope (item 13) but must never reveal precise locations.
 
 ## Build workflow
 - Inspect GitHub repo first and establish coherent architecture. Reconcile attached screenshots against BRAND_COLORS.md.

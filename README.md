@@ -12,7 +12,9 @@ Independent, invitation-only fan forum for New Mexico State Aggies. **Mobile-fir
 3. Read **[BRAND_COLORS.md](BRAND_COLORS.md)** for exact official NMSU color values.
 4. Read **[DECISIONS.md](DECISIONS.md)** for approved vs unresolved decisions.
 5. Read **[MILESTONE.md](MILESTONE.md)** for the **currently authorized** build stage.
-6. Read **[AGGIE_RING_OF_HONOR.md](AGGIE_RING_OF_HONOR.md)** for the future-only moniker list.
+6. Read **[SPORTS_DATA.md](SPORTS_DATA.md)** for self-populating schedules/results.
+7. Read **[REQUIREMENTS_CHECKLIST.md](REQUIREMENTS_CHECKLIST.md)** to audit coverage.
+8. Read **[AGGIE_RING_OF_HONOR.md](AGGIE_RING_OF_HONOR.md)** for the future-only moniker list.
 
 ## Current status
 Planning documents are committed. The owner plans to supply the approved **cowboy crest, website header and mobile/desktop PNG mockups directly to Claude Code**. These reference images are not assumed to be in this repository. The app itself has not been developed or deployed from this repository.
