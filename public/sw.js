@@ -1,6 +1,6 @@
 // Minimal service worker: makes the app installable and keeps the shell available
 // offline. Member data (anything under /api/) is never cached.
-const CACHE = 'nsf-shell-v2';
+const CACHE = 'nsf-shell-v3';
 const SHELL = ['/', '/manifest.webmanifest', '/icon-192.png', '/brand/crest-160.webp'];
 
 self.addEventListener('install', (e) => {

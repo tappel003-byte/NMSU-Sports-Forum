@@ -3,12 +3,12 @@ Every owner decision, where it is documented, and its build status. Update the s
 
 Status values: **Planned** · **Built** (code exists) · **Verified** (tested end-to-end) · **Blocked** (named reason)
 
-Audit, October 30, 2026 (after first live review): 65 rows. 56 Verified, 8 Built (working, but still waiting on a key, a file, real data or a real-device check), 1 Blocked (recruiting data needs a free key). Owner changes: one Board instead of venue forums (row 8), open sign-up as a switch alongside invites (row 56), member-picked game threads instead of automatic ones (row 18), and optional thread descriptions (row 9).
+Audit, October 30, 2026 (after first live review): 65 rows. 57 Verified, 7 Built (working, but still waiting on a key, a file, real data or a real-device check), 1 Blocked (recruiting data needs a free key). Owner changes: one Board instead of venue forums (row 8), open sign-up as a switch alongside invites (row 56), member-picked game threads instead of automatic ones (row 18), and optional thread descriptions (row 9).
 
 | # | Requirement | Documented in | Status |
 | --- | --- | --- | --- |
 | 1 | Name is NMSU Sports Forum (never Aggie Clubhouse); independent, not NMSU-affiliated | VISION, DECISIONS | Verified — name everywhere; independence disclaimer on sign-in and home |
-| 2 | Approved cowboy crest used as supplied; no crossed pistols; derivatives (icon, badges) need owner approval | CLAUDE, BRAND_COLORS | Built — interim icons cropped from the owner's screenshot; **needs the original crest file**. Derivatives beyond icon crops not made. |
+| 2 | Approved cowboy crest used as supplied; no crossed pistols; derivatives (icon, badges) need owner approval | CLAUDE, BRAND_COLORS | Verified — the owner supplied the approved crest (Oct 30, 2026), stored at `assets/approved-crest.webp`; header, favicons, app and home-screen icons are generated from it unchanged. No other derivatives made. Trademark review of the lettering and Zia-style symbol is still open (VISION). |
 | 3 | Official NMSU colors (#8C0B42, #FFFFFF, #B6A5AD, #D7C9C4, #6D6E71); screenshots are layout-only | BRAND_COLORS | Verified — CSS tokens in `src/client/styles.css` |
 | 4 | Mobile-first, polished desktop; phone bottom nav, desktop three columns | VISION, DECISIONS | Verified — e2e checks bottom nav at 390px and three columns at 1440px, no horizontal scroll |
 | 5 | Installable PWA with crest home-screen icon | MILESTONE 1 | Built — manifest, icons, service worker; site is live. Add to Home Screen not yet confirmed on the owner's iPhone |
