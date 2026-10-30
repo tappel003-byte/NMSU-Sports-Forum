@@ -14,6 +14,7 @@ export interface Env {
   VAPID_SUBJECT?: string;
   CFBD_API_KEY?: string;
   CFBD_BASE?: string;
+  ESPN_BASE?: string;
   TURNSTILE_SITE_KEY?: string;
   TURNSTILE_SECRET?: string;
 }

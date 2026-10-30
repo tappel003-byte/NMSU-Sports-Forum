@@ -462,3 +462,14 @@ table.simple th { font-size: .72rem; text-transform: uppercase; letter-spacing: 
 .crest-viewer { position: fixed; inset: 0; z-index: 100; background: rgb(0 0 0 / .88); display: flex; align-items: center; justify-content: center; padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom)); cursor: zoom-out; }
 .crest-viewer img { max-width: min(92vw, 900px); max-height: 88dvh; width: auto; height: auto; border-radius: 16px; background: var(--white); }
 .crest-close { position: absolute; top: max(12px, env(safe-area-inset-top)); right: 14px; width: 44px; height: 44px; border-radius: 50%; border: 0; background: rgb(255 255 255 / .15); color: var(--white); font-size: 28px; line-height: 1; cursor: pointer; }
+
+/* Live score bar (ESPN) */
+.live-score { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 10px; }
+.live-score .live-line { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 1.05rem; }
+.live-score .live-detail { font-size: .85rem; opacity: .85; }
+.live-score.compact { margin: 0; padding: 8px 16px; border-bottom: 1px solid var(--line); background: var(--crimson-tint); }
+.live-score.compact .live-line { font-size: .95rem; }
+.live-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--white); animation: livepulse 1.6s infinite; }
+.live-score.compact .live-dot { background: var(--crimson); }
+@keyframes livepulse { 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .live-dot { animation: none; } }

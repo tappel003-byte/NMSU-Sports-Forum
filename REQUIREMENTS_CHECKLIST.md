@@ -3,7 +3,7 @@ Every owner decision, where it is documented, and its build status. Update the s
 
 Status values: **Planned** · **Built** (code exists) · **Verified** (tested end-to-end) · **Blocked** (named reason)
 
-Audit, October 30, 2026 (after first live review): 65 rows. 57 Verified, 7 Built (working, but still waiting on a key, a file, real data or a real-device check), 1 Blocked (recruiting data needs a free key). Owner changes: one Board instead of venue forums (row 8), open sign-up as a switch alongside invites (row 56), member-picked game threads instead of automatic ones (row 18), and optional thread descriptions (row 9).
+Audit, October 30, 2026 (after first live review): 65 rows. 56 Verified, 8 Built (working, but still waiting on a key, a file, real data or a real-device check), 1 Blocked (recruiting data needs a free key). Owner changes: one Board instead of venue forums (row 8), open sign-up as a switch alongside invites (row 56), member-picked game threads instead of automatic ones (row 18), and optional thread descriptions (row 9).
 
 | # | Requirement | Documented in | Status |
 | --- | --- | --- | --- |
@@ -23,7 +23,7 @@ Audit, October 30, 2026 (after first live review): 65 rows. 57 Verified, 7 Built
 | 14 | Founding Member (30 days after configurable launch date); honorary founders | DECISIONS | Built — Founding Member from configurable launch date; optional automatic honorary threshold (off by default) plus admin award |
 | 15 | 4–5 admins; invite, pin/lock/move/remove, reports, member suspension; can't remove last admin; owner/hosting separate from admin | MILESTONE 8 | Verified |
 | 16 | **Schedules and results self-populate from official sources; manual = emergency override only** | SPORTS_DATA | Verified live — the official nmstatesports.com composite feed is connected in production (181 games, syncing without errors) |
-| 17 | No live in-game scores at launch; link to official live stats; never invent scores | SPORTS_DATA | Verified |
+| 17 | ~~No live scores at launch~~ superseded: live score and clock for football and men's basketball from ESPN's public scoreboard (30-second refresh, shared cache), ESPN Gamecast link, official live stats link; never invent scores | SPORTS_DATA, DECISIONS | Built — parsing unit-tested with ESPN-shaped data; ESPN links e2e-tested. **The live lookup can only be confirmed during the first game (Nov 3, men's basketball)**, because ESPN is unreachable from the build environment |
 | 18 | Game-day lifecycle: member-started game threads from a game picker (automatic pregame/postgame threads optional, off by default), game chat rooms | SPORTS_DATA, DECISIONS | Verified — picker links threads to games and refuses duplicates; automatic mode still tested with the switch on |
 | 19 | Authenticated live chat, moderation, reconnect; rolling window; permanent per-game archive. Rooms: the Aggie Lounge, plus automatic game chats for football and men's basketball only | MILESTONE 10, DECISIONS | Verified — two members chatting live, presence, reconnect, admin removal, permanent archive |
 | 20 | Turn a chat moment into a thread | MILESTONE 10 | Verified |

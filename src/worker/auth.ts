@@ -82,7 +82,7 @@ export const requireUser: MiddlewareHandler<AppEnv> = async (c, next) => {
 export const GUEST: SessionUser = { id: 0, username: 'guest', role: 'guest', status: 'active', display_name: null, avatar_key: null, prefs: '{}', marked_read_at: 0, created_at: 0, trusted: 0, email_verified: 1 };
 
 // Read-only pages visitors may open when public reading is switched on.
-const PUBLIC_READ = /^\/api\/(forums(\/[\w-]+)?|feed|threads\/\d+(\/latest)?|games(\/\d+)?|time-machine|predictions\/standings|players(\/\d+)?|preview|files\/\w+|search|home|hub|scoreboard)$/;
+const PUBLIC_READ = /^\/api\/(forums(\/[\w-]+)?|feed|threads\/\d+(\/latest)?|games(\/\d+(\/live)?)?|time-machine|predictions\/standings|players(\/\d+)?|preview|files\/\w+|search|home|hub|scoreboard)$/;
 
 /** Lets visitors read when public reading is on; everything else requires a signed-in member. */
 export const requireMemberOrPublicRead: MiddlewareHandler<AppEnv> = async (c, next) => {
