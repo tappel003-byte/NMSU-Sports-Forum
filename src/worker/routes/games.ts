@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { AppEnv } from '../env';
 import { all, first, getSetting, run } from '../db';
 import { HttpError, now, parse } from '../util';
-import { officialRosterUrl, officialScheduleUrl, parseHubLinks, SPORTS, SPORT_BY_KEY } from '../../shared/sports';
+import { FEATURED_SQL, officialRosterUrl, officialScheduleUrl, parseHubLinks, SPORTS, SPORT_BY_KEY } from '../../shared/sports';
 import { memberSummaries } from '../lib/members';
 import { THREAD_SELECT, presentThreads, type ThreadRow } from '../lib/threads';
 import { seasonOf, seasonRange, type GameRow } from '../lib/sports';
@@ -27,7 +27,8 @@ games.get('/games', async (c) => {
   const t = now();
   const params: (string | number)[] = [];
   let where = 'removed = 0';
-  if (sport && sport in SPORT_BY_KEY) { where += ' AND sport = ?'; params.push(sport); }
+  if (sport === 'featured') where += ` AND sport IN ${FEATURED_SQL}`;
+  else if (sport && sport in SPORT_BY_KEY) { where += ' AND sport = ?'; params.push(sport); }
   let order = 'starts_at ASC';
   if (range === 'upcoming') { where += ' AND starts_at > ?'; params.push(t - 6 * 3_600_000); }
   else if (range === 'past') { where += ' AND starts_at <= ?'; params.push(t); order = 'starts_at DESC'; }
@@ -43,9 +44,14 @@ games.get('/games', async (c) => {
 // Compact strip on top of the Board: latest results and the next game.
 games.get('/scoreboard', async (c) => {
   const t = now();
+  // Football and men's basketball first; other sports only when neither has a recent or upcoming game.
+  const pick = async (sql: string, limit: number, ...params: number[]) => {
+    const featured = await all<GameRow>(c.env, `${sql.replace('{F}', `AND sport IN ${FEATURED_SQL}`)} LIMIT ${limit}`, ...params);
+    return featured.length ? featured : all<GameRow>(c.env, `${sql.replace('{F}', '')} LIMIT 1`, ...params);
+  };
   const [recent, next] = await Promise.all([
-    all<GameRow>(c.env, "SELECT * FROM games WHERE removed = 0 AND status = 'final' AND starts_at > ? ORDER BY starts_at DESC LIMIT 3", t - 30 * 86_400_000),
-    all<GameRow>(c.env, "SELECT * FROM games WHERE removed = 0 AND status = 'scheduled' AND starts_at > ? ORDER BY starts_at LIMIT 2", t - 4 * 3_600_000),
+    pick("SELECT * FROM games WHERE removed = 0 AND status = 'final' AND result IS NOT NULL AND starts_at > ? {F} ORDER BY starts_at DESC", 2, t - 30 * 86_400_000),
+    pick("SELECT * FROM games WHERE removed = 0 AND status = 'scheduled' AND starts_at > ? {F} ORDER BY starts_at", 2, t - 4 * 3_600_000),
   ]);
   return c.json({ recent: recent.map(presentGame), next: next.map(presentGame) });
 });

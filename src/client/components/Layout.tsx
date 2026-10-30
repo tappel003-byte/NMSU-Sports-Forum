@@ -4,6 +4,8 @@ import {
   Award, Bell, Bookmark, CalendarDays, ClipboardList, History, Home, Lightbulb, LogOut, Mail, Map as MapIcon, MessageCircle, MessagesSquare,
   Search, Send, Settings, Shield, Sparkles, Trophy, Trophy as TrophyIcon, UserPlus, Users,
 } from 'lucide-react';
+import { FEATURED_SPORTS } from '../../shared/sports';
+import { gameTime, matchup, sportIcon, sportName } from '../format';
 import type { HubData } from '../pages/Rosters';
 import { PullToRefresh } from './PullToRefresh';
 import { api } from '../api';
@@ -133,15 +135,15 @@ function RostersCard() {
     <div className="rail-card">
       <p className="rail-title">Rosters</p>
       <div className="chip-row">
-        {data.sports.map((s) => <a key={s.key} href={s.roster_url} target="_blank" rel="noopener noreferrer" className="chip gray">{s.icon} {s.label}</a>)}
+        {data.sports.filter((s) => FEATURED_SPORTS.includes(s.key)).map((s) => <a key={s.key} href={s.roster_url} target="_blank" rel="noopener noreferrer" className="chip gray">{s.icon} {s.label}</a>)}
       </div>
-      <Link to="/rosters" className="row small" style={{ marginTop: 10 }}><ClipboardList size={16} /> Rosters, radio &amp; links</Link>
+      <Link to="/rosters" className="row small" style={{ marginTop: 10 }}><ClipboardList size={16} /> All rosters, radio &amp; links</Link>
     </div>
   );
 }
 
 function RightRail() {
-  const { data } = useApi<{ games: GameItem[]; live: GameItem[]; online: { id: number; username: string }[]; weekly: { thread_id: number; id: number; body: string; up: number; author: { username: string } | null } | null }>('/home');
+  const { data } = useApi<{ games: GameItem[]; other_games: GameItem[]; live: GameItem[]; online: { id: number; username: string }[]; weekly: { thread_id: number; id: number; body: string; up: number; author: { username: string } | null } | null }>('/home');
   return (
     <aside className="right-rail" aria-label="Game day and community">
       <div className="rail-card" style={{ padding: 0 }}>
@@ -150,7 +152,12 @@ function RightRail() {
           <strong>{data?.live.length ? 'Game day!' : 'Upcoming Aggie games'}</strong>
         </div>
         {(data?.live.length ? data.live : data?.games.slice(0, 3) ?? []).map((g) => <GameRow key={g.id} game={g} />)}
-        {data && !data.games.length && <div className="small muted" style={{ padding: '0 14px 12px' }}>No games scheduled yet. Schedules arrive automatically from the official athletics calendar.</div>}
+        {data && !data.live.length && !data.games.length && <div className="small muted" style={{ padding: '0 14px 12px' }}>No football or men's basketball games coming up.</div>}
+        {data && data.other_games.length > 0 && (
+          <Link to="/games?sport=all" className="rail-more small">
+            Other sports: {sportIcon(data.other_games[0].sport)} {sportName(data.other_games[0].sport)} {matchup(data.other_games[0])} · {gameTime(data.other_games[0].starts_at, data.other_games[0].time_tba)} →
+          </Link>
+        )}
         <div style={{ padding: 12 }}><Link to="/games" className="btn block small">Open Game Center</Link></div>
       </div>
       <RostersCard />

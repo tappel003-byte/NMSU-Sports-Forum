@@ -8,6 +8,7 @@ import { ErrorState, GameRow, Loading, SUGGESTION_LABELS, ThreadList, type GameI
 import { ComposerTools, MentionTextarea, PhotoPicker, PhotoThumbs, useDraft } from '../components/Composer';
 import { TagPicker } from './Thread';
 import { TAGS } from '../../shared/forum';
+import { FEATURED_SPORTS } from '../../shared/sports';
 import { timeAgo } from '../format';
 
 interface ForumInfo { id: number; slug: string; name: string; sport_label: string; description: string; icon: string; sports: string[]; kind: string; muted: boolean; threads?: number; unread?: number; last_post_at?: number | null }
@@ -117,8 +118,6 @@ export function ForumPage() {
   );
 }
 
-/** Football and men's basketball draw the most game talk, so they lead the list; everything else is one tap away. */
-const FEATURED_SPORTS = ['fb', 'mbb'];
 
 function gamePhase(g: GameItem): 'pregame' | 'postgame' | null {
   if (g.status === 'final' || g.starts_at < Date.now() - 4 * 3_600_000) return 'postgame';

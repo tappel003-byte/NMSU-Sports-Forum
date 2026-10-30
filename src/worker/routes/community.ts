@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { AppEnv } from '../env';
 import { all, first, getSetting, notify, run, userPrefs } from '../db';
 import { DAY, HttpError, excerpt, now, parse } from '../util';
-import { SPORT_BY_KEY } from '../../shared/sports';
+import { FEATURED_SQL, SPORT_BY_KEY } from '../../shared/sports';
 import { memberSummaries } from '../lib/members';
 import { THREAD_SELECT, presentThreads, unreadBaseline, type ThreadRow } from '../lib/threads';
 import { presentGame } from './games';
@@ -30,8 +30,10 @@ community.get('/home', async (c) => {
   const user = c.get('user');
   const t = now();
   const weekAgo = t - 7 * DAY;
-  const [games, live, weekly, online, chatting, events, announcement, birthdays, replies] = await Promise.all([
-    all<GameRow>(c.env, "SELECT * FROM games WHERE removed = 0 AND status != 'canceled' AND starts_at > ? ORDER BY starts_at LIMIT 6", t - 4 * 3_600_000),
+  const [games, otherGames, live, weekly, online, chatting, events, announcement, birthdays, replies] = await Promise.all([
+    // Football and men's basketball lead; other sports are listed separately so they don't crowd the page.
+    all<GameRow>(c.env, `SELECT * FROM games WHERE removed = 0 AND status != 'canceled' AND starts_at > ? AND sport IN ${FEATURED_SQL} ORDER BY starts_at LIMIT 4`, t - 4 * 3_600_000),
+    all<GameRow>(c.env, `SELECT * FROM games WHERE removed = 0 AND status != 'canceled' AND starts_at > ? AND sport NOT IN ${FEATURED_SQL} ORDER BY starts_at LIMIT 3`, t - 4 * 3_600_000),
     all<GameRow>(c.env, "SELECT * FROM games WHERE removed = 0 AND status = 'scheduled' AND time_tba = 0 AND starts_at <= ? AND starts_at > ?", t, t - 4 * 3_600_000),
     // Most appreciated this week: thumbs-up received during the last 7 days.
     first<{ id: number; thread_id: number; body: string; user_id: number; up: number; title: string }>(c.env,
@@ -58,6 +60,7 @@ community.get('/home', async (c) => {
   return c.json({
     guest,
     games: games.map(presentGame),
+    other_games: otherGames.map(presentGame),
     live: live.map(presentGame),
     feedsConfigured: (feeds?.n ?? 0) > 0,
     stats: { unread: unread?.n ?? 0, replies: replies?.n ?? 0, chatting: chatting?.n ?? 0 },

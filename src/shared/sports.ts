@@ -28,6 +28,10 @@ export const SPORTS: Sport[] = [
   { key: 'swim', label: 'Swimming & Diving', short: 'Swimming', forum: 'other-sports', icon: '🏊', schedulePath: 'womens-swimming-and-diving' },
 ];
 
+/** Headline sports: shown first everywhere; the other sports stay one tap away. */
+export const FEATURED_SPORTS = ['fb', 'mbb'];
+export const FEATURED_SQL = `(${FEATURED_SPORTS.map((s) => `'${s}'`).join(', ')})`;
+
 export const SPORT_BY_KEY: Record<string, Sport> = Object.fromEntries(SPORTS.map((s) => [s.key, s]));
 
 export function sportLabel(key: string | null | undefined): string {

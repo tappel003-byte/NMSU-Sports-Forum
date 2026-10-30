@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { List, Plus, Rows3 } from 'lucide-react';
 import { ShareModal } from '../components/Share';
 import { TAGS } from '../../shared/forum';
+import { FEATURED_SPORTS } from '../../shared/sports';
 import { api } from '../api';
 import { useApi, useApp } from '../state';
 import { Score, gameTime, matchup, sportIcon, sportName, timeAgo } from '../format';
@@ -10,6 +11,7 @@ import { ErrorState, GameRow, JoinCta, Loading, ThreadList, type GameItem, type 
 
 interface HomeData {
   games: GameItem[];
+  other_games: GameItem[];
   live: GameItem[];
   feedsConfigured: boolean;
   stats: { unread: number; replies: number; chatting: number };
@@ -118,7 +120,7 @@ export function Home() {
   const { data, error, reload } = useApi<HomeData>('/home');
   const { data: forums } = useApi<{ forums: { slug: string; name: string; sport_label: string; icon: string; kind: string; unread: number }[] }>('/forums');
   if (error) return <ErrorState error={error} retry={reload} />;
-  const next = data?.live[0] ?? data?.games[0];
+  const next = data?.live.find((g) => FEATURED_SPORTS.includes(g.sport)) ?? data?.games[0] ?? data?.live[0] ?? data?.other_games[0];
   return (
     <div className="stack">
       <div className="page-head">
@@ -175,13 +177,6 @@ export function Home() {
           <div style={{ marginTop: 6 }}>“{data.weekly.body}”</div>
           <div className="small muted" style={{ marginTop: 4 }}>{data.weekly.author?.display_name || data.weekly.author?.username} · 👍 {data.weekly.up} · in {data.weekly.title}</div>
         </Link>
-      )}
-
-      {data && data.games.length > 1 && (
-        <section className="card desktop-only">
-          <div className="section-head"><h2>Upcoming games</h2><Link to="/games" className="small">Full schedule</Link></div>
-          {data.games.slice(0, 4).map((g) => <GameRow key={g.id} game={g} />)}
-        </section>
       )}
 
       {data && data.followed.length > 0 && (

@@ -265,6 +265,14 @@ try {
   await reg.waitForSelector('text=Start a game thread');
   await reg.screenshot({ path: `${SHOTS}/iphone-game-picker.png`, fullPage: true });
 
+  // ---------- Headline sports first ----------
+  const feat = (await api(reg, '/games?range=season&sport=featured')).body.games;
+  const allG = (await api(reg, '/games?range=season')).body.games;
+  const home = (await api(reg, '/home')).body;
+  check('Football and men\'s basketball lead the Game Center and home; other sports stay listed separately',
+    feat.length > 0 && feat.every((g) => ['fb', 'mbb'].includes(g.sport)) && allG.length > feat.length
+    && home.games.every((g) => ['fb', 'mbb'].includes(g.sport)) && home.other_games.every((g) => !['fb', 'mbb'].includes(g.sport)));
+
   // ---------- Posting without gatekeeping ----------
   await reg.goto(BASE + '/new');
   await reg.fill('#title', 'Tailgate spot this Saturday?');
