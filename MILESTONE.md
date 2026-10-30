@@ -24,7 +24,7 @@ Read README.md, CLAUDE.md, VISION.md, DECISIONS.md, BRAND_COLORS.md, AGGIE_RING_
 If a feature is blocked by unavailable credentials, licensing or a consequential owner decision, deliver the rest fully and name that specific blocker clearly. The owner does not want to approve trivial stages; make normal engineering choices independently.
 
 ## Next build round (approved Oct 30, 2026)
-Live-updating game threads; phone push notifications; dark mode; spoiler tags; @mention autocomplete; link previews; thread tags; moderation extras (auto-expiring suspensions, thread merge, first-post approval); member data download and account deletion; Aggie-themed ranks; automatic Player of the Game vote; recruiting and transfer portal tracker (automatic from a free permitted source where possible, see SPORTS_DATA.md). Same standard as the first build: working end to end, tested, no decorative controls.
+Live-updating game threads; phone push notifications; dark mode; spoiler tags; @mention autocomplete; link previews; thread tags; moderation extras (auto-expiring suspensions, thread merge, first-post approval); member data download and account deletion; Aggie-themed ranks; automatic Player of the Game vote; recruiting and transfer portal tracker (automatic from a free permitted source where possible, see SPORTS_DATA.md); effortless tweet sharing (paste a link to embed, Share a tweet button, iPhone share-sheet Shortcut, tweets attach to recruit cards; see DECISIONS.md). Same standard as the first build: working end to end, tested, no decorative controls.
 
 ## Deliberately not in launch UI
 - **Ring of Honor:** future simple moniker list; Rojo is first. Do NOT place it in launch navigation or public UI until requested.

@@ -58,3 +58,4 @@ Status values: **Planned** · **Built** (code exists) · **Verified** (tested en
 | 51 | Aggie-themed ranks by post count | DECISIONS (Oct 30 research round), MILESTONE | Planned |
 | 52 | Automatic postgame Player of the Game vote | DECISIONS (Oct 30 research round), MILESTONE | Planned |
 | 53 | Recruiting and transfer portal tracker (automatic where a free permitted source exists) | DECISIONS (Oct 30 research round), MILESTONE | Planned |
+| 54 | Effortless tweet sharing: pasted links embed, Share a tweet button, iPhone share-sheet Shortcut, tweets attach to recruit cards | DECISIONS, MILESTONE | Planned |
