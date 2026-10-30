@@ -381,7 +381,7 @@ admin.delete('/badges/:id', async (c) => {
 
 // ---------- Settings ----------
 
-const SETTING_KEYS = ['launch_date', 'honorary_threshold', 'chat_window', 'announcement', 'approve_first_post', 'signup_mode', 'public_read', 'troll_threshold', 'hub_links', 'member_invites'] as const;
+const SETTING_KEYS = ['launch_date', 'honorary_threshold', 'chat_window', 'announcement', 'approve_first_post', 'signup_mode', 'public_read', 'troll_threshold', 'hub_links', 'member_invites', 'auto_game_threads'] as const;
 
 admin.get('/settings', async (c) => {
   const out: Record<string, string> = {};
@@ -401,6 +401,7 @@ admin.put('/settings', async (c) => {
     troll_threshold: z.string().regex(/^[1-9]\d?$/, 'use a number from 1 to 99').optional(),
     hub_links: z.string().max(4000).optional(),
     member_invites: z.enum(['0', '1', '']).optional(),
+    auto_game_threads: z.enum(['0', '1', '']).optional(),
   }), await c.req.json());
   for (const [k, v] of Object.entries(body)) if (v !== undefined) await setSetting(c.env, k, v);
   await logMod(c.env, c.get('user').id, 'update_settings', 'settings', null, JSON.stringify(body).slice(0, 500));

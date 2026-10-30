@@ -128,7 +128,7 @@ export function GamePage() {
 
       <section className="card">
         <div className="section-head"><h2>Game discussions</h2></div>
-        <ThreadList threads={data.threads} showForum={false} empty="Pregame and postgame threads are created automatically as game day approaches." />
+        <ThreadList threads={data.threads} showForum={false} empty="No game threads yet. Start one below." />
         <div className="card-pad row">
           {!pregame && <Link className="btn secondary small" to={`/new?forum=${forum}&game=${g.id}&phase=pregame`}>Start pregame thread</Link>}
           {!postgame && g.status === 'final' && <Link className="btn secondary small" to={`/new?forum=${forum}&game=${g.id}&phase=postgame`}>Start postgame thread</Link>}

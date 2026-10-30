@@ -140,10 +140,19 @@ forum.post('/threads', async (c) => {
     draft_key: z.string().max(80).optional(),
     tags: z.array(z.string()).max(3).optional(),
   }), await c.req.json());
-  const f = await first<{ id: number; sports: string; kind: string }>(c.env, 'SELECT id, sports, kind FROM forums WHERE slug = ?', body.forum || 'general');
+  // A game thread takes its sport from the game and is linked as that game's pregame/postgame discussion.
+  const game = body.game_id ? await first<{ id: number; sport: string; pregame_thread_id: number | null; postgame_thread_id: number | null; opponent: string; home_away: string }>(c.env,
+    'SELECT id, sport, pregame_thread_id, postgame_thread_id, opponent, home_away FROM games WHERE id = ? AND removed = 0', body.game_id) : null;
+  if (body.game_id && !game) throw new HttpError(400, 'That game is no longer on the schedule.');
+  const phaseCol = game && body.game_phase ? (`${body.game_phase}_thread_id` as const) : null;
+  if (game && phaseCol && game[phaseCol] && (await first(c.env, 'SELECT id FROM threads WHERE id = ? AND deleted = 0', game[phaseCol]))) {
+    throw new HttpError(409, `There's already a ${body.game_phase} thread for this game. Join that one instead.`);
+  }
+  const forumSlug = game ? SPORT_BY_KEY[game.sport]?.forum ?? 'other-sports' : body.forum || 'general';
+  const f = await first<{ id: number; sports: string; kind: string }>(c.env, 'SELECT id, sports, kind FROM forums WHERE slug = ?', forumSlug);
   if (!f) throw new HttpError(400, 'Choose a forum.');
   const sports = f.sports ? f.sports.split(',') : [];
-  const sport = body.sport && sports.includes(body.sport) ? body.sport : sports.length === 1 ? sports[0] : null;
+  const sport = game ? game.sport : body.sport && sports.includes(body.sport) ? body.sport : sports.length === 1 ? sports[0] : null;
   const t = now();
   const pending = await needsApproval(c.env, user);
   const r = await run(c.env, `INSERT INTO threads (forum_id, user_id, title, description, sport, created_at, last_post_at, game_id, game_phase, tags, pending)
@@ -152,6 +161,14 @@ forum.post('/threads', async (c) => {
   const threadId = r.meta.last_row_id;
   await createPost(c.env, user, { id: threadId, title: body.title, user_id: user.id }, body.body, { attachmentIds: body.attachments, isFirst: true, pending });
   if (body.poll) await createPoll(c.env, threadId, body.poll);
+  if (game && phaseCol) {
+    await run(c.env, `UPDATE games SET ${phaseCol} = ? WHERE id = ?`, threadId, game.id);
+    // Postgame threads get the Player of the Game vote: members nominate players and vote for 48 hours.
+    if (body.game_phase === 'postgame' && !body.poll) {
+      await run(c.env, "INSERT INTO polls (thread_id, question, closes_at, created_at, allow_add, kind) VALUES (?, ?, ?, ?, 1, 'potg')",
+        threadId, `Player of the Game: ${game.home_away === 'away' ? 'at' : 'vs.'} ${game.opponent}`, now() + 2 * 86_400_000, now());
+    }
+  }
   if (body.draft_key) await run(c.env, 'DELETE FROM drafts WHERE user_id = ? AND key = ?', user.id, body.draft_key);
   return c.json({ id: threadId, pending });
 });

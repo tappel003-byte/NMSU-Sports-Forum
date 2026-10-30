@@ -223,6 +223,8 @@ try {
   check('Rosters & links page links every sport to its official roster', rosterHref === 'https://nmstatesports.com/sports/football/roster' && (await member.locator('.hub-list li').count()) >= 13);
 
   // ---------- 7. Game Center from the automatic feed ----------
+  // Automatic pregame/postgame threads are an admin switch (off by default); these checks cover them switched on.
+  await api(admin, '/admin/settings', { method: 'PUT', body: { auto_game_threads: '1' } });
   await admin.goto(BASE + '/admin/data');
   await admin.selectOption('#fs', 'auto');
   await admin.fill('#fu', 'http://localhost:8799/feed.ics');

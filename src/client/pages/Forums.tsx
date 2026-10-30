@@ -1,9 +1,9 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { BellOff, Plus } from 'lucide-react';
 import { api } from '../api';
 import { useApi, useApp } from '../state';
-import { sportName } from '../format';
+import { gameTime, matchup, sportIcon, sportName } from '../format';
 import { ErrorState, GameRow, Loading, SUGGESTION_LABELS, ThreadList, type GameItem, type ThreadItem } from '../components/ui';
 import { ComposerTools, MentionTextarea, PhotoPicker, PhotoThumbs, useDraft } from '../components/Composer';
 import { TagPicker } from './Thread';
@@ -117,6 +117,58 @@ export function ForumPage() {
   );
 }
 
+/** Football and men's basketball draw the most game talk, so they lead the list; everything else is one tap away. */
+const FEATURED_SPORTS = ['fb', 'mbb'];
+
+function gamePhase(g: GameItem): 'pregame' | 'postgame' | null {
+  if (g.status === 'final' || g.starts_at < Date.now() - 4 * 3_600_000) return 'postgame';
+  if (g.live) return null;
+  return 'pregame';
+}
+
+function threadTitle(g: GameItem, phase: 'pregame' | 'postgame' | null) {
+  return `${phase === 'pregame' ? 'Pregame' : phase === 'postgame' ? 'Postgame' : 'Game day'}: NM State ${matchup(g)}`;
+}
+
+function GamePickRow({ g }: { g: GameItem }) {
+  const phase = gamePhase(g);
+  const existing = phase === 'pregame' ? g.pregame_thread_id : phase === 'postgame' ? g.postgame_thread_id : null;
+  const label = phase === 'pregame' ? 'Pregame' : phase === 'postgame' ? 'Postgame' : 'Game day';
+  return (
+    <li>
+      <span aria-hidden="true">{sportIcon(g.sport)}</span>
+      <span className="grow"><strong>{matchup(g)}</strong><span className="tiny muted" style={{ display: 'block' }}>{sportName(g.sport)} · {gameTime(g.starts_at, g.time_tba)}</span></span>
+      {existing
+        ? <Link className="btn ghost small" to={`/t/${existing}`}>Join {label.toLowerCase()} thread</Link>
+        : <Link className="btn small" to={`/new?game=${g.id}${phase ? `&phase=${phase}` : ''}`}>Start {label.toLowerCase()} thread</Link>}
+    </li>
+  );
+}
+
+/** "Start a game thread": pick a recent or upcoming game instead of the site starting threads for every game. */
+export function GameThreadPicker() {
+  const { data } = useApi<{ games: GameItem[] }>('/games/pickable');
+  if (!data) return null;
+  const featured = data.games.filter((g) => FEATURED_SPORTS.includes(g.sport));
+  const others = data.games.filter((g) => !FEATURED_SPORTS.includes(g.sport));
+  return (
+    <section className="game-picker" aria-label="Start a game thread">
+      <div className="section-head"><h2>🏟️ Start a game thread</h2></div>
+      {data.games.length === 0 ? <div className="empty">No games in the next 10 days or the last 3.</div> : (
+        <>
+          {featured.length > 0 ? <ul className="hub-list">{featured.map((g) => <GamePickRow key={g.id} g={g} />)}</ul> : <div className="small muted" style={{ padding: '0 16px 10px' }}>No football or men's basketball games right now.</div>}
+          {others.length > 0 && (
+            <details className="more-sports">
+              <summary>Other sports ({others.length})</summary>
+              <ul className="hub-list">{others.map((g) => <GamePickRow key={g.id} g={g} />)}</ul>
+            </details>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
 export function NewThread() {
   const [params] = useSearchParams();
   const { toast } = useApp();
@@ -137,6 +189,13 @@ export function NewThread() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const f = data?.forums.find((x) => x.slug === forum);
+  const { data: gameData } = useApi<{ game: GameItem }>(gameId ? `/games/${gameId}` : null);
+  const game = gameData?.game;
+  // Pre-fill the title for a game thread; the member can change it.
+  useEffect(() => {
+    if (game && !draft.title) draft.setTitle(threadTitle(game, phase));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [game]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -163,7 +222,8 @@ export function NewThread() {
   return (
     <div className="card card-pad">
       <h1>{f?.kind === 'suggestions' ? 'Suggest an improvement' : 'Start a discussion'}</h1>
-      {gameId && <div className="note-box small" style={{ marginBottom: 12 }}>This thread will be linked to the game page{phase ? ` as the ${phase} discussion` : ''}.</div>}
+      {gameId && <div className="note-box small" style={{ marginBottom: 12 }}>{game ? <>{sportIcon(game.sport)} <strong>{sportName(game.sport)}: NM State {matchup(game)}</strong> · {gameTime(game.starts_at, game.time_tba)}<br /></> : null}This thread will be linked to the game page{phase ? ` as the ${phase} discussion` : ''}.</div>}
+      {!gameId && !forum && <GameThreadPicker />}
       <form onSubmit={submit}>
         <div className="field"><label htmlFor="title">Title</label><input id="title" className="input" value={draft.title} onChange={(e) => draft.setTitle(e.target.value)} required minLength={4} maxLength={140} /></div>
         <div className="field">

@@ -56,6 +56,17 @@ games.get('/hub', async (c) => c.json({
   links: parseHubLinks(await getSetting(c.env, 'hub_links')),
 }));
 
+// "Start a game thread": recent and upcoming games, with any thread already started for them.
+games.get('/games/pickable', async (c) => {
+  const t = now();
+  // A thread a moderator removed no longer counts, so members can start a fresh one.
+  const rows = await all<GameRow>(c.env,
+    `SELECT g.*, (SELECT id FROM threads WHERE id = g.pregame_thread_id AND deleted = 0) AS pregame_thread_id,
+            (SELECT id FROM threads WHERE id = g.postgame_thread_id AND deleted = 0) AS postgame_thread_id
+       FROM games g WHERE g.removed = 0 AND g.status != 'canceled' AND g.starts_at BETWEEN ? AND ? ORDER BY g.starts_at`, t - 3 * 86_400_000, t + 10 * 86_400_000);
+  return c.json({ games: rows.map(presentGame) });
+});
+
 games.get('/games/:id', async (c) => {
   const user = c.get('user');
   const g = await first<GameRow>(c.env, 'SELECT * FROM games WHERE id = ?', Number(c.req.param('id')));

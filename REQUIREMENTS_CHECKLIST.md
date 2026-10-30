@@ -20,9 +20,9 @@ Status values: **Planned** · **Built** (code exists) · **Verified** (tested en
 | 13 | Directory, profiles, avatar, Aggie Alert legacy moniker + self-reported join year, post count and up votes received (separate from forum count and reputation) | MILESTONE 7, DECISIONS | Verified |
 | 14 | Founding Member (30 days after configurable launch date); honorary founders | DECISIONS | Built — Founding Member from configurable launch date; optional automatic honorary threshold (off by default) plus admin award |
 | 15 | 4–5 admins; invite, pin/lock/move/remove, reports, member suspension; can't remove last admin; owner/hosting separate from admin | MILESTONE 8 | Verified |
-| 16 | **Schedules and results self-populate from official sources; manual = emergency override only** | SPORTS_DATA | Built and verified with a synthetic feed (import, idempotent re-sync, overrides, alerts). **Blocked: real nmstatesports.com feed URLs not yet confirmed** (network blocked in build environment) |
+| 16 | **Schedules and results self-populate from official sources; manual = emergency override only** | SPORTS_DATA | Verified live — the official nmstatesports.com composite feed is connected in production (181 games, syncing without errors) |
 | 17 | No live in-game scores at launch; link to official live stats; never invent scores | SPORTS_DATA | Verified |
-| 18 | Automatic pregame → live chat → postgame lifecycle | SPORTS_DATA | Verified — pregame thread ~3 days out, postgame at final, game chat rooms |
+| 18 | Game-day lifecycle: member-started game threads from a game picker (automatic pregame/postgame threads optional, off by default), game chat rooms | SPORTS_DATA, DECISIONS | Verified — picker links threads to games and refuses duplicates; automatic mode still tested with the switch on |
 | 19 | Authenticated live chat, moderation, reconnect; rolling window; permanent per-game archive | MILESTONE 10 | Verified — two members chatting live, presence, reconnect, admin removal, permanent archive |
 | 20 | Turn a chat moment into a thread | MILESTONE 10 | Verified |
 | 21 | Polls (one vote per member, optional close date) | MILESTONE 11 | Verified |
