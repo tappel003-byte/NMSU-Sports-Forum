@@ -43,7 +43,7 @@ export function Login() {
     <AuthShell title="Welcome back, Aggie" subtitle="A private, invitation-only community for NM State fans.">
       {setupNeeded && <div className="note-box small" style={{ marginBottom: 12 }}>This forum hasn't been set up yet. The technical owner can <Link to="/setup">create the first administrator</Link>.</div>}
       <form onSubmit={submit}>
-        <div className="field"><label htmlFor="u">Username or email</label><input id="u" className="input" autoComplete="username" value={username} onChange={(e) => setUsername(e.target.value)} required /></div>
+        <div className="field"><label htmlFor="u">Username or email</label><input id="u" className="input" autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={username} onChange={(e) => setUsername(e.target.value)} required /></div>
         <div className="field"><label htmlFor="p">Password</label><input id="p" className="input" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required /></div>
         {error && <div className="error-box" style={{ marginBottom: 12 }}>{error}</div>}
         <button className="btn block" disabled={busy}>{busy ? 'Signing in…' : 'Sign in'}</button>
@@ -79,7 +79,7 @@ export function Join() {
   return (
     <AuthShell title="You're invited!" subtitle="Create your NMSU Sports Forum account.">
       <form onSubmit={submit}>
-        <div className="field"><label htmlFor="un">Username</label><input id="un" className="input" autoComplete="username" value={f.username} onChange={set('username')} required pattern="[A-Za-z0-9_]{3,24}" /><span className="hint">3–24 letters, numbers or underscores. This is how members will know you.</span></div>
+        <div className="field"><label htmlFor="un">Username</label><input id="un" className="input" autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={f.username} onChange={set('username')} required pattern="[A-Za-z0-9_]{3,24}" /><span className="hint">3–24 letters, numbers or underscores. This is how members will know you.</span></div>
         <div className="field"><label htmlFor="dn">Display name (optional)</label><input id="dn" className="input" value={f.display_name} onChange={set('display_name')} maxLength={60} /></div>
         <div className="field"><label htmlFor="em">Email</label><input id="em" className="input" type="email" autoComplete="email" value={f.email} onChange={set('email')} required readOnly={Boolean(check.email)} /><span className="hint">Private by default. Used only for password recovery.</span></div>
         <div className="field"><label htmlFor="pw">Password</label><input id="pw" className="input" type="password" autoComplete="new-password" value={f.password} onChange={set('password')} required minLength={10} /><span className="hint">At least 10 characters.</span></div>
@@ -207,7 +207,7 @@ export function SignUp() {
   return (
     <AuthShell title="Join NMSU Sports Forum" subtitle="Free, no ads. The Aggie fan community, built for your phone.">
       <form onSubmit={submit}>
-        <div className="field"><label htmlFor="un">Username</label><input id="un" className="input" autoComplete="username" value={f.username} onChange={set('username')} required pattern="[A-Za-z0-9_]{3,24}" /><span className="hint">3–24 letters, numbers or underscores. Your old Aggie Alert moniker works great.</span></div>
+        <div className="field"><label htmlFor="un">Username</label><input id="un" className="input" autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={f.username} onChange={set('username')} required pattern="[A-Za-z0-9_]{3,24}" /><span className="hint">3–24 letters, numbers or underscores. Your old Aggie Alert moniker works great.</span></div>
         <div className="field"><label htmlFor="dn">Display name (optional)</label><input id="dn" className="input" value={f.display_name} onChange={set('display_name')} maxLength={60} /></div>
         <div className="field"><label htmlFor="em">Email</label><input id="em" className="input" type="email" autoComplete="email" value={f.email} onChange={set('email')} required /><span className="hint">Private. Used to confirm your account and reset your password.</span></div>
         <div className="field"><label htmlFor="pw">Password</label><input id="pw" className="input" type="password" autoComplete="new-password" value={f.password} onChange={set('password')} required minLength={10} /><span className="hint">At least 10 characters.</span></div>
