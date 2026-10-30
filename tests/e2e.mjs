@@ -367,9 +367,9 @@ try {
   const relog = await api(member, '/auth/login', { body: { username: 'CrimsonFan', password: 'brand-new-password-1' } });
   check('Member signs in with the new password', relog.status === 200);
 
-  const profile = await api(member, '/me/profile', { method: 'PATCH', body: { display_name: 'Crimson Fan', bio: 'Season ticket holder since 1998.', grad_year: 1998, city: '', state: '', interests: 'Football', legacy_moniker: 'CrimsonDave', legacy_join_year: 2003, legacy_post_count: 12000, show_email: false, show_on_map: false, birthday_md: '04-15', show_birthday: true, } });
+  const profile = await api(member, '/me/profile', { method: 'PATCH', body: { display_name: 'Crimson Fan', bio: 'Season ticket holder since 1998.', grad_year: 1998, city: '', state: '', interests: 'Football', legacy_moniker: 'CrimsonDave', legacy_join_year: 2003, legacy_post_count: 12000, legacy_upvotes: 1368, show_email: false, show_on_map: false, birthday_md: '04-15', show_birthday: true, } });
   const seen = (await api(admin, '/members/2')).body.member;
-  check('Profile edits, Aggie Alert legacy fields and private email work', profile.status === 200 && seen.legacy_moniker === 'CrimsonDave' && seen.legacy_post_count === 12000 && seen.email === null && seen.post_count >= 1);
+  check('Profile edits, Aggie Alert legacy fields and private email work', profile.status === 200 && seen.legacy_moniker === 'CrimsonDave' && seen.legacy_post_count === 12000 && seen.legacy_upvotes === 1368 && seen.email === null && seen.post_count >= 1);
   const found = (await api(admin, '/search?q=CrimsonDave')).body.members;
   check('Members can be found by their old Aggie Alert moniker', found.some((m) => m.username === 'CrimsonFan'));
 

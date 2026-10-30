@@ -17,7 +17,7 @@ Status values: **Planned** · **Built** (code exists) · **Verified** (tested en
 | 10 | Pinned/locked threads, search, follows, unread + jump to first unread | MILESTONE 5 | Verified — pin, lock, search, follow, unread and jump to first unread |
 | 11 | Thumbs-up/down; Aggie Reputation counts thumbs-up only; no self-reactions | MILESTONE 6 | Verified |
 | 12 | Most appreciated post on profile (member may choose to highlight); weekly highlight on home | MILESTONE 6–7 | Verified — profile most appreciated post, weekly highlight on home; members can highlight a chosen post |
-| 13 | Directory, profiles, avatar, Aggie Alert legacy moniker + self-reported post count (separate from forum count) | MILESTONE 7 | Verified |
+| 13 | Directory, profiles, avatar, Aggie Alert legacy moniker + self-reported join year, post count and up votes received (separate from forum count and reputation) | MILESTONE 7, DECISIONS | Verified |
 | 14 | Founding Member (30 days after configurable launch date); honorary founders | DECISIONS | Built — Founding Member from configurable launch date; optional automatic honorary threshold (off by default) plus admin award |
 | 15 | 4–5 admins; invite, pin/lock/move/remove, reports, member suspension; can't remove last admin; owner/hosting separate from admin | MILESTONE 8 | Verified |
 | 16 | **Schedules and results self-populate from official sources; manual = emergency override only** | SPORTS_DATA | Built and verified with a synthetic feed (import, idempotent re-sync, overrides, alerts). **Blocked: real nmstatesports.com feed URLs not yet confirmed** (network blocked in build environment) |

@@ -101,7 +101,7 @@ community.get('/members/:id', async (c) => {
   const me = c.get('user');
   const id = num(c.req.param('id'));
   const u = await first<Record<string, unknown> & { id: number; email: string; show_email: number; featured_post_id: number | null; birthday_md: string | null; show_birthday: number; status: string }>(c.env,
-    `SELECT id, email, bio, grad_year, city, state, interests, legacy_moniker, legacy_join_year, legacy_post_count, show_email, show_on_map,
+    `SELECT id, email, bio, grad_year, city, state, interests, legacy_moniker, legacy_join_year, legacy_post_count, legacy_upvotes, show_email, show_on_map,
             featured_post_id, birthday_md, show_birthday, created_at, last_seen_at, status FROM users WHERE id = ?`, id);
   if (!u || (u.status !== 'active' && me.role !== 'admin')) throw new HttpError(404, 'Member not found.');
   const summary = (await memberSummaries(c.env, [id])).get(id);
@@ -120,7 +120,7 @@ community.get('/members/:id', async (c) => {
     member: {
       ...summary,
       bio: u.bio, grad_year: u.grad_year, city: u.city, state: u.state, interests: u.interests,
-      legacy_moniker: u.legacy_moniker, legacy_join_year: u.legacy_join_year, legacy_post_count: u.legacy_post_count,
+      legacy_moniker: u.legacy_moniker, legacy_join_year: u.legacy_join_year, legacy_post_count: u.legacy_post_count, legacy_upvotes: u.legacy_upvotes,
       email: u.show_email || id === me.id ? u.email : null,
       birthday: u.show_birthday || id === me.id ? u.birthday_md : null,
       joined: u.created_at, last_seen_at: u.last_seen_at, status: u.status,
@@ -146,7 +146,7 @@ community.get('/members/:id/posts', async (c) => {
 community.get('/me', async (c) => {
   const u = await first<Record<string, unknown> & { prefs: string }>(c.env,
     `SELECT id, username, email, role, display_name, bio, avatar_key, grad_year, city, state, interests, legacy_moniker, legacy_join_year,
-            legacy_post_count, show_email, show_on_map, birthday_md, show_birthday, featured_post_id, prefs FROM users WHERE id = ?`, c.get('user').id);
+            legacy_post_count, legacy_upvotes, show_email, show_on_map, birthday_md, show_birthday, featured_post_id, prefs FROM users WHERE id = ?`, c.get('user').id);
   return c.json({ me: { ...u, prefs: userPrefs(u?.prefs ?? '{}') } });
 });
 
@@ -157,16 +157,16 @@ community.patch('/me/profile', async (c) => {
   const user = c.get('user');
   const body = parse(z.object({
     display_name: optStr(60), bio: optStr(1000), grad_year: optInt(1930, 2040), city: optStr(80), state: optStr(40), interests: optStr(300),
-    legacy_moniker: optStr(60), legacy_join_year: optInt(1990, 2030), legacy_post_count: optInt(0, 10_000_000),
+    legacy_moniker: optStr(60), legacy_join_year: optInt(1990, 2030), legacy_post_count: optInt(0, 10_000_000), legacy_upvotes: optInt(0, 10_000_000),
     show_email: z.boolean(), show_on_map: z.boolean(),
     birthday_md: z.string().regex(/^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/, 'use MM-DD').nullable().optional().or(z.literal('')).transform((v) => v || null),
     show_birthday: z.boolean(),
   }), await c.req.json());
   const prev = await first<{ city: string | null; state: string | null; map_lat: number | null }>(c.env, 'SELECT city, state, map_lat FROM users WHERE id = ?', user.id);
   await run(c.env, `UPDATE users SET display_name = ?, bio = ?, grad_year = ?, city = ?, state = ?, interests = ?, legacy_moniker = ?, legacy_join_year = ?,
-                    legacy_post_count = ?, show_email = ?, show_on_map = ?, birthday_md = ?, show_birthday = ? WHERE id = ?`,
+                    legacy_post_count = ?, legacy_upvotes = ?, show_email = ?, show_on_map = ?, birthday_md = ?, show_birthday = ? WHERE id = ?`,
     body.display_name, body.bio, body.grad_year, body.city, body.state, body.interests, body.legacy_moniker, body.legacy_join_year,
-    body.legacy_post_count, body.show_email ? 1 : 0, body.show_on_map ? 1 : 0, body.birthday_md, body.show_birthday ? 1 : 0, user.id);
+    body.legacy_post_count, body.legacy_upvotes ?? null, body.show_email ? 1 : 0, body.show_on_map ? 1 : 0, body.birthday_md, body.show_birthday ? 1 : 0, user.id);
   let mapNote: string | null = null;
   if (body.show_on_map && body.city && body.state && (prev?.city !== body.city || prev?.state !== body.state || prev?.map_lat === null)) {
     const coords = await geocodeCity(body.city, body.state);
@@ -488,7 +488,7 @@ community.get('/me/export', async (c) => {
   const id = c.get('user').id;
   const q = (sql: string) => all(c.env, sql, id);
   const [profile, threads, posts, reactions, bookmarks, drafts, predictions, events, notifications, polls, conversations] = await Promise.all([
-    first(c.env, `SELECT id, username, email, role, display_name, bio, grad_year, city, state, interests, legacy_moniker, legacy_join_year, legacy_post_count,
+    first(c.env, `SELECT id, username, email, role, display_name, bio, grad_year, city, state, interests, legacy_moniker, legacy_join_year, legacy_post_count, legacy_upvotes,
                          show_email, show_on_map, birthday_md, show_birthday, prefs, created_at FROM users WHERE id = ?`, id),
     q('SELECT id, title, description, created_at FROM threads WHERE user_id = ? ORDER BY id'),
     q('SELECT id, thread_id, body, created_at, edited_at, deleted FROM posts WHERE user_id = ? ORDER BY id'),
@@ -520,7 +520,7 @@ community.post('/me/delete', async (c) => {
   const id = user.id;
   // Posts stay in discussions (shown as "Former member"); personal details, private messages and settings are erased.
   await run(c.env, `UPDATE users SET username = ?, email = ?, password_hash = ?, display_name = NULL, bio = NULL, avatar_key = NULL, grad_year = NULL,
-                    city = NULL, state = NULL, interests = NULL, legacy_moniker = NULL, legacy_join_year = NULL, legacy_post_count = NULL,
+                    city = NULL, state = NULL, interests = NULL, legacy_moniker = NULL, legacy_join_year = NULL, legacy_post_count = NULL, legacy_upvotes = NULL,
                     show_email = 0, show_on_map = 0, map_lat = NULL, map_lon = NULL, birthday_md = NULL, show_birthday = 0, featured_post_id = NULL,
                     prefs = '{}', role = 'member', status = 'suspended', suspended_until = NULL, deleted_at = ? WHERE id = ?`,
     `former_member_${id}`, `deleted-${id}@deleted.invalid`, await hashPassword(randomToken()), now(), id);

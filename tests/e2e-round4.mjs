@@ -213,6 +213,22 @@ try {
   check('A discussion posts with just a title and message, filed under General Discussion', JSON.stringify(newT).includes('General Discussion'));
   await reg.screenshot({ path: `${SHOTS}/new-thread-simple.png`, fullPage: true });
 
+  // ---------- Aggie Alert history on the profile ----------
+  await reg.setViewportSize({ width: 390, height: 844 });
+  await reg.goto(BASE + '/settings');
+  await reg.fill('#legacy_moniker', 'RioRanchoAggie');
+  await reg.fill('#legacy_join_year', '2010');
+  await reg.fill('#legacy_post_count', '3,901');
+  await reg.fill('#legacy_upvotes', '1,368');
+  await reg.click('button:has-text("Save profile")');
+  await reg.waitForTimeout(800);
+  const rickId = (await api(admin, '/admin/members')).body.members.find((m) => m.username === 'RickFromTailgate').id;
+  await reg.goto(BASE + `/members/${rickId}`);
+  await reg.waitForSelector('text=up votes received');
+  const aa = await reg.textContent('.note-box');
+  check('Members add Aggie Alert up votes (commas OK) and they show on the profile', aa.includes('RioRanchoAggie') && aa.includes('3,901 posts') && aa.includes('1,368 up votes received') && aa.includes('since 2010'));
+  await reg.screenshot({ path: `${SHOTS}/profile-aggie-alert.png`, fullPage: true });
+
   // ---------- Audit history ----------
   const log = (await api(admin, '/admin/log')).body.log;
   const actions = new Set(log.map((l) => l.action));
