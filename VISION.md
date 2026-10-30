@@ -87,12 +87,10 @@ The **Aggie Ring of Honor** is a simple permanent list honoring deceased Aggie A
 - Target domain: NMSUSportsForum.com; ownership/registration and renewal schedule to verify rather than assume.
 - Mobile and desktop acceptance testing, including iPhone PWA install, chat, offline/reconnect behavior, and desktop layout.
 
-## Release sequencing (proposal, not authorization)
-**Milestone 01 (active):** branded responsive visual shell with example data, sports directories, readable threads, navigation, and verified live Cloudflare publishing at NMSUSportsForum.com. See MILESTONE.md.\n**Initial functional forum (future):** identity/invitations; categories/threads/replies; basic reactions; member cards; admin moderation; simple schedule links; approved branding.
-**Next:** game chat and Game Center, polls, notifications, member map, archive/image lifecycle, reputation/featured posts.
-**Later:** suggestion workflow, richer badges and sponsor history, refined feeds/automations, more live-data integrations, advanced admin and community features.
+## Integrated first-build authorization and possible future expansion
+**Authorized first build:** Implement a usable, secure, invite-only community in one integrated pass: responsive design, sport/venue forums, member identity, threads/replies, moderation, reactions/reputation, profiles, persistent records, Game Center with reliable schedule links, and functional event chat. See **MILESTONE.md** for scope and acceptance. The owner has rejected a visual-only initial milestone and repeated incremental approval gates.
 
-This sequencing does not remove any feature from the overall vision. Review it before implementation.
+**Later improvements:** richer feeds, more badges and supporter history, advanced historical archives, optional map and future Ring of Honor visibility. Future enhancements should not be an excuse to leave basic launched features nonfunctional.
 
 ## Open decisions before full functional build
 1. Politics category: visible to everyone or opt-in?
@@ -106,6 +104,6 @@ This sequencing does not remove any feature from the overall vision. Review it b
 
 ## Working agreement for coding agents
 - Read CLAUDE.md, this vision, DECISIONS.md, MILESTONE.md and the repository's current state before making changes.
-- The product owner approves scope. Do not open PRs, create branches, implement features, or change architecture on your own.
+- The product owner approves scope. Do not open unnecessary PRs or branches or change agreed product scope. The full integrated initial build in MILESTONE.md is already authorized; make ordinary implementation decisions without asking for a sequence of micro-approvals.
 - Distinguish decided requirements from proposals. Ask about consequential unknowns instead of silently choosing.
 - Work in small, reviewable stages with visible acceptance criteria. Do not claim something is complete without verifying it.
