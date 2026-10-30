@@ -325,18 +325,82 @@ try {
   const suspended = await api(member, '/home');
   check('Suspending a member ends their session immediately', suspended.status === 401);
   await api(admin, '/admin/members/2', { method: 'PATCH', body: { status: 'active' } });
+  await api(member, '/auth/login', { body: { username: 'CrimsonFan', password: 'member-password-123' } });
   // Suggestion implemented → Idea Contributor badge.
   const sug = await api(admin, '/threads', { body: { forum: 'suggestions', title: 'Add a rivalry countdown', description: 'For UTEP and UNM weeks', body: 'Countdown banner idea.' } });
   await api(admin, `/admin/threads/${sug.body.id}`, { method: 'PATCH', body: { suggestion_status: 'implemented' } });
   const contributions = (await api(admin, '/contributions')).body.contributions;
   check('Implemented suggestion awards Idea Contributor automatically', contributions.some((c) => c.badge === 'idea'));
 
+
+  // ---------- Additional coverage ----------
+  const t2 = await api(member, '/threads', { body: { forum: 'general', title: 'Editing test thread', description: 'Checks edit history', body: 'Original text' } });
+  const p2 = (await api(member, `/threads/${t2.body.id}`)).body.posts[0].id;
+  await api(member, `/posts/${p2}`, { method: 'PATCH', body: { body: 'Edited text' } });
+  const hist = (await api(admin, `/posts/${p2}/history`)).body;
+  check('Members edit their posts and the edit history is kept', hist.current === 'Edited text' && hist.edits[0]?.old_body === 'Original text');
+  const otherEdit = await api(admin, `/posts/${p2}`, { method: 'PATCH', body: { body: 'Admin edit' } });
+  const memberEditsAdmin = await api(member, `/posts/${(await api(member, `/threads/${threadId}`)).body.posts[1].id}`, { method: 'PATCH', body: { body: 'hijack' } });
+  check("Members can't edit other people's posts (admins can)", otherEdit.status === 200 && memberEditsAdmin.status === 403);
+
+  const resetLink = (await api(admin, '/admin/members/2/reset-link', { method: 'POST' })).body.link;
+  const resetCtx = await browser.newContext();
+  const rp = await resetCtx.newPage();
+  await rp.goto(resetLink);
+  await rp.fill('#np', 'brand-new-password-1');
+  await rp.fill('#nc', 'brand-new-password-1');
+  await rp.click('button:has-text("Save password")');
+  await rp.waitForURL(BASE + '/');
+  const oldPw = await api(ap, '/auth/login', { body: { username: 'CrimsonFan', password: 'member-password-123' } });
+  const reuseReset = await api(ap, '/auth/reset', { body: { token: resetLink.split('/reset/')[1], password: 'another-password-9' } });
+  check('Admin-issued password reset link works once and replaces the old password', oldPw.status === 401 && reuseReset.status === 400);
+  await resetCtx.close();
+  const relog = await api(member, '/auth/login', { body: { username: 'CrimsonFan', password: 'brand-new-password-1' } });
+  check('Member signs in with the new password', relog.status === 200);
+
+  const profile = await api(member, '/me/profile', { method: 'PATCH', body: { display_name: 'Crimson Fan', bio: 'Season ticket holder since 1998.', grad_year: 1998, city: '', state: '', interests: 'Football', legacy_moniker: 'CrimsonDave', legacy_join_year: 2003, legacy_post_count: 12000, show_email: false, show_on_map: false, birthday_md: '04-15', show_birthday: true, } });
+  const seen = (await api(admin, '/members/2')).body.member;
+  check('Profile edits, Aggie Alert legacy fields and private email work', profile.status === 200 && seen.legacy_moniker === 'CrimsonDave' && seen.legacy_post_count === 12000 && seen.email === null && seen.post_count >= 1);
+  const found = (await api(admin, '/search?q=CrimsonDave')).body.members;
+  check('Members can be found by their old Aggie Alert moniker', found.some((m) => m.username === 'CrimsonFan'));
+
+  await api(admin, '/mutes', { body: { target_type: 'user', target_id: 2, muted: true } });
+  const mutedView = (await api(admin, `/threads/${threadId}`)).body.posts[0].muted;
+  const blockedDm = await api(member, '/messages/1', { body: { body: 'are you there?' } });
+  check('Muting hides a member\'s posts and blocks their private messages', mutedView === true && blockedDm.status === 403);
+  await api(admin, '/mutes', { body: { target_type: 'user', target_id: 2, muted: false } });
+
+  const ev = await api(member, '/events', { body: { kind: 'watch_party', title: 'Watch party at the sports bar', location: 'Las Cruces', starts_at: Date.now() + 47 * H, game_id: fb.id } });
+  await api(admin, `/events/${ev.body.id}/rsvp`, { body: { status: 'going' } });
+  const evd = (await api(member, `/events/${ev.body.id}`)).body;
+  const cal = (await api(member, '/calendar')).body;
+  check('Community calendar shows games, events with RSVPs and opt-in birthdays', evd.rsvps.length === 2 && cal.games.length >= 1 && cal.events.length === 1 && cal.birthdays.some((b) => b.username === 'CrimsonFan'));
+
+  const bm = await api(member, `/posts/${(await api(member, `/threads/${threadId}`)).body.posts[0].id}/bookmark`, { body: { bookmarked: true, note: 'read later', remind_at: Date.now() - 1000 } });
+  const cron = await fetch(`${BASE}/__scheduled?cron=*/30+*+*+*+*`);
+  await new Promise((r) => setTimeout(r, 1500));
+  const notes = (await api(member, '/notifications')).body.notifications;
+  check('Scheduled job runs and delivers bookmark reminders', bm.status === 200 && cron.status === 200 && notes.some((n) => n.type === 'reminder'));
+  const daily = await fetch(`${BASE}/__scheduled?cron=17+9+*+*+*`);
+  check('Daily housekeeping job runs', daily.status === 200);
+
+  const mine = (await api(member, '/feed?tab=mysports')).body.threads;
+  check('“My sports” feed shows only chosen sports', mine.length > 0 && mine.every((t) => ['aggie-memorial', 'the-pan-am'].includes(t.forum.slug)));
+  for (const path of ['/time-machine', '/year-in-review', '/contributions', '/map', '/predictions', '/calendar', '/drafts', '/bookmarks']) {
+    await member.goto(BASE + path);
+    await member.waitForSelector('main h1', { timeout: 10000 });
+    const err = await member.$('.error-box');
+    check(`Page ${path} loads`, !err);
+  }
+  const tm = (await api(member, '/time-machine')).body.games;
+  check('Time Machine lists past games with their discussion and chat counts', tm.some((g) => g.opponent === 'Placeholder U'));
+
   // ---------- 10. Screens at iPhone and desktop sizes ----------
   await member.goto(BASE + '/login').catch(() => {});
   await memberCtx.clearCookies();
   await member.goto(BASE + '/login');
   await member.fill('#u', 'CrimsonFan');
-  await member.fill('#p', 'member-password-123');
+  await member.fill('#p', 'brand-new-password-1');
   await member.click('button:has-text("Sign in")');
   await member.waitForURL(BASE + '/');
   await member.waitForSelector('.hero h2');

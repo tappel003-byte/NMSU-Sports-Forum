@@ -211,7 +211,10 @@ export function MapPage() {
       for (const [, list] of groups) {
         const m = L.circleMarker([list[0].map_lat, list[0].map_lon], { radius: 8 + Math.min(list.length, 10), color: '#8C0B42', fillColor: '#8C0B42', fillOpacity: 0.75, weight: 2 }).addTo(map);
         const el = document.createElement('div');
-        el.innerHTML = `<strong>${list[0].city}, ${list[0].state}</strong><br/>`;
+        const place = document.createElement('strong');
+        place.textContent = `${list[0].city}, ${list[0].state}`;
+        el.appendChild(place);
+        el.appendChild(document.createElement('br'));
         for (const p of list) {
           const a = document.createElement('a');
           a.href = `/members/${p.id}`;
