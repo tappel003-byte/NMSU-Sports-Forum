@@ -9,6 +9,11 @@ export interface Env {
   MAIL_FROM: string;
   RESEND_API_KEY?: string;
   BOOTSTRAP_TOKEN?: string;
+  VAPID_PUBLIC_KEY?: string;
+  VAPID_PRIVATE_KEY?: string;
+  VAPID_SUBJECT?: string;
+  CFBD_API_KEY?: string;
+  CFBD_BASE?: string;
 }
 
 export interface SessionUser {
@@ -21,6 +26,7 @@ export interface SessionUser {
   prefs: string;
   marked_read_at: number;
   created_at: number;
+  trusted: number;
 }
 
 export type AppEnv = { Bindings: Env; Variables: { user: SessionUser; sessionId: string } };

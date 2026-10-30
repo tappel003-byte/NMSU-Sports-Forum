@@ -8,6 +8,7 @@ import { games } from './routes/games';
 import { community } from './routes/community';
 import { chat } from './routes/chat';
 import { admin } from './routes/admin';
+import { recruiting } from './routes/recruiting';
 import { dailyJobs, frequentJobs } from './cron';
 
 export { ChatRoom } from './chat';
@@ -43,6 +44,7 @@ app.route('/', forum);
 app.route('/', games);
 app.route('/', community);
 app.route('/', chat);
+app.route('/', recruiting);
 
 app.notFound((c) => c.json({ error: 'Not found.' }, 404));
 

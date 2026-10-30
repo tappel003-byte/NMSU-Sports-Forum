@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { hideSpoilers } from '../shared/forum';
 
 export class HttpError extends Error {
   constructor(public status: number, message: string) {
@@ -81,6 +82,6 @@ export function extractMentions(body: string): string[] {
 }
 
 export function excerpt(s: string, n = 140): string {
-  const flat = s.replace(/^>.*$/gm, '').replace(/\*\*/g, '').replace(/\s+/g, ' ').trim();
+  const flat = hideSpoilers(s).replace(/^>.*$/gm, '').replace(/\*\*/g, '').replace(/\s+/g, ' ').trim();
   return flat.length > n ? flat.slice(0, n - 1) + '…' : flat;
 }

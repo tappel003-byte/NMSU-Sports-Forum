@@ -12,7 +12,8 @@
     "db:migrate:local": "wrangler d1 migrations apply DB --local",
     "db:migrate:remote": "wrangler d1 migrations apply DB --remote",
     "e2e": "node tests/e2e.mjs",
-    "deploy": "npm run build && wrangler d1 migrations apply DB --remote && wrangler deploy"
+    "deploy": "npm run build && wrangler d1 migrations apply DB --remote && wrangler deploy",
+    "vapid": "node scripts/vapid.mjs"
   },
   "dependencies": {
     "hono": "^4.13.14",

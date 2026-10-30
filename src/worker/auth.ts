@@ -39,11 +39,17 @@ export async function userFromCookieHeader(env: Env, cookieHeader: string | null
 
 async function lookupSession(env: Env, sessionId: string): Promise<(SessionUser & { last_used_at: number }) | null> {
   const row = await first<SessionUser & { expires_at: number; last_used_at: number }>(env,
-    `SELECT u.id, u.username, u.role, u.status, u.display_name, u.avatar_key, u.prefs, u.marked_read_at, u.created_at,
+    `SELECT u.id, u.username, u.role, u.status, u.display_name, u.avatar_key, u.prefs, u.marked_read_at, u.created_at, u.trusted,
             s.expires_at, s.last_used_at
        FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.id = ?`, sessionId);
   if (!row || row.expires_at < now() || row.status !== 'active') return null;
   return row;
+}
+
+/** Reinstates members whose timed suspension has ended. Returns true if the member is active. */
+export async function liftExpiredSuspension(env: Env, userId: number): Promise<boolean> {
+  const r = await run(env, "UPDATE users SET status = 'active', suspended_until = NULL WHERE id = ? AND status = 'suspended' AND deleted_at IS NULL AND suspended_until IS NOT NULL AND suspended_until <= ?", userId, now());
+  return Boolean(r.meta.changes);
 }
 
 /** Loads the session user if present; never rejects. */

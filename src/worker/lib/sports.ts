@@ -129,9 +129,12 @@ export async function runGameLifecycle(env: Env): Promise<void> {
        AND (status = 'final' OR starts_at < ?) AND starts_at > ?`, t - 4 * 3_600_000, t - 7 * DAY);
   for (const g of postgame) {
     const id = await systemThread(env, g.sport, `Postgame: ${matchup(g)}`, `${sportLabel(g.sport)} · ${dateLabel(g.starts_at, 0)}`,
-      `The game is over. What did you see?\n\nScore, box score and recap: ${g.official_url ?? officialScheduleUrl(g.sport)}\nGame page with the chat archive and predictions: /games/${g.id}`,
+      `The game is over. What did you see? Vote for the Player of the Game below. Nominate anyone who isn't listed yet.\n\nScore, box score and recap: ${g.official_url ?? officialScheduleUrl(g.sport)}\nGame page with the chat archive and predictions: /games/${g.id}`,
       g.id, 'postgame');
     await run(env, 'UPDATE games SET postgame_thread_id = ? WHERE id = ?', id, g.id);
+    // Automatic Player of the Game vote: members nominate players and vote for 48 hours.
+    await run(env, "INSERT INTO polls (thread_id, question, closes_at, created_at, allow_add, kind) VALUES (?, ?, ?, ?, 1, 'potg')",
+      id, `Player of the Game: ${matchup(g)}`, now() + 2 * DAY, now());
   }
   await scorePredictions(env);
   await sendGameReminders(env);

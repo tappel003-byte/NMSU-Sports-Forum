@@ -4,7 +4,7 @@ import type { AppEnv, Env } from '../env';
 import { all, first, run } from '../db';
 import { HttpError, now, parse } from '../util';
 import { SPORT_BY_KEY } from '../../shared/sports';
-import { createPost } from '../lib/threads';
+import { createPost, loadThread } from '../lib/threads';
 import { matchup, type GameRow } from '../lib/sports';
 import { presentGame } from './games';
 
@@ -65,6 +65,18 @@ chat.get('/chat/:room/ws', async (c) => {
   const { room } = await resolveRoom(c.env, c.req.param('room'));
   if (c.req.header('Upgrade') !== 'websocket') throw new HttpError(426, 'Expected a WebSocket.');
   const user = c.get('user');
+  const stub = c.env.CHAT.get(c.env.CHAT.idFromName(room));
+  const headers = new Headers(c.req.raw.headers);
+  headers.set('x-member', JSON.stringify({ id: user.id, username: user.username, display_name: user.display_name, role: user.role }));
+  return stub.fetch(`https://chat/ws?room=${encodeURIComponent(room)}`, { headers });
+});
+
+// Live-updating threads: readers hold a WebSocket and refresh when a new post is announced.
+chat.get('/threads/:id/ws', async (c) => {
+  if (c.req.header('Upgrade') !== 'websocket') throw new HttpError(426, 'Expected a WebSocket.');
+  const user = c.get('user');
+  const t = await loadThread(c.env, user, Number(c.req.param('id')));
+  const room = `thread-${t.id}`;
   const stub = c.env.CHAT.get(c.env.CHAT.idFromName(room));
   const headers = new Headers(c.req.raw.headers);
   headers.set('x-member', JSON.stringify({ id: user.id, username: user.username, display_name: user.display_name, role: user.role }));

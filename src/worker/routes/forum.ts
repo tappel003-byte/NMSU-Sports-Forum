@@ -3,10 +3,11 @@ import { z } from 'zod';
 import type { AppEnv } from '../env';
 import { all, first, run, stmt, userPrefs } from '../db';
 import { HttpError, now, parse } from '../util';
+import { TAGS, cleanTags } from '../../shared/forum';
 import { SPORT_BY_KEY } from '../../shared/sports';
 import { checkHonorary, memberSummaries } from '../lib/members';
 import {
-  PAGE_SIZE, THREAD_SELECT, assertWritable, createPost, isArchived, isUnread, loadThread, mutedSets, presentThreads, unreadBaseline, type ThreadRow,
+  PAGE_SIZE, THREAD_SELECT, assertWritable, createPost, isArchived, isUnread, loadThread, mutedSets, needsApproval, presentThreads, unreadBaseline, type ThreadRow,
 } from '../lib/threads';
 
 export const forum = new Hono<AppEnv>();
@@ -28,7 +29,7 @@ forum.get('/forums', async (c) => {
     `SELECT t.forum_id, COUNT(*) AS threads, MAX(t.last_post_at) AS last_post_at,
             SUM(CASE WHEN t.last_post_at > ? AND (tr.last_read_post_id IS NULL OR tr.last_read_post_id < t.last_post_id) THEN 1 ELSE 0 END) AS unread
        FROM threads t LEFT JOIN thread_reads tr ON tr.thread_id = t.id AND tr.user_id = ?
-      WHERE t.deleted = 0 GROUP BY t.forum_id`, baseline, user.id);
+      WHERE t.deleted = 0 AND t.pending = 0 GROUP BY t.forum_id`, baseline, user.id);
   const muted = await mutedSets(c.env, user.id);
   const statMap = new Map(stats.map((s) => [s.forum_id, s]));
   return c.json({
@@ -52,8 +53,10 @@ forum.get('/forums/:slug', async (c) => {
   const sport = c.req.query('sport');
   const status = c.req.query('status');
   const muted = await mutedSets(c.env, user.id);
-  let where = 't.forum_id = ? AND t.deleted = 0';
-  const params: (string | number)[] = [user.id, f.id];
+  let where = 't.forum_id = ? AND t.deleted = 0 AND (t.pending = 0 OR t.user_id = ?)';
+  const params: (string | number)[] = [user.id, f.id, user.id];
+  const tag = c.req.query('tag');
+  if (tag && tag in TAGS) { where += " AND (',' || t.tags || ',') LIKE ?"; params.push(`%,${tag},%`); }
   if (sport) { where += ' AND t.sport = ?'; params.push(sport); }
   if (status) { where += ' AND t.suggestion_status = ?'; params.push(status); }
   const rows = await all<ThreadRow>(c.env, `${THREAD_SELECT} WHERE ${where} ORDER BY t.pinned DESC, t.last_post_at DESC LIMIT ? OFFSET ?`,
@@ -79,8 +82,12 @@ forum.get('/feed', async (c) => {
   const page = Math.max(1, Number(c.req.query('page')) || 1);
   const muted = await mutedSets(c.env, user.id);
   const prefs = userPrefs(user.prefs);
-  const params: (string | number)[] = [user.id];
-  let where = 't.deleted = 0';
+  const params: (string | number)[] = [user.id, user.id];
+  let where = 't.deleted = 0 AND (t.pending = 0 OR t.user_id = ?)';
+  const tag = c.req.query('tag');
+  if (tag && tag in TAGS) { where += " AND (',' || t.tags || ',') LIKE ?"; params.push(`%,${tag},%`); }
+  // Automatic game threads are grouped under their game card instead of filling the main list.
+  if ((tab === 'latest' || tab === 'popular') && c.req.query('games') !== '1') where += ' AND NOT (t.user_id IS NULL AND t.game_id IS NOT NULL)';
   let order = 't.last_post_at DESC';
   if (tab === 'following') {
     where += ' AND t.id IN (SELECT thread_id FROM follows WHERE user_id = ?)';
@@ -130,20 +137,22 @@ forum.post('/threads', async (c) => {
     game_id: z.number().int().optional().nullable(),
     game_phase: z.enum(['pregame', 'postgame']).optional().nullable(),
     draft_key: z.string().max(80).optional(),
+    tags: z.array(z.string()).max(3).optional(),
   }), await c.req.json());
   const f = await first<{ id: number; sports: string; kind: string }>(c.env, 'SELECT id, sports, kind FROM forums WHERE slug = ?', body.forum);
   if (!f) throw new HttpError(400, 'Choose a forum.');
   const sports = f.sports ? f.sports.split(',') : [];
   const sport = body.sport && sports.includes(body.sport) ? body.sport : sports.length === 1 ? sports[0] : null;
   const t = now();
-  const r = await run(c.env, `INSERT INTO threads (forum_id, user_id, title, description, sport, created_at, last_post_at, game_id, game_phase, suggestion_status)
-                              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    f.id, user.id, body.title, body.description, sport, t, t, body.game_id ?? null, body.game_id ? body.game_phase ?? null : null, f.kind === 'suggestions' ? null : null);
+  const pending = await needsApproval(c.env, user);
+  const r = await run(c.env, `INSERT INTO threads (forum_id, user_id, title, description, sport, created_at, last_post_at, game_id, game_phase, tags, pending)
+                              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    f.id, user.id, body.title, body.description, sport, t, t, body.game_id ?? null, body.game_id ? body.game_phase ?? null : null, cleanTags(body.tags), pending ? 1 : 0);
   const threadId = r.meta.last_row_id;
-  await createPost(c.env, user, { id: threadId, title: body.title, user_id: user.id }, body.body, { attachmentIds: body.attachments, isFirst: true });
+  await createPost(c.env, user, { id: threadId, title: body.title, user_id: user.id }, body.body, { attachmentIds: body.attachments, isFirst: true, pending });
   if (body.poll) await createPoll(c.env, threadId, body.poll);
   if (body.draft_key) await run(c.env, 'DELETE FROM drafts WHERE user_id = ? AND key = ?', user.id, body.draft_key);
-  return c.json({ id: threadId });
+  return c.json({ id: threadId, pending });
 });
 
 async function createPoll(env: AppEnv['Bindings'], threadId: number, poll: z.infer<typeof pollSchema>) {
@@ -165,20 +174,21 @@ forum.get('/threads/:id', async (c) => {
   const user = c.get('user');
   const t = await loadThread(c.env, user, idParam(c.req.param('id')));
   const muted = await mutedSets(c.env, user.id);
+  const visibleSql = user.role === 'admin' ? '1 = 1' : `(pending = 0 OR user_id = ${Number(user.id)})`;
   const firstUnread = isUnread(t, user)
-    ? (await first<{ id: number }>(c.env, 'SELECT id FROM posts WHERE thread_id = ? AND id > ? ORDER BY id LIMIT 1', t.id, t.last_read_post_id ?? 0))?.id ?? null
+    ? (await first<{ id: number }>(c.env, `SELECT id FROM posts WHERE thread_id = ? AND id > ? AND ${visibleSql} ORDER BY id LIMIT 1`, t.id, t.last_read_post_id ?? 0))?.id ?? null
     : null;
-  const total = (await first<{ n: number }>(c.env, 'SELECT COUNT(*) AS n FROM posts WHERE thread_id = ?', t.id))?.n ?? 0;
+  const total = (await first<{ n: number }>(c.env, `SELECT COUNT(*) AS n FROM posts WHERE thread_id = ? AND ${visibleSql}`, t.id))?.n ?? 0;
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   let page = Number(c.req.query('page')) || 0;
   const target = Number(c.req.query('post')) || (c.req.query('unread') ? firstUnread : 0);
   if (!page && target) {
-    const before = (await first<{ n: number }>(c.env, 'SELECT COUNT(*) AS n FROM posts WHERE thread_id = ? AND id < ?', t.id, target))?.n ?? 0;
+    const before = (await first<{ n: number }>(c.env, `SELECT COUNT(*) AS n FROM posts WHERE thread_id = ? AND id < ? AND ${visibleSql}`, t.id, target))?.n ?? 0;
     page = Math.floor(before / PAGE_SIZE) + 1;
   }
   page = Math.min(Math.max(page || 1, 1), pages);
-  const posts = await all<{ id: number; user_id: number | null; body: string; quote_post_id: number | null; created_at: number; edited_at: number | null; edit_count: number; deleted: number }>(c.env,
-    'SELECT id, user_id, body, quote_post_id, created_at, edited_at, edit_count, deleted FROM posts WHERE thread_id = ? ORDER BY id LIMIT ? OFFSET ?',
+  const posts = await all<{ id: number; user_id: number | null; body: string; quote_post_id: number | null; created_at: number; edited_at: number | null; edit_count: number; deleted: number; pending: number }>(c.env,
+    `SELECT id, user_id, body, quote_post_id, created_at, edited_at, edit_count, deleted, pending FROM posts WHERE thread_id = ? AND ${visibleSql} ORDER BY id LIMIT ? OFFSET ?`,
     t.id, PAGE_SIZE, (page - 1) * PAGE_SIZE);
   const postIds = posts.map((p) => p.id);
   const ph = postIds.map(() => '?').join(',') || 'NULL';
@@ -217,6 +227,7 @@ forum.get('/threads/:id', async (c) => {
       forum: { slug: t.forum_slug, name: t.forum_name, sport_label: t.forum_sport_label, icon: t.forum_icon },
       user_id: t.user_id, pinned: Boolean(t.pinned), locked: Boolean(t.locked), archived, deleted: Boolean(t.deleted),
       reply_count: t.reply_count, followed: Boolean(followed), game, game_phase: t.game_phase, suggestion_status: t.suggestion_status,
+      tags: t.tags ? t.tags.split(',') : [], pending: Boolean(t.pending), last_post_id: t.last_post_id,
       can_reply: canReply, first_unread_post_id: firstUnread,
     },
     page, pages,
@@ -229,6 +240,7 @@ forum.get('/threads/:id', async (c) => {
         author: author ?? null,
         body: p.deleted ? '' : p.body,
         deleted: Boolean(p.deleted),
+        pending: Boolean(p.pending),
         created_at: p.created_at,
         edited_at: p.edited_at,
         edit_count: p.edit_count,
@@ -247,7 +259,7 @@ forum.get('/threads/:id', async (c) => {
 });
 
 async function pollFor(env: AppEnv['Bindings'], threadId: number, userId: number) {
-  const poll = await first<{ id: number; question: string; closes_at: number | null }>(env, 'SELECT id, question, closes_at FROM polls WHERE thread_id = ?', threadId);
+  const poll = await first<{ id: number; question: string; closes_at: number | null; allow_add: number; kind: string | null }>(env, 'SELECT id, question, closes_at, allow_add, kind FROM polls WHERE thread_id = ?', threadId);
   if (!poll) return null;
   const options = await all<{ id: number; label: string; votes: number }>(env,
     `SELECT o.id, o.label, (SELECT COUNT(*) FROM poll_votes v WHERE v.option_id = o.id) AS votes FROM poll_options o WHERE o.poll_id = ? ORDER BY o.sort`, poll.id);
@@ -260,9 +272,17 @@ forum.patch('/threads/:id', async (c) => {
   const t = await loadThread(c.env, user, idParam(c.req.param('id')));
   if (t.user_id !== user.id && user.role !== 'admin') throw new HttpError(403, 'You can only edit your own discussions.');
   assertWritable(t, user);
-  const body = parse(z.object({ title: z.string().trim().min(4).max(140), description: z.string().trim().min(3).max(240) }), await c.req.json());
-  await run(c.env, 'UPDATE threads SET title = ?, description = ? WHERE id = ?', body.title, body.description, t.id);
+  const body = parse(z.object({ title: z.string().trim().min(4).max(140), description: z.string().trim().min(3).max(240), tags: z.array(z.string()).max(3).optional() }), await c.req.json());
+  await run(c.env, 'UPDATE threads SET title = ?, description = ?, tags = COALESCE(?, tags) WHERE id = ?', body.title, body.description, body.tags ? cleanTags(body.tags) : null, t.id);
   return c.json({ ok: true });
+});
+
+// Cheap check used by live threads after a broadcast or when the app returns to the foreground.
+forum.get('/threads/:id/latest', async (c) => {
+  const user = c.get('user');
+  const t = await loadThread(c.env, user, idParam(c.req.param('id')));
+  const r = await first<{ n: number; last: number }>(c.env, `SELECT COUNT(*) AS n, COALESCE(MAX(id), 0) AS last FROM posts WHERE thread_id = ? AND (pending = 0 OR user_id = ?)`, t.id, user.id);
+  return c.json({ count: r?.n ?? 0, last_post_id: r?.last ?? 0, locked: Boolean(t.locked) });
 });
 
 forum.post('/threads/:id/read', async (c) => {
@@ -296,9 +316,10 @@ forum.post('/threads/:id/posts', async (c) => {
     draft_key: z.string().max(80).optional(),
   }), await c.req.json());
   if (body.quote_post_id && !(await first(c.env, 'SELECT id FROM posts WHERE id = ?', body.quote_post_id))) throw new HttpError(400, 'Quoted post not found.');
-  const id = await createPost(c.env, user, t, body.body, { quotePostId: body.quote_post_id, attachmentIds: body.attachments });
+  const pending = await needsApproval(c.env, user);
+  const id = await createPost(c.env, user, t, body.body, { quotePostId: body.quote_post_id, attachmentIds: body.attachments, pending });
   if (body.draft_key) await run(c.env, 'DELETE FROM drafts WHERE user_id = ? AND key = ?', user.id, body.draft_key);
-  return c.json({ id });
+  return c.json({ id, pending });
 });
 
 async function loadPost(env: AppEnv['Bindings'], id: number) {
@@ -383,6 +404,27 @@ forum.post('/polls/:id/vote', async (c) => {
   return c.json(await pollFor(c.env, poll.thread_id, user.id));
 });
 
+// Member-nominated options (used by the automatic Player of the Game vote).
+forum.post('/polls/:id/options', async (c) => {
+  const user = c.get('user');
+  const pollId = idParam(c.req.param('id'));
+  const poll = await first<{ thread_id: number; closes_at: number | null; allow_add: number }>(c.env, 'SELECT thread_id, closes_at, allow_add FROM polls WHERE id = ?', pollId);
+  if (!poll) throw new HttpError(404, 'Poll not found.');
+  await loadThread(c.env, user, poll.thread_id);
+  if (!poll.allow_add) throw new HttpError(400, 'This poll does not take nominations.');
+  if (poll.closes_at && poll.closes_at < now()) throw new HttpError(400, 'This poll is closed.');
+  const { label } = parse(z.object({ label: z.string().trim().min(2).max(60) }), await c.req.json());
+  const existing = await first<{ id: number }>(c.env, 'SELECT id FROM poll_options WHERE poll_id = ? AND lower(label) = lower(?)', pollId, label);
+  let optionId = existing?.id;
+  if (!optionId) {
+    const count = await first<{ n: number }>(c.env, 'SELECT COUNT(*) AS n FROM poll_options WHERE poll_id = ?', pollId);
+    if ((count?.n ?? 0) >= 30) throw new HttpError(400, 'This poll already has the maximum number of choices.');
+    optionId = (await run(c.env, 'INSERT INTO poll_options (poll_id, label, sort, added_by) VALUES (?, ?, ?, ?)', pollId, label, count?.n ?? 0, user.id)).meta.last_row_id;
+  }
+  await run(c.env, `INSERT INTO poll_votes (poll_id, user_id, option_id) VALUES (?, ?, ?) ON CONFLICT(poll_id, user_id) DO UPDATE SET option_id = excluded.option_id`, pollId, user.id, optionId);
+  return c.json(await pollFor(c.env, poll.thread_id, user.id));
+});
+
 // ---------- Bookmarks & reminders ----------
 
 forum.post('/posts/:id/bookmark', async (c) => {
@@ -444,12 +486,12 @@ forum.get('/search', async (c) => {
   const fWhere = forumSlug ? ' AND f.slug = ?' : '';
   const fParams = forumSlug ? [forumSlug] : [];
   const threads = await all<ThreadRow>(c.env,
-    `${THREAD_SELECT} WHERE t.deleted = 0 AND (t.title LIKE ? ESCAPE '\\' OR t.description LIKE ? ESCAPE '\\')${fWhere} ORDER BY t.last_post_at DESC LIMIT 25`,
+    `${THREAD_SELECT} WHERE t.deleted = 0 AND t.pending = 0 AND (t.title LIKE ? ESCAPE '\\' OR t.description LIKE ? ESCAPE '\\')${fWhere} ORDER BY t.last_post_at DESC LIMIT 25`,
     user.id, like, like, ...fParams);
   const posts = await all<{ id: number; thread_id: number; body: string; created_at: number; username: string; title: string; forum_name: string }>(c.env,
     `SELECT p.id, p.thread_id, p.body, p.created_at, u.username, t.title, f.name AS forum_name
        FROM posts p JOIN threads t ON t.id = p.thread_id JOIN forums f ON f.id = t.forum_id LEFT JOIN users u ON u.id = p.user_id
-      WHERE p.deleted = 0 AND t.deleted = 0 AND p.body LIKE ? ESCAPE '\\'${fWhere} ORDER BY p.id DESC LIMIT 40`, like, ...fParams);
+      WHERE p.deleted = 0 AND p.pending = 0 AND t.deleted = 0 AND t.pending = 0 AND p.body LIKE ? ESCAPE '\\'${fWhere} ORDER BY p.id DESC LIMIT 40`, like, ...fParams);
   const members = await all(c.env,
     `SELECT id, username, display_name, legacy_moniker, avatar_key FROM users
       WHERE status = 'active' AND (username LIKE ? ESCAPE '\\' OR display_name LIKE ? ESCAPE '\\' OR legacy_moniker LIKE ? ESCAPE '\\') LIMIT 10`, like, like, like);
@@ -502,9 +544,9 @@ forum.get('/pulse', async (c) => {
         WHERE (cv.user_a = ? OR cv.user_b = ?) AND m.sender_id != ? AND m.id > COALESCE(r.last_read_id, 0)`, user.id, user.id, user.id, user.id),
     first<{ n: number }>(c.env,
       `SELECT COUNT(*) AS n FROM threads t LEFT JOIN thread_reads tr ON tr.thread_id = t.id AND tr.user_id = ?
-        WHERE t.deleted = 0 AND t.last_post_at > ? AND (tr.last_read_post_id IS NULL OR tr.last_read_post_id < t.last_post_id)
+        WHERE t.deleted = 0 AND t.pending = 0 AND t.last_post_at > ? AND (tr.last_read_post_id IS NULL OR tr.last_read_post_id < t.last_post_id)
           AND t.forum_id NOT IN (SELECT target_id FROM mutes WHERE user_id = ? AND target_type = 'forum')`, user.id, unreadBaseline(user), user.id),
-    user.role === 'admin' ? first<{ n: number }>(c.env, "SELECT COUNT(*) AS n FROM reports WHERE status = 'open'") : Promise.resolve({ n: 0 }),
+    user.role === 'admin' ? first<{ n: number }>(c.env, "SELECT (SELECT COUNT(*) FROM reports WHERE status = 'open') + (SELECT COUNT(*) FROM posts WHERE pending = 1 AND deleted = 0) AS n") : Promise.resolve({ n: 0 }),
   ]);
   return c.json({ notifications: n?.n ?? 0, messages: dm?.n ?? 0, unread_threads: unread?.n ?? 0, open_reports: reports?.n ?? 0 });
 });

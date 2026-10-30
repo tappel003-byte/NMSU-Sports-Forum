@@ -2,6 +2,8 @@ import type { Env, SessionUser } from '../env';
 import { all, first, notify, run, userPrefs } from '../db';
 import { DAY, HttpError, excerpt, extractMentions, now } from '../util';
 import { memberSummaries } from './members';
+import { getSetting } from '../db';
+import { splitTags } from '../../shared/forum';
 
 export const ARCHIVE_AFTER = 90 * DAY;
 export const UNREAD_LOOKBACK = 14 * DAY;
@@ -26,6 +28,8 @@ export interface ThreadRow {
   game_id: number | null;
   game_phase: string | null;
   suggestion_status: string | null;
+  tags: string;
+  pending: number;
   forum_slug: string;
   forum_name: string;
   forum_sport_label: string;
@@ -87,13 +91,15 @@ export async function presentThreads(env: Env, user: SessionUser, rows: ThreadRo
       game_id: r.game_id,
       game_phase: r.game_phase,
       suggestion_status: r.suggestion_status,
+      tags: splitTags(r.tags),
+      pending: Boolean(r.pending),
     };
   });
 }
 
 export async function loadThread(env: Env, user: SessionUser, id: number): Promise<ThreadRow> {
   const t = await first<ThreadRow>(env, `${THREAD_SELECT} WHERE t.id = ?`, user.id, id);
-  if (!t || (t.deleted && user.role !== 'admin')) throw new HttpError(404, 'Discussion not found.');
+  if (!t || (t.deleted && user.role !== 'admin') || (t.pending && user.role !== 'admin' && t.user_id !== user.id)) throw new HttpError(404, 'Discussion not found.');
   return t;
 }
 
@@ -104,17 +110,20 @@ export function assertWritable(t: ThreadRow, user: SessionUser): void {
   if (isArchived(t)) throw new HttpError(403, 'This discussion is archived (no replies for 90 days). An administrator can reopen it.');
 }
 
-/** Inserts a post, links attachments, updates thread counters and sends notifications. */
+/** True when this member's posts must be approved by an admin first (setting `approve_first_post`). */
+export async function needsApproval(env: Env, user: SessionUser): Promise<boolean> {
+  if (user.role === 'admin' || user.trusted) return false;
+  return (await getSetting(env, 'approve_first_post')) === '1';
+}
+
+/** Inserts a post, links attachments, updates thread counters and sends notifications. Pending posts wait for approval. */
 export async function createPost(env: Env, user: SessionUser, thread: { id: number; title: string; user_id: number | null }, body: string,
-  opts: { quotePostId?: number | null; attachmentIds?: string[]; isFirst?: boolean }): Promise<number> {
+  opts: { quotePostId?: number | null; attachmentIds?: string[]; isFirst?: boolean; pending?: boolean }): Promise<number> {
   const t = now();
-  const r = await run(env, 'INSERT INTO posts (thread_id, user_id, body, quote_post_id, created_at) VALUES (?, ?, ?, ?, ?)',
-    thread.id, user.id, body, opts.quotePostId ?? null, t);
+  const pending = Boolean(opts.pending);
+  const r = await run(env, 'INSERT INTO posts (thread_id, user_id, body, quote_post_id, created_at, pending) VALUES (?, ?, ?, ?, ?, ?)',
+    thread.id, user.id, body, opts.quotePostId ?? null, t, pending ? 1 : 0);
   const postId = r.meta.last_row_id;
-  await run(env, `UPDATE threads SET last_post_at = ?, last_post_id = ?, last_post_user_id = ?, reply_count = reply_count + ? WHERE id = ?`,
-    t, postId, user.id, opts.isFirst ? 0 : 1, thread.id);
-  await run(env, `INSERT INTO thread_reads (user_id, thread_id, last_read_post_id) VALUES (?, ?, ?)
-                  ON CONFLICT(user_id, thread_id) DO UPDATE SET last_read_post_id = MAX(last_read_post_id, excluded.last_read_post_id)`, user.id, thread.id, postId);
   if (opts.attachmentIds?.length) {
     for (const id of opts.attachmentIds.slice(0, 6)) {
       await run(env, "UPDATE attachments SET post_id = ? WHERE id = ? AND user_id = ? AND post_id IS NULL AND kind = 'post'", postId, id, user.id);
@@ -123,8 +132,32 @@ export async function createPost(env: Env, user: SessionUser, thread: { id: numb
   if (userPrefs(user.prefs).auto_follow !== false) {
     await run(env, 'INSERT OR IGNORE INTO follows (user_id, thread_id, created_at) VALUES (?, ?, ?)', user.id, thread.id, t);
   }
-  await sendPostNotifications(env, user, thread, postId, body, opts.quotePostId ?? null, Boolean(opts.isFirst));
+  if (pending) {
+    if (opts.isFirst) await run(env, 'UPDATE threads SET last_post_id = ?, last_post_user_id = ? WHERE id = ?', postId, user.id, thread.id);
+    return postId;
+  }
+  await publishPost(env, user, thread, postId, body, opts.quotePostId ?? null, Boolean(opts.isFirst), t);
   return postId;
+}
+
+/** Makes a post visible: thread counters, read marker, notifications and live update. */
+export async function publishPost(env: Env, user: SessionUser, thread: { id: number; title: string }, postId: number, body: string, quotePostId: number | null, isFirst: boolean, t = now()) {
+  await run(env, `UPDATE threads SET last_post_at = ?, last_post_id = MAX(last_post_id, ?), last_post_user_id = ?, reply_count = reply_count + ? WHERE id = ?`,
+    t, postId, user.id, isFirst ? 0 : 1, thread.id);
+  await run(env, `INSERT INTO thread_reads (user_id, thread_id, last_read_post_id) VALUES (?, ?, ?)
+                  ON CONFLICT(user_id, thread_id) DO UPDATE SET last_read_post_id = MAX(last_read_post_id, excluded.last_read_post_id)`, user.id, thread.id, postId);
+  await sendPostNotifications(env, user, thread, postId, body, quotePostId, isFirst);
+  await broadcastThread(env, thread.id, { type: 'post', id: postId });
+}
+
+/** Tells everyone viewing a thread that it changed (live-updating threads). */
+export async function broadcastThread(env: Env, threadId: number, msg: Record<string, unknown>): Promise<void> {
+  try {
+    const stub = env.CHAT.get(env.CHAT.idFromName(`thread-${threadId}`));
+    await stub.fetch('https://chat/broadcast', { method: 'POST', body: JSON.stringify(msg) });
+  } catch (e) {
+    console.error('thread broadcast failed', e);
+  }
 }
 
 async function sendPostNotifications(env: Env, user: SessionUser, thread: { id: number; title: string }, postId: number, body: string, quotePostId: number | null, isFirst: boolean) {

@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import type { AppEnv } from '../env';
-import { clientIp, createSession, destroySession, rateLimit, requireUser } from '../auth';
+import { clientIp, createSession, destroySession, liftExpiredSuspension, rateLimit, requireUser } from '../auth';
 import { first, logMod, run } from '../db';
 import { emailEnabled, sendEmail } from '../email';
 import { HttpError, DAY, hashPassword, now, parse, passwordSchema, randomToken, sha256, usernameSchema, verifyPassword } from '../util';
@@ -28,7 +28,7 @@ auth.post('/setup', async (c) => {
   if (!c.env.BOOTSTRAP_TOKEN) throw new HttpError(403, 'Setup is not enabled. Set the BOOTSTRAP_TOKEN secret first.');
   if (body.token !== c.env.BOOTSTRAP_TOKEN) throw new HttpError(403, 'Setup token is incorrect.');
   if (await first(c.env, 'SELECT id FROM users LIMIT 1')) throw new HttpError(409, 'Setup has already been completed.');
-  const r = await run(c.env, "INSERT INTO users (username, email, password_hash, role, created_at) VALUES (?, ?, ?, 'admin', ?)",
+  const r = await run(c.env, "INSERT INTO users (username, email, password_hash, role, trusted, created_at) VALUES (?, ?, ?, 'admin', 1, ?)",
     body.username, body.email, await hashPassword(body.password), now());
   const id = r.meta.last_row_id;
   await logMod(c.env, id, 'setup_first_admin', 'user', id);
@@ -82,7 +82,13 @@ auth.post('/login', async (c) => {
   const u = await first<{ id: number; password_hash: string; status: string }>(c.env,
     'SELECT id, password_hash, status FROM users WHERE username = ? OR email = ?', body.username, body.username);
   if (!u || !(await verifyPassword(body.password, u.password_hash))) throw new HttpError(401, 'Username or password is incorrect.');
-  if (u.status !== 'active') throw new HttpError(403, 'This account is suspended. Contact an administrator.');
+  if (u.status !== 'active' && !(await liftExpiredSuspension(c.env, u.id))) {
+    const until = (await first<{ suspended_until: number | null; deleted_at: number | null }>(c.env, 'SELECT suspended_until, deleted_at FROM users WHERE id = ?', u.id));
+    if (until?.deleted_at) throw new HttpError(401, 'Username or password is incorrect.');
+    throw new HttpError(403, until?.suspended_until
+      ? `This account is suspended until ${new Date(until.suspended_until).toLocaleDateString('en-US', { timeZone: 'America/Denver', month: 'long', day: 'numeric' })}.`
+      : 'This account is suspended. Contact an administrator.');
+  }
   await createSession(c, u.id);
   return c.json({ ok: true });
 });

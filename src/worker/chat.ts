@@ -35,6 +35,8 @@ export class ChatRoom extends DurableObject<Env> {
       return;
     }
     if (msg.type === 'ping') { ws.send(JSON.stringify({ type: 'pong' })); return; }
+    // Thread rooms only push "new post" signals to readers; nobody sends into them.
+    if (room.startsWith('thread-')) return;
     if (msg.type === 'send') {
       const body = (msg.body ?? '').trim().slice(0, 1000);
       if (!body) return;

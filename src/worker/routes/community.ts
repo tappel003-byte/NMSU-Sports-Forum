@@ -8,7 +8,11 @@ import { memberSummaries } from '../lib/members';
 import { THREAD_SELECT, presentThreads, unreadBaseline, type ThreadRow } from '../lib/threads';
 import { presentGame } from './games';
 import type { GameRow } from '../lib/sports';
-import { putObject, getObject } from '../storage';
+import { putObject, getObject, deleteObject } from '../storage';
+import { getPreview } from '../lib/previews';
+import { pushEnabled } from '../lib/push';
+import { destroySession } from '../auth';
+import { hashPassword, randomToken, verifyPassword } from '../util';
 
 export const community = new Hono<AppEnv>();
 
@@ -43,7 +47,7 @@ community.get('/home', async (c) => {
   ]);
   const unread = await first<{ n: number }>(c.env,
     `SELECT COUNT(*) AS n FROM threads t LEFT JOIN thread_reads tr ON tr.thread_id = t.id AND tr.user_id = ?
-      WHERE t.deleted = 0 AND t.last_post_at > ? AND (tr.last_read_post_id IS NULL OR tr.last_read_post_id < t.last_post_id)`, user.id, unreadBaseline(user));
+      WHERE t.deleted = 0 AND t.pending = 0 AND t.last_post_at > ? AND (tr.last_read_post_id IS NULL OR tr.last_read_post_id < t.last_post_id)`, user.id, unreadBaseline(user));
   const followed = await all<ThreadRow>(c.env,
     `${THREAD_SELECT} WHERE t.deleted = 0 AND t.id IN (SELECT thread_id FROM follows WHERE user_id = ?) ORDER BY t.last_post_at DESC LIMIT 5`, user.id, user.id);
   const members = await memberSummaries(c.env, weekly ? [weekly.user_id] : []);
@@ -72,6 +76,16 @@ community.get('/members', async (c) => {
        AND (? = '' OR username LIKE ? OR display_name LIKE ? OR legacy_moniker LIKE ? OR city LIKE ?) ORDER BY username COLLATE NOCASE LIMIT 500`, q, like, like, like, like);
   const members = await memberSummaries(c.env, rows.map((r) => r.id));
   return c.json({ members: rows.map((r) => ({ ...members.get(r.id), city: r.city, state: r.state, legacy_moniker: r.legacy_moniker, joined: r.created_at, last_seen_at: r.last_seen_at })) });
+});
+
+// ---------- @mention autocomplete ----------
+
+community.get('/members/suggest', async (c) => {
+  const q = (c.req.query('q') ?? '').replace(/[^A-Za-z0-9_]/g, '').slice(0, 24);
+  const rows = await all(c.env,
+    `SELECT id, username, display_name, avatar_key FROM users WHERE status = 'active' AND deleted_at IS NULL
+       AND (username LIKE ? OR display_name LIKE ?) ORDER BY last_seen_at DESC LIMIT 6`, `${q}%`, `${q}%`);
+  return c.json({ members: rows });
 });
 
 community.get('/members/by-name/:username', async (c) => {
@@ -426,4 +440,101 @@ community.get('/year-in-review', async (c) => {
     chattiest_games: chattiestGames.map((g) => ({ ...presentGame(g), chats: g.chats })),
     prediction_champion: predictionChamp ? { ...members.get(predictionChamp.user_id), points: predictionChamp.points } : null,
   });
+});
+
+// ---------- Link previews (tweets, YouTube, articles) ----------
+
+community.get('/preview', async (c) => {
+  const url = c.req.query('url') ?? '';
+  try {
+    return c.json({ preview: await getPreview(c.env, url) }, 200, { 'Cache-Control': 'private, max-age=3600' });
+  } catch {
+    throw new HttpError(400, 'That link cannot be previewed.');
+  }
+});
+
+// ---------- Phone push notifications ----------
+
+community.get('/push/key', (c) => c.json({ key: pushEnabled(c.env) ? c.env.VAPID_PUBLIC_KEY : null }));
+
+community.post('/push/subscribe', async (c) => {
+  if (!pushEnabled(c.env)) throw new HttpError(400, 'Phone notifications are not set up on this forum yet.');
+  const body = parse(z.object({ endpoint: z.string().url().max(800), keys: z.object({ p256dh: z.string().max(200), auth: z.string().max(100) }) }), await c.req.json());
+  if (!body.endpoint.startsWith('https://')) throw new HttpError(400, 'Invalid subscription.');
+  await run(c.env, `INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth, created_at) VALUES (?, ?, ?, ?, ?)
+                    ON CONFLICT(endpoint) DO UPDATE SET user_id = excluded.user_id, p256dh = excluded.p256dh, auth = excluded.auth, failures = 0`,
+    c.get('user').id, body.endpoint, body.keys.p256dh, body.keys.auth, now());
+  return c.json({ ok: true });
+});
+
+community.post('/push/unsubscribe', async (c) => {
+  const { endpoint } = parse(z.object({ endpoint: z.string().max(800) }), await c.req.json());
+  await run(c.env, 'DELETE FROM push_subscriptions WHERE endpoint = ? AND user_id = ?', endpoint, c.get('user').id);
+  return c.json({ ok: true });
+});
+
+community.get('/push/status', async (c) => {
+  const r = await first<{ n: number }>(c.env, 'SELECT COUNT(*) AS n FROM push_subscriptions WHERE user_id = ?', c.get('user').id);
+  return c.json({ enabled: pushEnabled(c.env), devices: r?.n ?? 0 });
+});
+
+// ---------- Your data: download and account deletion ----------
+
+community.get('/me/export', async (c) => {
+  const id = c.get('user').id;
+  const q = (sql: string) => all(c.env, sql, id);
+  const [profile, threads, posts, reactions, bookmarks, drafts, predictions, events, notifications, polls, conversations] = await Promise.all([
+    first(c.env, `SELECT id, username, email, role, display_name, bio, grad_year, city, state, interests, legacy_moniker, legacy_join_year, legacy_post_count,
+                         show_email, show_on_map, birthday_md, show_birthday, prefs, created_at FROM users WHERE id = ?`, id),
+    q('SELECT id, title, description, created_at FROM threads WHERE user_id = ? ORDER BY id'),
+    q('SELECT id, thread_id, body, created_at, edited_at, deleted FROM posts WHERE user_id = ? ORDER BY id'),
+    q('SELECT post_id, value, created_at FROM reactions WHERE user_id = ?'),
+    q('SELECT post_id, note, remind_at, created_at FROM bookmarks WHERE user_id = ?'),
+    q('SELECT key, title, body, updated_at FROM drafts WHERE user_id = ?'),
+    q('SELECT game_id, pick, nmsu_score, opp_score, points FROM predictions WHERE user_id = ?'),
+    q('SELECT id, title, location, starts_at FROM events WHERE user_id = ?'),
+    q('SELECT text, link, created_at, read_at FROM notifications WHERE user_id = ? ORDER BY id DESC LIMIT 500'),
+    q('SELECT poll_id, option_id FROM poll_votes WHERE user_id = ?'),
+    all(c.env, `SELECT m.conversation_id, u.username AS sender, m.body, m.created_at FROM dm_messages m JOIN dm_conversations cv ON cv.id = m.conversation_id
+                 JOIN users u ON u.id = m.sender_id WHERE cv.user_a = ?1 OR cv.user_b = ?1 ORDER BY m.id`, id),
+  ]);
+  const data = { exported_at: new Date().toISOString(), site: 'NMSU Sports Forum', profile, threads, posts, reactions, bookmarks, drafts, predictions, events, poll_votes: polls, private_messages: conversations, notifications };
+  return new Response(JSON.stringify(data, null, 2), {
+    headers: { 'Content-Type': 'application/json', 'Content-Disposition': `attachment; filename="nmsu-sports-forum-${(profile as { username: string }).username}.json"`, 'Cache-Control': 'no-store' },
+  });
+});
+
+community.post('/me/delete', async (c) => {
+  const user = c.get('user');
+  const body = parse(z.object({ password: z.string(), confirm: z.literal('DELETE', { message: 'type DELETE to confirm' }) }), await c.req.json());
+  const u = await first<{ password_hash: string; avatar_key: string | null }>(c.env, 'SELECT password_hash, avatar_key FROM users WHERE id = ?', user.id);
+  if (!u || !(await verifyPassword(body.password, u.password_hash))) throw new HttpError(400, 'Password is incorrect.');
+  if (user.role === 'admin') {
+    const admins = await first<{ n: number }>(c.env, "SELECT COUNT(*) AS n FROM users WHERE role = 'admin' AND status = 'active'");
+    if ((admins?.n ?? 0) <= 1) throw new HttpError(400, 'You are the only administrator. Make someone else an administrator first.');
+  }
+  const id = user.id;
+  // Posts stay in discussions (shown as "Former member"); personal details, private messages and settings are erased.
+  await run(c.env, `UPDATE users SET username = ?, email = ?, password_hash = ?, display_name = NULL, bio = NULL, avatar_key = NULL, grad_year = NULL,
+                    city = NULL, state = NULL, interests = NULL, legacy_moniker = NULL, legacy_join_year = NULL, legacy_post_count = NULL,
+                    show_email = 0, show_on_map = 0, map_lat = NULL, map_lon = NULL, birthday_md = NULL, show_birthday = 0, featured_post_id = NULL,
+                    prefs = '{}', role = 'member', status = 'suspended', suspended_until = NULL, deleted_at = ? WHERE id = ?`,
+    `former_member_${id}`, `deleted-${id}@deleted.invalid`, await hashPassword(randomToken()), now(), id);
+  const convs = await all<{ id: number }>(c.env, 'SELECT id FROM dm_conversations WHERE user_a = ? OR user_b = ?', id, id);
+  for (const cv of convs) {
+    await run(c.env, 'DELETE FROM dm_messages WHERE conversation_id = ?', cv.id);
+    await run(c.env, 'DELETE FROM dm_reads WHERE conversation_id = ?', cv.id);
+    await run(c.env, 'DELETE FROM dm_conversations WHERE id = ?', cv.id);
+  }
+  for (const sql of ['DELETE FROM drafts WHERE user_id = ?', 'DELETE FROM bookmarks WHERE user_id = ?', 'DELETE FROM mutes WHERE user_id = ? OR (target_type = \'user\' AND target_id = ?1)',
+    'DELETE FROM follows WHERE user_id = ?', 'DELETE FROM notifications WHERE user_id = ?', 'DELETE FROM push_subscriptions WHERE user_id = ?', 'DELETE FROM event_rsvps WHERE user_id = ?']) {
+    await run(c.env, sql, id);
+  }
+  if (u.avatar_key) {
+    await deleteObject(c.env, `avatar/${u.avatar_key}`).catch(() => {});
+    await run(c.env, 'UPDATE attachments SET deleted = 1 WHERE id = ?', u.avatar_key);
+  }
+  await run(c.env, 'DELETE FROM sessions WHERE user_id = ?', id);
+  await destroySession(c);
+  return c.json({ ok: true });
 });

@@ -2,12 +2,14 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import type { AppEnv } from '../env';
 import { requireAdmin } from '../auth';
-import { all, first, getSetting, logMod, run, setSetting } from '../db';
+import { all, first, getSetting, logMod, notify, run, setSetting } from '../db';
 import { emailEnabled, sendEmail } from '../email';
 import { DAY, HttpError, now, parse, randomToken, sha256 } from '../util';
 import { BADGES, SPORT_BY_KEY } from '../../shared/sports';
 import { awardBadge } from '../lib/members';
 import { createResetToken } from './auth';
+import { publishPost, broadcastThread } from '../lib/threads';
+import type { SessionUser } from '../env';
 import { runGameLifecycle, syncAllFeeds, type GameRow } from '../lib/sports';
 import { presentGame } from './games';
 
@@ -21,15 +23,16 @@ const num = (v: string | undefined) => {
 };
 
 admin.get('/overview', async (c) => {
-  const [members, reports, invites, feeds, log] = await Promise.all([
+  const [members, reports, pendingPosts, invites, feeds, log] = await Promise.all([
     first<{ total: number; admins: number; suspended: number }>(c.env,
       "SELECT COUNT(*) AS total, SUM(role = 'admin') AS admins, SUM(status = 'suspended') AS suspended FROM users"),
     first<{ n: number }>(c.env, "SELECT COUNT(*) AS n FROM reports WHERE status = 'open'"),
+    first<{ n: number }>(c.env, 'SELECT COUNT(*) AS n FROM posts WHERE pending = 1 AND deleted = 0'),
     first<{ n: number }>(c.env, 'SELECT COUNT(*) AS n FROM invites WHERE revoked = 0 AND uses < max_uses AND expires_at > ?', now()),
     all(c.env, 'SELECT id, sport, url, enabled, last_ok_at, last_error, last_error_at, failing, last_counts FROM data_feeds ORDER BY sport'),
     all(c.env, 'SELECT l.*, u.username AS actor FROM mod_log l LEFT JOIN users u ON u.id = l.actor_id ORDER BY l.id DESC LIMIT 25'),
   ]);
-  return c.json({ members, open_reports: reports?.n ?? 0, open_invites: invites?.n ?? 0, feeds, log, emailEnabled: emailEnabled(c.env) });
+  return c.json({ members, open_reports: reports?.n ?? 0, pending_posts: pendingPosts?.n ?? 0, open_invites: invites?.n ?? 0, feeds, log, emailEnabled: emailEnabled(c.env) });
 });
 
 // ---------- Invitations ----------
@@ -75,16 +78,16 @@ admin.delete('/invites/:id', async (c) => {
 
 admin.get('/members', async (c) => {
   const rows = await all(c.env,
-    `SELECT id, username, email, display_name, role, status, created_at, last_seen_at,
+    `SELECT id, username, email, display_name, role, status, suspended_until, created_at, last_seen_at,
        (SELECT COUNT(*) FROM posts p WHERE p.user_id = users.id AND p.deleted = 0) AS posts
-     FROM users ORDER BY username COLLATE NOCASE`);
+     FROM users WHERE deleted_at IS NULL ORDER BY username COLLATE NOCASE`);
   return c.json({ members: rows });
 });
 
 admin.patch('/members/:id', async (c) => {
   const actor = c.get('user');
   const id = num(c.req.param('id'));
-  const body = parse(z.object({ role: z.enum(['member', 'admin']).optional(), status: z.enum(['active', 'suspended']).optional(), reason: z.string().max(300).optional() }), await c.req.json());
+  const body = parse(z.object({ role: z.enum(['member', 'admin']).optional(), status: z.enum(['active', 'suspended']).optional(), days: z.number().int().min(1).max(365).optional(), reason: z.string().max(300).optional() }), await c.req.json());
   const target = await first<{ id: number; role: string; status: string; username: string }>(c.env, 'SELECT id, role, status, username FROM users WHERE id = ?', id);
   if (!target) throw new HttpError(404, 'Member not found.');
   const losingAdmin = target.role === 'admin' && target.status === 'active' && (body.role === 'member' || body.status === 'suspended');
@@ -94,10 +97,11 @@ admin.patch('/members/:id', async (c) => {
   }
   if (body.role) await run(c.env, 'UPDATE users SET role = ? WHERE id = ?', body.role, id);
   if (body.status) {
-    await run(c.env, 'UPDATE users SET status = ? WHERE id = ?', body.status, id);
+    // A suspension with `days` lifts itself automatically.
+    await run(c.env, 'UPDATE users SET status = ?, suspended_until = ? WHERE id = ?', body.status, body.status === 'suspended' && body.days ? now() + body.days * DAY : null, id);
     if (body.status === 'suspended') await run(c.env, 'DELETE FROM sessions WHERE user_id = ?', id);
   }
-  await logMod(c.env, actor.id, body.status ? `set_status_${body.status}` : `set_role_${body.role}`, 'user', id, body.reason ?? target.username);
+  await logMod(c.env, actor.id, body.status ? `set_status_${body.status}${body.days ? `_${body.days}d` : ''}` : `set_role_${body.role}`, 'user', id, body.reason ?? target.username);
   return c.json({ ok: true });
 });
 
@@ -149,6 +153,62 @@ admin.patch('/threads/:id', async (c) => {
   return c.json({ ok: true });
 });
 
+// Merge a duplicate discussion into another: posts move over, the duplicate is removed.
+admin.post('/threads/:id/merge', async (c) => {
+  const actor = c.get('user');
+  const src = num(c.req.param('id'));
+  const { into } = parse(z.object({ into: z.number().int() }), await c.req.json());
+  if (into === src) throw new HttpError(400, 'Choose a different discussion.');
+  const a = await first<{ id: number; title: string }>(c.env, 'SELECT id, title FROM threads WHERE id = ? AND deleted = 0', src);
+  const b = await first<{ id: number; title: string }>(c.env, 'SELECT id, title FROM threads WHERE id = ? AND deleted = 0', into);
+  if (!a || !b) throw new HttpError(404, 'Discussion not found.');
+  await run(c.env, 'UPDATE posts SET thread_id = ? WHERE thread_id = ?', into, src);
+  await run(c.env, 'INSERT OR IGNORE INTO follows (user_id, thread_id, created_at) SELECT user_id, ?, created_at FROM follows WHERE thread_id = ?', into, src);
+  const last = await first<{ id: number; user_id: number | null; created_at: number; n: number }>(c.env,
+    'SELECT id, user_id, created_at, (SELECT COUNT(*) FROM posts WHERE thread_id = ?1 AND pending = 0) AS n FROM posts WHERE thread_id = ?1 AND pending = 0 ORDER BY id DESC LIMIT 1', into);
+  if (last) await run(c.env, 'UPDATE threads SET last_post_id = ?, last_post_user_id = ?, last_post_at = MAX(last_post_at, ?), reply_count = ? WHERE id = ?', last.id, last.user_id, last.created_at, Math.max(0, last.n - 1), into);
+  await run(c.env, 'UPDATE threads SET deleted = 1 WHERE id = ?', src);
+  await logMod(c.env, actor.id, 'merge_thread', 'thread', src, `“${a.title}” into “${b.title}” (#${into})`);
+  await broadcastThread(c.env, into, { type: 'post', id: last?.id ?? 0 });
+  return c.json({ ok: true });
+});
+
+// ---------- First-post approval queue ----------
+
+admin.get('/pending', async (c) => {
+  const rows = await all(c.env,
+    `SELECT p.id, p.body, p.created_at, p.thread_id, t.title, t.pending AS new_thread, u.id AS user_id, u.username
+       FROM posts p JOIN threads t ON t.id = p.thread_id JOIN users u ON u.id = p.user_id
+      WHERE p.pending = 1 AND p.deleted = 0 ORDER BY p.id`);
+  return c.json({ pending: rows });
+});
+
+admin.post('/pending/:id', async (c) => {
+  const actor = c.get('user');
+  const { approve } = parse(z.object({ approve: z.boolean() }), await c.req.json());
+  const p = await first<{ id: number; thread_id: number; user_id: number; body: string; quote_post_id: number | null; created_at: number }>(c.env,
+    'SELECT id, thread_id, user_id, body, quote_post_id, created_at FROM posts WHERE id = ? AND pending = 1', num(c.req.param('id')));
+  if (!p) throw new HttpError(404, 'Nothing to review.');
+  const t = await first<{ id: number; title: string; pending: number }>(c.env, 'SELECT id, title, pending FROM threads WHERE id = ?', p.thread_id);
+  const author = await first<SessionUser>(c.env, 'SELECT id, username, role, status, display_name, avatar_key, prefs, marked_read_at, created_at, trusted FROM users WHERE id = ?', p.user_id);
+  if (!t || !author) throw new HttpError(404, 'Nothing to review.');
+  if (approve) {
+    await run(c.env, 'UPDATE posts SET pending = 0 WHERE id = ?', p.id);
+    await run(c.env, 'UPDATE threads SET pending = 0 WHERE id = ?', t.id);
+    // One approval is enough: the member's later posts appear immediately.
+    await run(c.env, 'UPDATE users SET trusted = 1 WHERE id = ?', author.id);
+    await run(c.env, 'UPDATE posts SET pending = 0 WHERE user_id = ? AND pending = 1 AND id != ?', author.id, p.id);
+    await run(c.env, 'UPDATE threads SET pending = 0 WHERE user_id = ? AND pending = 1', author.id);
+    await publishPost(c.env, author, t, p.id, p.body, p.quote_post_id, Boolean(t.pending), p.created_at);
+    await notify(c.env, author.id, 'approved', 'Your first post was approved. Welcome! Your posts now appear right away.', `/t/${t.id}?post=${p.id}`, actor.id);
+  } else {
+    await run(c.env, 'UPDATE posts SET deleted = 1, deleted_by = ?, pending = 0 WHERE id = ?', actor.id, p.id);
+    if (t.pending) await run(c.env, 'UPDATE threads SET deleted = 1 WHERE id = ?', t.id);
+  }
+  await logMod(c.env, actor.id, approve ? 'approve_post' : 'reject_post', 'post', p.id, `${author.username}: ${p.body.slice(0, 200)}`);
+  return c.json({ ok: true });
+});
+
 // ---------- Reports ----------
 
 admin.get('/reports', async (c) => {
@@ -187,7 +247,7 @@ admin.delete('/badges/:id', async (c) => {
 
 // ---------- Settings ----------
 
-const SETTING_KEYS = ['launch_date', 'honorary_threshold', 'chat_window', 'announcement'] as const;
+const SETTING_KEYS = ['launch_date', 'honorary_threshold', 'chat_window', 'announcement', 'approve_first_post'] as const;
 
 admin.get('/settings', async (c) => {
   const out: Record<string, string> = {};
@@ -201,6 +261,7 @@ admin.put('/settings', async (c) => {
     honorary_threshold: z.string().regex(/^\d{0,4}$/).optional(),
     chat_window: z.string().regex(/^\d{2,3}$/).optional(),
     announcement: z.string().max(500).optional(),
+    approve_first_post: z.enum(['0', '1']).optional(),
   }), await c.req.json());
   for (const [k, v] of Object.entries(body)) if (v !== undefined) await setSetting(c.env, k, v);
   await logMod(c.env, c.get('user').id, 'update_settings', 'settings', null, JSON.stringify(body).slice(0, 500));
