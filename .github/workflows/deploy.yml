@@ -33,8 +33,9 @@ jobs:
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     env:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      # Raw values; the cleanup step below exports trimmed CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID for Wrangler.
+      RAW_CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      RAW_CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       BOOTSTRAP_TOKEN: ${{ secrets.BOOTSTRAP_TOKEN }}
       VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
       CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
@@ -48,7 +49,7 @@ jobs:
       - name: Skip when Cloudflare is not configured
         id: configured
         run: |
-          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+          if [ -z "$RAW_CF_TOKEN" ] || [ -z "$RAW_CF_ACCOUNT" ]; then
             echo "Cloudflare deployment is not configured yet; skipping."
             echo "ok=false" >> "$GITHUB_OUTPUT"
           else
@@ -58,8 +59,8 @@ jobs:
       - name: Clean up pasted secret values
         if: steps.configured.outputs.ok == 'true'
         run: |
-          TOKEN=$(printf '%s' "$CLOUDFLARE_API_TOKEN" | tr -d '[:space:]')
-          ACCOUNT=$(printf '%s' "$CLOUDFLARE_ACCOUNT_ID" | tr -d '[:space:]')
+          TOKEN=$(printf '%s' "$RAW_CF_TOKEN" | tr -d '[:space:]')
+          ACCOUNT=$(printf '%s' "$RAW_CF_ACCOUNT" | tr -d '[:space:]')
           echo "::add-mask::$TOKEN"
           echo "::add-mask::$ACCOUNT"
           echo "CLOUDFLARE_API_TOKEN=$TOKEN" >> "$GITHUB_ENV"
