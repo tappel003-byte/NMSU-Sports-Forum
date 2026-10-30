@@ -35,41 +35,79 @@ function Overview() {
   );
 }
 
+/** US numbers: 10 digits become +1XXXXXXXXXX; anything else is passed through as typed digits. */
+export function smsNumber(raw: string): string {
+  const digits = raw.replace(/\D/g, '');
+  if (digits.length === 10) return `+1${digits}`;
+  if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`;
+  return raw.trim().startsWith('+') ? `+${digits}` : digits;
+}
+
+export function inviteMessage(name: string, link: string, days: number): string {
+  return `${name ? `Hey ${name}, you're` : "You're"} invited to NMSU Sports Forum, the new home for Aggie fans. Free, no ads, built for your phone. Join here (the link works once and expires in ${days} days): ${link}`;
+}
+
 function Invites() {
   const { toast, emailEnabled } = useApp();
   const { data, reload } = useApi<{ invites: { id: number; email: string | null; note: string | null; max_uses: number; uses: number; expires_at: number; revoked: number; created_at: number; created_by: string; used_by: string | null }[] }>('/admin/invites');
-  const [f, setF] = useState({ email: '', note: '', days: '14', max_uses: '1' });
-  const [created, setCreated] = useState<{ link: string; emailed: boolean } | null>(null);
+  const blank = { name: '', phone: '', email: '', lock: false, note: '', days: '14', max_uses: '1' };
+  const [f, setF] = useState(blank);
+  const [created, setCreated] = useState<{ link: string; emailed: boolean; name: string; phone: string; email: string; days: number } | null>(null);
   const create = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const r = await api<{ link: string; emailed: boolean }>('/admin/invites', { body: { email: f.email, note: f.note, days: Number(f.days), max_uses: Number(f.max_uses) } });
-      setCreated(r);
-      setF({ email: '', note: '', days: '14', max_uses: '1' });
+      // The phone number stays on this device: it's only used to open your Messages app.
+      const r = await api<{ link: string; emailed: boolean; days: number }>('/admin/invites', { body: { name: f.name, email: f.email, lock_email: f.lock, note: f.note, days: Number(f.days), max_uses: Number(f.max_uses) } });
+      setCreated({ ...r, name: f.name, phone: f.phone, email: f.email });
+      setF(blank);
       reload();
     } catch (err) { toast((err as Error).message); }
   };
   const revoke = async (id: number) => { await api(`/admin/invites/${id}`, { method: 'DELETE' }); toast('Invitation revoked'); reload(); };
+  const msg = created ? inviteMessage(created.name, created.link, created.days) : '';
+  const ios = /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent);
+  const smsHref = created?.phone ? `sms:${smsNumber(created.phone)}${ios ? '&' : '?'}body=${encodeURIComponent(msg)}` : '';
+  const mailHref = created?.email ? `mailto:${encodeURIComponent(created.email)}?subject=${encodeURIComponent("You're invited to NMSU Sports Forum")}&body=${encodeURIComponent(msg)}` : '';
   return (
     <div className="stack">
       <section className="card card-pad">
         <h2>Invite a member</h2>
+        <p className="small muted" style={{ marginTop: 0 }}>Enter their cell number to text the invitation from your phone, their email to email it, or both.</p>
         <form onSubmit={create}>
           <div className="grid-2">
-            <div className="field"><label htmlFor="ie">Email (optional)</label><input id="ie" type="email" className="input" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /><span className="hint">{emailEnabled ? 'If given, the invite is emailed and only that address can use it.' : 'If given, only that address can use the invite.'}</span></div>
-            <div className="field"><label htmlFor="in">Private note</label><input id="in" className="input" value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} placeholder="e.g. Rick from the tailgate" /></div>
-            <div className="field"><label htmlFor="id">Expires after (days)</label><input id="id" type="number" min={1} max={60} className="input" value={f.days} onChange={(e) => setF({ ...f, days: e.target.value })} /></div>
-            <div className="field"><label htmlFor="iu">Number of uses</label><input id="iu" type="number" min={1} max={50} className="input" value={f.max_uses} onChange={(e) => setF({ ...f, max_uses: e.target.value })} /></div>
+            <div className="field"><label htmlFor="iname">Their name (optional)</label><input id="iname" className="input" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} placeholder="e.g. Rick" maxLength={60} /><span className="hint">Used to greet them in the message.</span></div>
+            <div className="field"><label htmlFor="iphone">Cell number (optional)</label><input id="iphone" type="tel" inputMode="tel" autoComplete="off" className="input" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} placeholder="575-555-0123" /><span className="hint">Not saved on the site. It just fills in your text message.</span></div>
+            <div className="field"><label htmlFor="ie">Email (optional)</label><input id="ie" type="email" className="input" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /><span className="hint">{emailEnabled ? 'The site emails the invitation automatically, and you can also send it yourself.' : 'You can send it from your own email app in the next step.'}</span></div>
+            <div className="field"><label htmlFor="in">Private note</label><input id="in" className="input" value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} placeholder="e.g. from the tailgate" /></div>
           </div>
+          {f.email && <label className="check"><input type="checkbox" checked={f.lock} onChange={(e) => setF({ ...f, lock: e.target.checked })} /><span>Only this email address can use the invitation</span></label>}
+          <details style={{ marginBottom: 12 }}>
+            <summary className="small muted" style={{ cursor: 'pointer' }}>More options</summary>
+            <div className="grid-2" style={{ marginTop: 10 }}>
+              <div className="field"><label htmlFor="id">Expires after (days)</label><input id="id" type="number" min={1} max={60} className="input" value={f.days} onChange={(e) => setF({ ...f, days: e.target.value })} /></div>
+              <div className="field"><label htmlFor="iu">Number of uses</label><input id="iu" type="number" min={1} max={50} className="input" value={f.max_uses} onChange={(e) => setF({ ...f, max_uses: e.target.value })} /></div>
+            </div>
+          </details>
           <button className="btn">Create invitation</button>
         </form>
       </section>
       {created && (
-        <Modal title="Invitation created" onClose={() => setCreated(null)}>
-          {created.emailed && <p className="small">Emailed to the address you entered.</p>}
-          <p className="small">Copy this link and send it to the new member. It is shown only once.</p>
+        <Modal title="Invitation ready" onClose={() => setCreated(null)}>
+          {created.emailed && <div className="note-box small" style={{ marginBottom: 10 }}>✓ The site emailed the invitation to {created.email}.</div>}
+          {(smsHref || mailHref) && <p className="small" style={{ marginTop: 0 }}>Tap a button to open your {smsHref && 'Messages'}{smsHref && mailHref && ' or '}{mailHref && 'email'} app with the invitation already written, then press Send.</p>}
+          <div className="row" style={{ marginBottom: 12 }}>
+            {smsHref && <a className="btn" href={smsHref}>💬 Text it</a>}
+            {mailHref && <a className={`btn ${smsHref ? 'secondary' : ''}`} href={mailHref}>✉️ Email it</a>}
+          </div>
+          <div className="label">The message</div>
+          <div className="quote-embed small" style={{ whiteSpace: 'pre-wrap' }}>{msg}</div>
+          <p className="tiny muted">The link is shown only once. Copy it now if you'd rather send it another way.</p>
           <input className="input" readOnly value={created.link} onFocus={(e) => e.target.select()} aria-label="Invitation link" />
-          <div className="row" style={{ marginTop: 10 }}><button className="btn" onClick={() => copy(created.link, toast)}>Copy link</button>{'share' in navigator && <button className="btn secondary" onClick={() => navigator.share({ title: 'NMSU Sports Forum invitation', text: "You're invited to NMSU Sports Forum", url: created.link }).catch(() => {})}>Share…</button>}</div>
+          <div className="row" style={{ marginTop: 10 }}>
+            <button className="btn secondary" onClick={() => copy(msg, toast)}>Copy message</button>
+            <button className="btn ghost" onClick={() => copy(created.link, toast)}>Copy link only</button>
+            {'share' in navigator && <button className="btn ghost" onClick={() => navigator.share({ title: 'NMSU Sports Forum invitation', text: msg }).catch(() => {})}>Share…</button>}
+          </div>
         </Modal>
       )}
       <section className="card">

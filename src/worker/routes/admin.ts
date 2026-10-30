@@ -50,23 +50,28 @@ admin.post('/invites', async (c) => {
   const user = c.get('user');
   const body = parse(z.object({
     email: z.string().trim().email().max(200).optional().or(z.literal('')),
+    // When set, only this email address can use the invitation; otherwise the email is just where it was sent.
+    lock_email: z.boolean().optional(),
+    name: z.string().trim().max(60).optional(),
     note: z.string().trim().max(200).optional(),
     days: z.number().int().min(1).max(60).default(14),
     max_uses: z.number().int().min(1).max(50).default(1),
   }), await c.req.json());
   const token = randomToken(24);
   const t = now();
+  // Phone numbers are never sent here: texting happens on the admin's own phone.
+  const note = [body.name, body.note].filter(Boolean).join(' — ') || (body.email ? `Emailed to ${body.email}` : null);
   await run(c.env, 'INSERT INTO invites (token_hash, created_by, email, note, max_uses, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-    await sha256(token), user.id, body.email || null, body.note || null, body.max_uses, t + body.days * DAY, t);
+    await sha256(token), user.id, body.email && body.lock_email ? body.email : null, note, body.max_uses, t + body.days * DAY, t);
   const link = `${new URL(c.req.url).origin}/join/${token}`;
   let emailed = false;
   if (body.email && emailEnabled(c.env)) {
     emailed = await sendEmail(c.env, body.email, "You're invited to NMSU Sports Forum",
-      `${user.display_name || user.username} invited you to join NMSU Sports Forum, a private community for Aggie fans.\n\nCreate your account here (link expires in ${body.days} days):\n${link}\n\nNMSU Sports Forum is an independent fan community, not affiliated with New Mexico State University.`);
+      `${body.name ? `Hi ${body.name},\n\n` : ''}${user.display_name || user.username} invited you to join NMSU Sports Forum, a community for Aggie fans.\n\nCreate your account here (link works once and expires in ${body.days} days):\n${link}\n\nNMSU Sports Forum is an independent fan community, not affiliated with New Mexico State University.`);
   }
-  await logMod(c.env, user.id, 'create_invite', 'invite', null, body.note ?? body.email ?? '');
+  await logMod(c.env, user.id, 'create_invite', 'invite', null, note ?? '');
   // The link is shown once; only its hash is stored.
-  return c.json({ link, emailed });
+  return c.json({ link, emailed, emailEnabled: emailEnabled(c.env), days: body.days });
 });
 
 admin.delete('/invites/:id', async (c) => {

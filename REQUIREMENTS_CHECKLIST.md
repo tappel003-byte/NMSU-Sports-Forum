@@ -10,10 +10,10 @@ Status values: **Planned** · **Built** (code exists) · **Verified** (tested en
 | 3 | Official NMSU colors (#8C0B42, #FFFFFF, #B6A5AD, #D7C9C4, #6D6E71); screenshots are layout-only | BRAND_COLORS | Verified — CSS tokens in `src/client/styles.css` |
 | 4 | Mobile-first, polished desktop; phone bottom nav, desktop three columns | VISION, DECISIONS | Verified — e2e checks bottom nav at 390px and three columns at 1440px, no horizontal scroll |
 | 5 | Installable PWA with crest home-screen icon | MILESTONE 1 | Built — manifest, icons, service worker. Not yet tested on a physical iPhone (needs deployment) |
-| 6 | Invite-only accounts: one-use/expiring invites, login, password reset, secure sessions, server-side protection | MILESTONE 3 | Verified — one-use expiring invites, login, admin reset links, sessions, suspension ends sessions. Self-service reset email needs an email service (optional) |
+| 6 | Invite-only accounts: one-use/expiring invites, login, password reset, secure sessions, server-side protection | MILESTONE 3 | Verified — one-use expiring invites, login, admin reset links, sessions, suspension ends sessions. Self-service reset email needs an email service (optional). Admins invite by text (opens Messages with the invitation written; phone numbers are never stored) or email (opens the email app, or sends automatically once Resend is configured) |
 | 7 | No member content or APIs visible without login | MILESTONE 3 | Verified — every private API returns 401 signed out; WebSocket refused; photos require sign-in |
 | 8 | Venue forums with sport labels: Pan Am, Aggie Memorial, Presley Askew Field, Softball Complex, The Pitch, Track & Field, Other Sports, General | MILESTONE 4 | Verified |
-| 9 | Threads with description, replies, quote, edit (with history), links, photo attachments | MILESTONE 5 | Verified — quote, edit with history, photo attachments, links |
+| 9 | Threads with optional description, replies, quote, edit (with history), links, photo attachments; posting needs only a title and message (files under General Discussion unless a venue is picked) | MILESTONE 5, DECISIONS | Verified — quote, edit with history, photo attachments, links; title-and-message-only posting lands in General Discussion |
 | 10 | Pinned/locked threads, search, follows, unread + jump to first unread | MILESTONE 5 | Verified — pin, lock, search, follow, unread and jump to first unread |
 | 11 | Thumbs-up/down; Aggie Reputation counts thumbs-up only; no self-reactions | MILESTONE 6 | Verified |
 | 12 | Most appreciated post on profile (member may choose to highlight); weekly highlight on home | MILESTONE 6–7 | Verified — profile most appreciated post, weekly highlight on home; members can highlight a chosen post |
@@ -44,7 +44,7 @@ Status values: **Planned** · **Built** (code exists) · **Verified** (tested en
 | 37 | Ring of Honor (Rojo) hidden from site and navigation | AGGIE_RING_OF_HONOR, MILESTONE | Verified — e2e confirms it appears nowhere |
 | 38 | Politics forum not at launch | MILESTONE | Verified — no Politics forum |
 | 39 | Low maintenance: no daily chores; automated jobs; failures alert admins | MILESTONE 14 | Verified — scheduled jobs run; feed failures notify admins |
-| 40 | Cloudflare hosting at NMSUSportsForum.com via repeatable GitHub deploy; inspect DNS first; no surprise costs | CLAUDE, MILESTONE 2 | Built — GitHub Actions deploy workflow. **Blocked: needs Cloudflare access** (docs/DEPLOYMENT.md) |
+| 40 | Cloudflare hosting at NMSUSportsForum.com via repeatable GitHub deploy; inspect DNS first; no surprise costs | CLAUDE, MILESTONE 2 | Verified — live at nmsusportsforum.com; every merge to main deploys through GitHub Actions |
 | 41 | No secrets, invites or member data in the public repo | README, CLAUDE | Verified — secrets via Wrangler/GitHub secrets only |
 | 42 | Live-updating game threads | DECISIONS (Oct 30 research round), MILESTONE | Verified — WebSocket signal; new replies appear in an open thread (e2e) |
 | 43 | Phone push notifications (iPhone home-screen app) | DECISIONS (Oct 30 research round), MILESTONE | Built — Web Push with VAPID; payload encryption unit-tested; device registration verified. Real delivery needs a phone after deployment (iPhone: add to Home Screen first) |

@@ -128,9 +128,9 @@ const pollSchema = z.object({
 forum.post('/threads', async (c) => {
   const user = c.get('user');
   const body = parse(z.object({
-    forum: z.string(),
+    forum: z.string().optional().nullable(),
     title: z.string().trim().min(4, 'needs at least 4 characters').max(140),
-    description: z.string().trim().min(3, 'add a short topic description').max(240),
+    description: z.string().trim().max(240).optional().default(''),
     body: z.string().trim().min(1, 'cannot be empty').max(20000),
     sport: z.string().optional().nullable(),
     attachments: z.array(z.string()).max(6).optional(),
@@ -140,7 +140,7 @@ forum.post('/threads', async (c) => {
     draft_key: z.string().max(80).optional(),
     tags: z.array(z.string()).max(3).optional(),
   }), await c.req.json());
-  const f = await first<{ id: number; sports: string; kind: string }>(c.env, 'SELECT id, sports, kind FROM forums WHERE slug = ?', body.forum);
+  const f = await first<{ id: number; sports: string; kind: string }>(c.env, 'SELECT id, sports, kind FROM forums WHERE slug = ?', body.forum || 'general');
   if (!f) throw new HttpError(400, 'Choose a forum.');
   const sports = f.sports ? f.sports.split(',') : [];
   const sport = body.sport && sports.includes(body.sport) ? body.sport : sports.length === 1 ? sports[0] : null;
@@ -276,7 +276,7 @@ forum.patch('/threads/:id', async (c) => {
   const t = await loadThread(c.env, user, idParam(c.req.param('id')));
   if (t.user_id !== user.id && user.role !== 'admin') throw new HttpError(403, 'You can only edit your own discussions.');
   assertWritable(t, user);
-  const body = parse(z.object({ title: z.string().trim().min(4).max(140), description: z.string().trim().min(3).max(240), tags: z.array(z.string()).max(3).optional() }), await c.req.json());
+  const body = parse(z.object({ title: z.string().trim().min(4).max(140), description: z.string().trim().max(240).optional().default(''), tags: z.array(z.string()).max(3).optional() }), await c.req.json());
   await run(c.env, 'UPDATE threads SET title = ?, description = ?, tags = COALESCE(?, tags) WHERE id = ?', body.title, body.description, body.tags ? cleanTags(body.tags) : null, t.id);
   return c.json({ ok: true });
 });

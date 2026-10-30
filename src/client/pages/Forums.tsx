@@ -122,7 +122,7 @@ export function NewThread() {
   const { toast } = useApp();
   const nav = useNavigate();
   const { data } = useApi<{ forums: ForumInfo[] }>('/forums');
-  const [forum, setForum] = useState(params.get('forum') ?? '');
+  const [forum, setForum] = useState(params.get('forum') === 'general' ? '' : params.get('forum') ?? '');
   const gameId = Number(params.get('game')) || null;
   const phase = params.get('phase') as 'pregame' | 'postgame' | null;
   const draftKey = `new-${gameId ? `game-${gameId}-${phase ?? 'talk'}` : forum || 'any'}`;
@@ -165,12 +165,19 @@ export function NewThread() {
       <h1>{f?.kind === 'suggestions' ? 'Suggest an improvement' : 'Start a discussion'}</h1>
       {gameId && <div className="note-box small" style={{ marginBottom: 12 }}>This thread will be linked to the game page{phase ? ` as the ${phase} discussion` : ''}.</div>}
       <form onSubmit={submit}>
+        <div className="field"><label htmlFor="title">Title</label><input id="title" className="input" value={draft.title} onChange={(e) => draft.setTitle(e.target.value)} required minLength={4} maxLength={140} /></div>
         <div className="field">
-          <label htmlFor="forum">Forum</label>
-          <select id="forum" className="select" value={forum} onChange={(e) => { setForum(e.target.value); setSport(''); }} required>
-            <option value="">Choose a forum…</option>
-            {data?.forums.map((x) => <option key={x.slug} value={x.slug}>{x.name} — {x.sport_label}</option>)}
+          <label htmlFor="body">Your post</label>
+          <MentionTextarea id="body" textareaRef={bodyRef} className="textarea" style={{ minHeight: 180 }} value={draft.body} onChange={draft.setBody} required />
+          <span className="hint">Tips: paste a tweet or YouTube link and it shows as a card; start a line with &gt; to quote; **bold**; ||spoiler||; @ to mention. {draft.status === 'saved' && draft.body ? 'Draft saved.' : draft.status === 'saving' ? 'Saving draft…' : ''}</span>
+        </div>
+        <div className="field">
+          <label htmlFor="forum">File under <span className="muted small">(optional)</span></label>
+          <select id="forum" className="select" value={forum} onChange={(e) => { setForum(e.target.value); setSport(''); }}>
+            <option value="">General Discussion — Aggie Talk</option>
+            {data?.forums.filter((x) => x.slug !== 'general').map((x) => <option key={x.slug} value={x.slug}>{x.name} — {x.sport_label}</option>)}
           </select>
+          <span className="hint">Leave it on General Discussion, or pick a venue so fans of that sport see it first.</span>
         </div>
         {f && f.sports.length > 1 && (
           <div className="field">
@@ -181,13 +188,7 @@ export function NewThread() {
             </select>
           </div>
         )}
-        <div className="field"><label htmlFor="title">Title</label><input id="title" className="input" value={draft.title} onChange={(e) => draft.setTitle(e.target.value)} required minLength={4} maxLength={140} /></div>
-        <div className="field"><label htmlFor="desc">Short topic description</label><input id="desc" className="input" value={description} onChange={(e) => setDescription(e.target.value)} required minLength={3} maxLength={240} placeholder="One line so members know what it's about" /></div>
-        <div className="field">
-          <label htmlFor="body">Your post</label>
-          <MentionTextarea id="body" textareaRef={bodyRef} className="textarea" style={{ minHeight: 180 }} value={draft.body} onChange={draft.setBody} required />
-          <span className="hint">Tips: paste a tweet or YouTube link and it shows as a card; start a line with &gt; to quote; **bold**; ||spoiler||; @ to mention. {draft.status === 'saved' && draft.body ? 'Draft saved.' : draft.status === 'saving' ? 'Saving draft…' : ''}</span>
-        </div>
+        <div className="field"><label htmlFor="desc">Short description <span className="muted small">(optional)</span></label><input id="desc" className="input" value={description} onChange={(e) => setDescription(e.target.value)} maxLength={240} placeholder="One line shown in the thread list" /></div>
         <div className="field"><span className="label">Tags (optional, up to 3)</span><TagPicker value={tags} onChange={setTags} /></div>
         <PhotoThumbs photos={photos} setPhotos={setPhotos} />
         <div className="row" style={{ margin: '8px 0 14px' }}>
