@@ -263,6 +263,13 @@ try {
   check('Members add Aggie Alert up votes (commas OK) and they show on the profile', aa.includes('RioRanchoAggie') && aa.includes('3,901 posts') && aa.includes('1,368 up votes received') && aa.includes('since 2010'));
   await reg.screenshot({ path: `${SHOTS}/profile-aggie-alert.png`, fullPage: true });
 
+  // ---------- webcal:// feed links ----------
+  const wc = await api(admin, '/admin/feeds', { body: { sport: 'auto', url: 'webcal://calendar.example.test/feed.ics' } });
+  const feedsNow = (await api(admin, '/admin/overview')).body.feeds;
+  check('Calendar links starting with webcal:// are accepted as https feeds', wc.status === 200 && feedsNow.some((f) => f.url === 'https://calendar.example.test/feed.ics'));
+  const wcFeed = feedsNow.find((f) => f.url === 'https://calendar.example.test/feed.ics');
+  if (wcFeed) await api(admin, `/admin/feeds/${wcFeed.id}`, { method: 'DELETE' });
+
   // ---------- Rosters & links, scores strip ----------
   const hubSave = await api(admin, '/admin/settings', { method: 'PUT', body: { hub_links: 'Aggie radio | https://radio.example.test/live\nBad link | http://insecure.example.test\nnot a link' } });
   const hub = (await api(reg, '/hub')).body;
