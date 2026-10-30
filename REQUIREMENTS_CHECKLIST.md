@@ -3,13 +3,15 @@ Every owner decision, where it is documented, and its build status. Update the s
 
 Status values: **Planned** · **Built** (code exists) · **Verified** (tested end-to-end) · **Blocked** (named reason)
 
+Audit, October 30, 2026 (after first live review): 65 rows. 56 Verified, 8 Built (working, but still waiting on a key, a file, real data or a real-device check), 1 Blocked (recruiting data needs a free key). Owner changes: one Board instead of venue forums (row 8), open sign-up as a switch alongside invites (row 56), member-picked game threads instead of automatic ones (row 18), and optional thread descriptions (row 9).
+
 | # | Requirement | Documented in | Status |
 | --- | --- | --- | --- |
 | 1 | Name is NMSU Sports Forum (never Aggie Clubhouse); independent, not NMSU-affiliated | VISION, DECISIONS | Verified — name everywhere; independence disclaimer on sign-in and home |
 | 2 | Approved cowboy crest used as supplied; no crossed pistols; derivatives (icon, badges) need owner approval | CLAUDE, BRAND_COLORS | Built — interim icons cropped from the owner's screenshot; **needs the original crest file**. Derivatives beyond icon crops not made. |
 | 3 | Official NMSU colors (#8C0B42, #FFFFFF, #B6A5AD, #D7C9C4, #6D6E71); screenshots are layout-only | BRAND_COLORS | Verified — CSS tokens in `src/client/styles.css` |
 | 4 | Mobile-first, polished desktop; phone bottom nav, desktop three columns | VISION, DECISIONS | Verified — e2e checks bottom nav at 390px and three columns at 1440px, no horizontal scroll |
-| 5 | Installable PWA with crest home-screen icon | MILESTONE 1 | Built — manifest, icons, service worker. Not yet tested on a physical iPhone (needs deployment) |
+| 5 | Installable PWA with crest home-screen icon | MILESTONE 1 | Built — manifest, icons, service worker; site is live. Add to Home Screen not yet confirmed on the owner's iPhone |
 | 6 | Invite-only accounts: one-use/expiring invites, login, password reset, secure sessions, server-side protection | MILESTONE 3 | Verified — one-use expiring invites, login, admin reset links, sessions, suspension ends sessions. Self-service reset email needs an email service (optional). Admins invite by text (opens Messages with the invitation written; phone numbers are never stored) or email (opens the email app, or sends automatically once Resend is configured) |
 | 7 | No member content or APIs visible without login | MILESTONE 3 | Verified — every private API returns 401 signed out; WebSocket refused; photos require sign-in |
 | 8 | ~~Venue forums in navigation~~ superseded: one Board with pinned topics on top; sport labels on game threads | MILESTONE 4, DECISIONS | Verified — old forum links land on the Board; pinned first |
@@ -27,7 +29,7 @@ Status values: **Planned** · **Built** (code exists) · **Verified** (tested en
 | 20 | Turn a chat moment into a thread | MILESTONE 10 | Verified |
 | 21 | Polls (one vote per member, optional close date) | MILESTONE 11 | Verified |
 | 22 | Bookmarks with reminders | MILESTONE 13 | Verified — reminder delivered by the scheduled job |
-| 23 | Notifications and preferences | MILESTONE 11 | Verified — in-app notifications and per-member preferences. Phone push notifications not built |
+| 23 | Notifications and preferences | MILESTONE 11 | Verified — in-app notifications and per-member preferences (phone push: see row 43) |
 | 24 | Auto-saved drafts | MILESTONE 13 | Verified — server-side drafts survive reload and cross-device |
 | 25 | Spoiler-free scores mode | MILESTONE 13 | Built |
 | 26 | Personal feed (my sports / following / unread) | MILESTONE 13 | Verified |
@@ -67,6 +69,6 @@ Status values: **Planned** · **Built** (code exists) · **Verified** (tested en
 | 60 | Appeals for removals, warnings, suspensions and bans, decided by a different moderator; suspended members can appeal from sign-in | DECISIONS (refined troll flagging) | Verified — appeals from Settings and the sign-in page; the acting moderator (or approving voters) cannot decide; granting undoes the decision |
 | 61 | Abusive-flagging review: one flag per member per post, flag accuracy history, repeated flags against one person, revoke flagging privilege | DECISIONS (refined troll flagging) | Verified — duplicate flags refused; flagger history and per-author repeat flags shown in review; flagging can be revoked |
 | 62 | Audit history: every moderation decision recorded with its reason | DECISIONS (refined troll flagging) | Verified — audit log entries with reasons for every decision |
-| 63 | Latest scores strip on top of the Board (automatic results, spoiler-free respected) | DECISIONS (after first live review) | Verified with the synthetic feed |
-| 64 | Rosters & links hub: official roster/schedule links per sport, admin-curated radio/stream links | DECISIONS (after first live review) | Verified — roster links point to nmstatesports.com's standard pages (**confirm they open correctly on the live site**); only https links accepted |
+| 63 | Latest scores strip on top of the Board (automatic results, spoiler-free respected; football and men's basketball first) | DECISIONS (after first live review) | Verified — e2e, plus the owner saw live NM State results |
+| 64 | Rosters & links hub: official roster/schedule links per sport, admin-curated radio/stream links | DECISIONS (after first live review) | Verified — the owner confirmed the roster links work on the live site; only https links accepted |
 | 65 | Members invite friends from their phone (one tap; daily limit; admin switch) | DECISIONS (after first live review) | Verified — member invites a friend who joins; switch off refuses |
