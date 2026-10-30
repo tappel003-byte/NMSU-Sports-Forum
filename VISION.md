@@ -10,6 +10,18 @@ An independent, invitation-only, member-run New Mexico State Aggies sports forum
 Invite roughly 12 existing Aggie acquaintances initially, perhaps 20–30 early members; plan for eventual 300–500 members and concurrent game-day chat. An account is required for all member content; optional public landing/welcome page only.
 
 ## Branding and visual direction
+**Approved reference asset (October 29, 2026):** The user's uploaded cowboy crest image `IMG_3489(2).jpeg` is the visual authority. Do not substitute newly generated crossed-pistol graphics or unrelated mascots. The actual source JPEG is in the planning conversation, **not yet added to the GitHub repository**. Implementation cannot claim final graphic parity until the original approved file is added to versioned assets.
+
+**Color palette sampled from the approved JPEG (approximate, not an exact vector source specification):**
+- Main crimson / burgundy: `#801828` with darker crimson `#701020`
+- Bright crimson accent: `#981830`
+- Black outlines and footer: `#080808`
+- White lettering/background: `#FFFFFF`
+- Mountain gray: `#B0B0B0` and `#D0D0D0`
+- Adobe/sand accent: `#D8C0A8`
+Use sampled colors as **starting design tokens**, refine against the actual crest at implementation, and retain the distinctive crimson-black-white hierarchy. Keep the desktop header and mobile branding visually related to the crest without cramming the entire image into a tiny icon.
+
+
 - Crimson, white, charcoal, with a Southwestern collegiate sports-forum character.
 - **Use the previously selected cowboy crest as the primary design reference**, not the later crossed-revolver experiments. The crest includes a cowboy with hat and mustache, mountain landscape, adobe architecture, large NMSU lettering, SPORTS FORUM ribbon, and small sports symbols. Preserve that composition as the creative starting point; design derivative header, square PWA shortcut, favicon, sport-category graphics, and badges. The existing generated image is a reference, not a production-ready licensed asset; the actual image must be supplied to the implementation repository before coding.
 - A previously discussed website header also exists as a design reference, but the exact asset must be located/provided; do not invent a replacement and call it approved.
@@ -41,15 +53,10 @@ The site name and public-facing identity are **NMSU Sports Forum**, not “Aggie
 - Other sports (swimming, tennis, golf, etc.) can be added without creating empty forums before participation warrants them.
 Mobile: compact category tiles or lists, not an oversized gallery. Desktop: richer venue cards and clear forum directory. Each forum opens recent threads, sport-specific schedules, and associated game-day discussions. Photography must be licensed or owned; reference photos are not production assets.
 
-## Ring of Honor — permanent community memorial
-A dignified, distinct area honoring forum members who have died, and optionally respected longtime Aggie Alert community posters who never joined this site.
-- Administrators may create a tribute **only after respectfully verifying the death** and considering family wishes, privacy, and the appropriateness of public details. Do not rely on rumors or automated status inference.
-- Memorial entry may show chosen username, approved avatar, a short remembrance, and links to historical posts when permitted. Real names, photos, dates, and personal details are optional and should not be added without appropriate care.
-- Members can submit memories and tributes subject to moderation; avoid competitive reactions, ranking, or gamification on memorial pages.
-- A deceased member's account is retired/secured; never allow further posts under their identity.
-- Memorial records and tribute messages are permanent by policy and **exempt from the standard 90-day thread archive and uploaded-image deletion rules**; memorial images need a distinct retention/consent policy. Historical linked forum posts still follow their original archival rules unless explicitly preserved.
-- Ring of Honor is accessible from main navigation and member history, with a respectful design distinct from achievement badges or reputation.
-- Procedures for corrections, mistaken reports, requests from family, and removal should be documented before launch.
+## Ring of Honor — planned, initially hidden community memorial
+The **Aggie Ring of Honor** is a simple permanent list honoring deceased Aggie Alert posters by their **Aggie Alert monikers only**. No biographies, dates, personal details, memorial profiles, reactions, rankings, or tribute workflow are required. Its content lives in [AGGIE_RING_OF_HONOR.md](AGGIE_RING_OF_HONOR.md), starting with Rojo.
+
+**Launch behavior:** leave room for a Ring of Honor page/route and its future navigation, but **do not show the Ring of Honor or its unfinished navigation item at initial launch**. Enable when the owner/community decides the list is ready. Avoid building unnecessary memorial-management complexity now; eventual admins may maintain a simple list.
 
 ## Forum and threads
 - Categories: Basketball, Football, Other Sports, General; a distinct Politics category is contemplated. Whether Politics is opt-in is **undecided**. No politics in sports discussions.
@@ -105,7 +112,7 @@ This sequencing does not remove any feature from the overall vision. Review it b
 5. Hosting/domain account ownership and allowed data-source licensing.
 6. Launch date used to calculate Founding Member window; honorary badge thresholds.
 7. Live-chat retention and notification preferences.
-8. Site cost/renewal disclosure and voluntary sponsor confirmation process.\n9. Confirm venue names, photo licensing, and which sports receive dedicated forums at launch.\n10. Ring of Honor verification, consent, family requests, memorial image retention, and moderator workflow.
+8. Site cost/renewal disclosure and voluntary sponsor confirmation process.\n9. Confirm venue names, photo licensing, and which sports receive dedicated forums at launch.\n10. When to make the simple moniker-only Ring of Honor visible; until then, hide it.
 
 ## Working agreement for coding agents
 - Read this vision and the repository's current state before making changes.
