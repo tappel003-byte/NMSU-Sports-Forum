@@ -26,4 +26,4 @@ Updated October 29, 2026.
 - Final dates, category growth, image retention exceptions and Ring of Honor visibility.
 
 ## Build policy
-**Only Milestone 01 in MILESTONE.md is currently active.** Claude Code may build the first visual prototype and its verified Cloudflare publication path for owner review. Do not silently begin backend milestones.
+**Single integrated initial release is authorized.** Claude Code should implement the functional forum, membership/invitations, real discussions, profiles/admin features and game chat together with the responsive UI, as specified in MILESTONE.md. This supersedes the prior visual-only prototype policy. Don't require approval at every trivial milestone; protect security, costs and existing Cloudflare site.
