@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:worker": "wrangler dev --port 8787",
+    "dev:worker": "wrangler dev --port 8787 --infer-origin-from-routes=false",
     "build": "tsc -p tsconfig.json --noEmit && vite build",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",

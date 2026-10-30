@@ -102,10 +102,10 @@ export function ShareForm({ initialUrl = '', initialText = '', target = null, on
           ) : (
             <>
               <div className="field">
-                <label htmlFor="share-forum">Forum</label>
-                <select id="share-forum" className="select" value={forum} onChange={(e) => setForum(e.target.value)} required>
-                  <option value="">Choose a forum…</option>
-                  {forums?.forums.map((f) => <option key={f.slug} value={f.slug}>{f.name} — {f.sport_label}</option>)}
+                <label htmlFor="share-forum">File under <span className="muted small">(optional)</span></label>
+                <select id="share-forum" className="select" value={forum} onChange={(e) => setForum(e.target.value)}>
+                  <option value="">General Discussion — Aggie Talk</option>
+                  {forums?.forums.filter((f) => f.slug !== 'general').map((f) => <option key={f.slug} value={f.slug}>{f.name} — {f.sport_label}</option>)}
                 </select>
               </div>
               <div className="field"><label htmlFor="share-title">Title</label><input id="share-title" className="input" value={title} onChange={(e) => setTitle(e.target.value)} required minLength={4} maxLength={140} placeholder={isTweet ? 'e.g. 3-star WR commits to NM State' : ''} /></div>

@@ -66,7 +66,7 @@ Expected cost at launch: **$0 beyond the domain.**
 npm ci
 cp .dev.vars.example .dev.vars              # local-only bootstrap token
 npx wrangler d1 migrations apply DB --local
-npm run build && npx wrangler dev --port 8787
+npm run build && npx wrangler dev --port 8787 --infer-origin-from-routes=false
 npm test                                     # unit tests
 node tests/e2e.mjs                           # end-to-end (fresh local DB, server running)
 ```

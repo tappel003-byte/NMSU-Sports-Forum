@@ -100,7 +100,7 @@ try {
   await admin.waitForSelector('text=Removed');
   check('Moderator removes the post and issues a warning', (await view(crimson, p2)).deleted === true);
   await troll.goto(BASE + '/settings#moderation');
-  await troll.waitForSelector('text=Moderation history');
+  await troll.waitForSelector('#moderation >> text=Baiting other members', { timeout: 10000 }).catch(() => {});
   const hist = await troll.textContent('#moderation');
   check("The member sees the removal and warning with the moderator's reason", /Post removed/.test(hist) && /Warning/.test(hist) && /Baiting other members/.test(hist));
   await troll.locator('#moderation > div').filter({ hasText: 'Post removed' }).locator('button:has-text("Appeal")').click();
@@ -174,6 +174,44 @@ try {
   await api(admin, `/admin/members/${abuserId}/flagging`, { body: { enabled: false, reason: 'Repeated bad-faith flags.' } });
   const denied = await api(abuser, `/posts/${p1}/troll`, { method: 'POST' });
   check('A moderator can switch off flagging for an abusive flagger', denied.status === 403);
+
+  // ---------- Inviting by text and email ----------
+  await admin.goto(BASE + '/admin/invites');
+  await admin.fill('#iname', 'Rick');
+  await admin.fill('#iphone', '(575) 555-0123');
+  await admin.fill('#ie', 'rick@example.test');
+  await admin.click('button:has-text("Create invitation")');
+  await admin.waitForSelector('text=Invitation ready');
+  const sms = await admin.getAttribute('a:has-text("Text it")', 'href');
+  const mail = await admin.getAttribute('a:has-text("Email it")', 'href');
+  const link = await admin.inputValue('input[aria-label="Invitation link"]');
+  check('Text it opens Messages with the number and a ready-written invitation', sms.startsWith('sms:+15755550123') && decodeURIComponent(sms).includes('Hey Rick') && decodeURIComponent(sms).includes(link));
+  check('Email it opens the email app with subject and invitation', mail.startsWith('mailto:rick%40example.test?subject=') && decodeURIComponent(mail).includes(link));
+  await admin.screenshot({ path: `${SHOTS}/admin-invite-text.png`, fullPage: true });
+  await admin.click('button:has-text("Close")');
+  const invList = (await api(admin, '/admin/invites')).body.invites;
+  const rick = invList[0];
+  check('The phone number is not stored on the site, and the invite is not locked to the email', !JSON.stringify(invList).includes('555') && rick.note.startsWith('Rick') && rick.email === null);
+  const reg = await (await browser.newContext()).newPage();
+  await reg.goto(link);
+  await reg.fill('#un', 'RickFromTailgate');
+  await reg.fill('#em', 'rick.other@example.test');
+  await reg.fill('#pw', 'rick-password-123');
+  await reg.fill('#pc', 'rick-password-123');
+  await reg.click('button:has-text("Join NMSU Sports Forum")');
+  await reg.waitForURL('**/settings?welcome=1');
+  check('The texted invitation link works for sign-up', true);
+
+  // ---------- Posting without gatekeeping ----------
+  await reg.goto(BASE + '/new');
+  await reg.fill('#title', 'Tailgate spot this Saturday?');
+  await reg.fill('#body', 'Where is everyone setting up?');
+  await reg.click('button:has-text("Post discussion")');
+  await reg.waitForURL(/\/t\/\d+/);
+  const newTid = Number(reg.url().split('/t/')[1]);
+  const newT = (await api(reg, `/threads/${newTid}`)).body;
+  check('A discussion posts with just a title and message, filed under General Discussion', JSON.stringify(newT).includes('General Discussion'));
+  await reg.screenshot({ path: `${SHOTS}/new-thread-simple.png`, fullPage: true });
 
   // ---------- Audit history ----------
   const log = (await api(admin, '/admin/log')).body.log;
