@@ -12,17 +12,7 @@ Invite roughly 12 existing Aggie acquaintances initially, perhaps 20–30 early 
 ## Branding and visual direction
 **Approved reference asset (October 29, 2026):** The user's uploaded cowboy crest image `IMG_3489(2).jpeg` is the visual authority. Do not substitute newly generated crossed-pistol graphics or unrelated mascots. The actual source JPEG is in the planning conversation, **not yet added to the GitHub repository**. Implementation cannot claim final graphic parity until the original approved file is added to versioned assets.
 
-**Color palette sampled from the approved JPEG (approximate, not an exact vector source specification):**
-- Main crimson / burgundy: `#801828` with darker crimson `#701020`
-- Bright crimson accent: `#981830`
-- Black outlines and footer: `#080808`
-- White lettering/background: `#FFFFFF`
-- Mountain gray: `#B0B0B0` and `#D0D0D0`
-- Adobe/sand accent: `#D8C0A8`
-Use sampled colors as **starting design tokens**, refine against the actual crest at implementation, and retain the distinctive crimson-black-white hierarchy. Keep the desktop header and mobile branding visually related to the crest without cramming the entire image into a tiny icon.
-
-
-- Crimson, white, charcoal, with a Southwestern collegiate sports-forum character.
+**Brand-color authority:** [BRAND_COLORS.md](BRAND_COLORS.md) — NMSU's verified official palette. Website primary crimson **#8C0B42**, white **#FFFFFF**; secondary **#B6A5AD** and **#D7C9C4**; gray **#6D6E71**. Old colors sampled from the crest are NOT official brand colors. Keep the approved crest composition unchanged unless owner approves edits.\n\n- Crimson, white, charcoal, with a Southwestern collegiate sports-forum character.
 - **Use the previously selected cowboy crest as the primary design reference**, not the later crossed-revolver experiments. The crest includes a cowboy with hat and mustache, mountain landscape, adobe architecture, large NMSU lettering, SPORTS FORUM ribbon, and small sports symbols. Preserve that composition as the creative starting point; design derivative header, square PWA shortcut, favicon, sport-category graphics, and badges. The existing generated image is a reference, not a production-ready licensed asset; the actual image must be supplied to the implementation repository before coding.
 - A previously discussed website header also exists as a design reference, but the exact asset must be located/provided; do not invent a replacement and call it approved.
 - Avoid copying university trademarks, official Pistol Pete art, official lettering, or restricted cultural symbols. The current crest contains elements requiring review (including NMSU/NM STATE lettering and a Zia-style symbol). Develop original alternatives and assess trademark permissions before publication; AI-generated art is not automatically legally cleared.
