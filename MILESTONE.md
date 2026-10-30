@@ -1,36 +1,41 @@
-# Build plan — NMSU Sports Forum
+# NMSU Sports Forum — Single Integrated Initial Build
 
-## Active: Milestone 01 — visual foundation deployed on Cloudflare
-Create a polished, working **responsive front-end** using **fictional, visibly demonstration-only data**, based on the approved cowboy crest and owner-provided mobile/desktop screenshots. Put the result onto the owner's **NMSUSportsForum.com** using **Cloudflare hosting**, after confirming existing domain/site state and safely configuring a repeatable deployment. GitHub is authoritative.
+**Current authorization (October 29, 2026):** Build a substantial, working, integrated first release. The owner explicitly does NOT want repeated tiny prototype phases or cosmetic-only milestones. Claude Code (CC) is lead developer. Deliver functioning software on **Cloudflare at NMSUSportsForum.com**, not a mockup that pretends to be a forum.
 
-### Step 1: Inspect and plan
-- Check repo contents and current architecture. Confirm owner-provided screenshots and source crest are accessible to Claude Code. Do not assume the source image is already committed.
-- Inspect Cloudflare domain DNS, existing hosting/project, permissions, and whether NMSUSportsForum.com currently serves anything. Do not clobber an existing site.
-- Recommend a minimal app and deployment setup (for example Cloudflare Pages or Workers, as appropriate) and document how publishing works. Don't provision future databases just to make a visual mockup.
+## Product and visual authority
+Read README.md, CLAUDE.md, VISION.md, DECISIONS.md, BRAND_COLORS.md, AGGIE_RING_OF_HONOR.md and all existing repository content. Owner supplies the **approved cowboy crest**, website header and mobile/desktop screenshots directly to CC. Screenshots demonstrate layout and design direction **but their colors are not authoritative**. Website palette MUST follow **BRAND_COLORS.md**, led by official NMSU Aggie Crimson **#8C0B42** and White **#FFFFFF**. Do not replace or redraw approved cowboy artwork without permission.
 
-### Step 2: Implement visual shell
-- Mobile home with approved crest/header, example next-game display, latest/unread/popular discussions, quick navigation, forum activity and game chat teaser.
-- Desktop home that uses width well with meaningful columns, not an enlarged phone card.
-- Mobile and desktop sports directory for Pan Am, Aggie Memorial, Presley Askew Field, Softball Complex, The Pitch and Track & Field; always label sports plainly.
-- Readable thread list and example thread detail to review hierarchy/typography; clear mock interactions.
-- Game Center, Chat and Members as polished but clearly nonfunctional preview destinations when needed for navigation.
-- **Do not show Ring of Honor** at this stage.
-- Follow screenshots and palette; provide clear empty/loading states, keyboard access, legible contrast, iPhone safe areas, and touch-friendly controls.
+## Required initial working functionality
+1. Responsive mobile-first installable PWA, excellent desktop layout, clear header and navigation, fast performance, accessibility, polished empty/error/loading states.
+2. Cloudflare hosting and safe, repeatable GitHub-sourced deployment to NMSUSportsForum.com. First inspect existing Cloudflare DNS, project and site to avoid damage.
+3. Real, secure invite-only member accounts: one-use/expiring invitations by admins, login, password reset, appropriate session/security controls, server-side private routes and APIs. **No production community discussions should be public**.
+4. Actual database-backed forums: The Pan Am (basketball/volleyball), Aggie Memorial (football), Presley Askew Field (baseball), Softball Complex (softball), The Pitch (women's soccer), Track & Field, Other Sports and General as appropriate. Sport names remain plainly visible.
+5. Actual threads, topic description, replies, quote, edit, links/attachments, pinned/locked topics, search, follows, unread tracking and jump-to-unread, reporting and moderation.
+6. Thumbs-up/down reactions; earned reputation counts thumbs-up only, never subtracts on thumbs-down; most appreciated post on member profile and weekly highlights if practical.
+7. Member directory and profiles, profile edits/avatar, optional self-reported Aggie Alert moniker and old post count separate from forum-created count; Founding Member logic with configurable official launch date.
+8. Multiple admins, member invitations, basic report handling, lock/pin/move/remove threads, member moderation. Owner/hosting control must be distinct from community admin authority.
+9. Game Center: sports-specific schedules/event pages, opponent/date/time/venue, helpful outbound official broadcast/ticket links, pregame/game/postgame discussions. Use licensed/authorized data or clearly marked admin-managed entries; **do not fabricate live scores or rely on unsupported APIs**.
+10. Functional authenticated game-day live chat, game room moderation, reconnect handling. Select suitable Cloudflare architecture and make prudent cost choices.
+11. Polls, bookmarks, notifications and thoughtful user preferences where feasible, implemented end-to-end rather than decorative controls.
+12. Persistent data, migrations, secure environment secrets, backup/export approach, sensible logs and test coverage.
 
-### Step 3: Verify and publish
-- Build and test locally with documented commands. Inspect actual mobile and desktop layouts and fix visual issues.
-- After verifying Cloudflare connection and approval of any consequential existing-site changes, deploy to **NMSUSportsForum.com**. If access isn't available, report precise setup required instead of claiming it is published.
-- Report changed files, test results, actual live URL, and functions still mock-only. Stop for user visual review.
-- Don't create unnecessary branches or PRs, open autonomous subprojects or work in parallel with Cursor.
+If a feature is blocked by unavailable credentials, licensing or a consequential owner decision, deliver the rest fully and name that specific blocker clearly. The owner does not want to approve trivial stages; make normal engineering choices independently.
 
-## Future, not authorized by this document
-**Milestone 02: functional forum.** Invite-only membership, secure authentication/authorization, categories/posts/replies, editing, thumbs and reputation, member profiles and admin/moderation, search/unread, database and backup strategy.
+## Deliberately not in launch UI
+- **Ring of Honor:** future simple moniker list; Rojo is first. Do NOT place it in launch navigation or public UI until requested.
+- Politics forum: not approved for initial launch until opt-in/visibility decision.
+- Payments/subscriptions and elaborate memorial systems: not required.
+- Approximate member map and advanced gamification can follow functioning essentials; never reveal precise locations.
 
-**Milestone 03: game day.** Schedule, Game Center, live chat, notifications, licensed feed integration or honest manual fallback.
-
-**Milestone 04: community features.** Polls, badges, contribution recognition, map, suggestions, image lifecycle, archives and other features in VISION.md.
-
-**Ring of Honor remains hidden until specifically requested.**
+## Build workflow
+- Inspect GitHub repo first and establish coherent architecture. Reconcile attached screenshots against BRAND_COLORS.md.
+- One sustained implementation effort, with internal testing/checkpoints **not repeated product-owner approval gates**.
+- Cloudflare is the target hosting platform; assess actual account/project/DNS before setting up, and do not clobber an existing website or incur unexpected expenses without consent.
+- Prefer clear GitHub deploy path. Do not commit API tokens, passwords, member emails, invite secrets or private member data to this **public repo**.
+- Avoid unnecessary PRs, branches, agent proliferation and overlapping Cursor/CC edits. Maintain readable commits.
+- Test end-to-end flows: invite → register → login → create topic → reply → react → forum browse/search → game chat → admin moderation. Test on phone-sized and desktop-sized views.
+- Deploy functional version to NMSUSportsForum.com with verified permissions; otherwise report the exact access blocker, not a claim of deployment.
+- Report working features, tests, Cloudflare deployment URL, admin bootstrap procedure, limitations and costs. No placeholder buttons falsely represented as working.
 
 ## Acceptance
-Owner can open NMSUSportsForum.com on iPhone and desktop and compare it to the screenshots. Site is mobile-first, credible and consistent with cowboy crest; headings say NMSU Sports Forum, all visible information is demo or verified current, and future/private functionality is not falsely presented as live.
+The owner can use the real website on iPhone and desktop, with correct NMSU colors, approved branding, secure invited-member entry, active forum posting/replying/reactions, sport navigation, Game Center and working chat, and functional administrative controls. One integrated first build, then focused fixes.
