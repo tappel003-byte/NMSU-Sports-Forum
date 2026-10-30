@@ -5,6 +5,7 @@ import { DAY, now } from './util';
 import { deleteObject } from './storage';
 import { runGameLifecycle, syncAllFeeds } from './lib/sports';
 import { syncRecruiting } from './lib/recruiting';
+import { expireBanProposals } from './lib/moderation';
 
 /** Every 30 minutes: sync schedules, run the game-day lifecycle and deliver bookmark reminders. */
 export async function frequentJobs(env: Env): Promise<void> {
@@ -38,6 +39,7 @@ export async function dailyJobs(env: Env): Promise<void> {
   await run(env, 'DELETE FROM password_resets WHERE expires_at < ?', t - 7 * DAY);
   await run(env, 'DELETE FROM notifications WHERE read_at IS NOT NULL AND created_at < ?', t - 90 * DAY);
   await syncRecruiting(env);
+  await expireBanProposals(env);
   if (new Date(t).getUTCDay() === 1) await weeklyDigest(env);
 }
 

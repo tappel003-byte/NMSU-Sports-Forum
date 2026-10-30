@@ -28,8 +28,11 @@ export async function setSetting(env: Env, key: string, value: string): Promise<
   await run(env, 'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value', key, value);
 }
 
-export async function logMod(env: Env, actorId: number | null, action: string, targetType: string, targetId: number | null, detail = ''): Promise<void> {
-  await run(env, 'INSERT INTO mod_log (actor_id, action, target_type, target_id, detail, created_at) VALUES (?, ?, ?, ?, ?, ?)', actorId, action, targetType, targetId, detail, Date.now());
+/** Records a moderation decision in the internal audit history. Returns the entry id (appeals point at it). */
+export async function logMod(env: Env, actorId: number | null, action: string, targetType: string, targetId: number | null, detail = '', subjectUserId: number | null = null): Promise<number> {
+  const r = await run(env, 'INSERT INTO mod_log (actor_id, action, target_type, target_id, detail, created_at, subject_user_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    actorId, action, targetType, targetId, detail, Date.now(), subjectUserId);
+  return r.meta.last_row_id;
 }
 
 export async function notify(env: Env, userId: number, type: string, text: string, link: string, actorId: number | null = null): Promise<void> {

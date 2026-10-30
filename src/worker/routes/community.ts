@@ -11,6 +11,7 @@ import type { GameRow } from '../lib/sports';
 import { putObject, getObject, deleteObject } from '../storage';
 import { getPreview } from '../lib/previews';
 import { pushEnabled } from '../lib/push';
+import { notifyModerators } from '../lib/moderation';
 import { destroySession } from '../auth';
 import { hashPassword, randomToken, verifyPassword } from '../util';
 
@@ -541,3 +542,31 @@ community.post('/me/delete', async (c) => {
   await destroySession(c);
   return c.json({ ok: true });
 });
+
+// ---------- Your moderation history and appeals ----------
+
+community.get('/me/moderation', async (c) => {
+  const id = c.get('user').id;
+  const decisions = await all(c.env,
+    `SELECT l.id, l.action, l.detail, l.created_at, a.status AS appeal_status, a.decision_note
+       FROM mod_log l LEFT JOIN appeals a ON a.log_id = l.id AND a.user_id = ?1
+      WHERE l.subject_user_id = ?1 AND l.action IN ('remove_post', 'warn', 'suspend', 'ban', 'revoke_flagging') ORDER BY l.id DESC LIMIT 50`, id);
+  return c.json({ decisions });
+});
+
+async function fileAppeal(env: AppEnv['Bindings'], userId: number, logId: number, message: string) {
+  const log = await first<{ id: number; action: string; subject_user_id: number | null }>(env, 'SELECT id, action, subject_user_id FROM mod_log WHERE id = ?', logId);
+  if (!log || log.subject_user_id !== userId || !['remove_post', 'warn', 'suspend', 'ban'].includes(log.action)) throw new HttpError(404, 'Decision not found.');
+  if (await first(env, 'SELECT id FROM appeals WHERE user_id = ? AND log_id = ?', userId, logId)) throw new HttpError(409, 'You already appealed this decision.');
+  await run(env, 'INSERT INTO appeals (user_id, log_id, message, created_at) VALUES (?, ?, ?, ?)', userId, logId, message, now());
+  const u = await first<{ username: string }>(env, 'SELECT username FROM users WHERE id = ?', userId);
+  await notifyModerators(env, `${u?.username ?? 'A member'} appealed a moderation decision.`, '/admin/bans');
+}
+
+community.post('/me/appeals', async (c) => {
+  const { log_id, message } = parse(z.object({ log_id: z.number().int(), message: z.string().trim().min(10, 'explain why (at least a sentence)').max(2000) }), await c.req.json());
+  await fileAppeal(c.env, c.get('user').id, log_id, message);
+  return c.json({ ok: true });
+});
+
+export { fileAppeal };

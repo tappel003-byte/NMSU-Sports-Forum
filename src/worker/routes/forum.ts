@@ -6,6 +6,7 @@ import { HttpError, now, parse } from '../util';
 import { TAGS, cleanTags } from '../../shared/forum';
 import { SPORT_BY_KEY } from '../../shared/sports';
 import { checkHonorary, memberSummaries } from '../lib/members';
+import { notifyModerators, removePost } from '../lib/moderation';
 import {
   PAGE_SIZE, THREAD_SELECT, assertWritable, createPost, isArchived, isUnread, loadThread, mutedSets, needsApproval, presentThreads, unreadBaseline, type ThreadRow,
 } from '../lib/threads';
@@ -359,10 +360,12 @@ forum.delete('/posts/:id', async (c) => {
   const user = c.get('user');
   const p = await loadPost(c.env, idParam(c.req.param('id')));
   if (p.user_id !== user.id && user.role !== 'admin') throw new HttpError(403, 'You can only remove your own posts.');
-  await run(c.env, 'UPDATE posts SET deleted = 1, deleted_by = ? WHERE id = ?', user.id, p.id);
   if (user.role === 'admin' && p.user_id !== user.id) {
-    await run(c.env, 'INSERT INTO mod_log (actor_id, action, target_type, target_id, detail, created_at) VALUES (?, ?, ?, ?, ?, ?)',
-      user.id, 'remove_post', 'post', p.id, p.body.slice(0, 500), now());
+    // Moderator removals carry a reason, are recorded, and can be appealed.
+    const { reason } = parse(z.object({ reason: z.string().trim().min(3, 'give a short reason (the member sees it)').max(500) }), await c.req.json().catch(() => ({})));
+    await removePost(c.env, user.id, p.id, reason);
+  } else {
+    await run(c.env, 'UPDATE posts SET deleted = 1, deleted_by = ? WHERE id = ?', user.id, p.id);
   }
   return c.json({ ok: true });
 });
@@ -391,30 +394,32 @@ forum.post('/posts/:id/report', async (c) => {
   return c.json({ ok: true });
 });
 
-// Troll flag: established members can flag; enough flags hide the post at once and hold the poster's next posts.
+// Troll flag. Three different members temporarily hide a post pending moderator review.
+// It is a precaution, not a verdict: the author is not penalized and Aggie Reputation is untouched.
 forum.post('/posts/:id/troll', async (c) => {
   const user = c.get('user');
   const p = await loadPost(c.env, idParam(c.req.param('id')));
   await loadThread(c.env, user, p.thread_id);
+  if (p.deleted) throw new HttpError(400, 'This post was removed.');
   if (p.user_id === user.id) throw new HttpError(400, "You can't flag your own post.");
   // Invited members are vouched for; open sign-ups can flag once their first post is approved.
   if (user.role !== 'admin' && !user.trusted && user.joined_open) throw new HttpError(403, 'Flagging opens up once your first post has been approved.');
-  await run(c.env, `INSERT OR IGNORE INTO reports (reporter_id, post_id, snapshot, reason, kind, created_at) VALUES (?, ?, ?, 'Flagged as trolling', 'troll', ?)`, user.id, p.id, p.body.slice(0, 2000), now());
+  const me = await first<{ can_flag: number }>(c.env, 'SELECT can_flag FROM users WHERE id = ?', user.id);
+  if (!me?.can_flag) throw new HttpError(403, 'A moderator has turned off flagging for your account. You can still report posts.');
+  const ins = await run(c.env, `INSERT OR IGNORE INTO reports (reporter_id, post_id, snapshot, reason, kind, created_at) VALUES (?, ?, ?, 'Flagged as trolling', 'troll', ?)`, user.id, p.id, p.body.slice(0, 2000), now());
+  if (!ins.meta.changes) throw new HttpError(409, 'You already flagged this post.');
   const threshold = Math.max(1, Number(await getSetting(c.env, 'troll_threshold')) || 3);
   const flags = (await first<{ n: number }>(c.env, "SELECT COUNT(DISTINCT reporter_id) AS n FROM reports WHERE post_id = ? AND kind = 'troll' AND status = 'open'", p.id))?.n ?? 0;
-  const hide = user.role === 'admin' || flags >= threshold;
   const already = await first<{ hidden: number }>(c.env, 'SELECT hidden FROM posts WHERE id = ?', p.id);
+  const hide = flags >= threshold;
   if (hide && !already?.hidden) {
     await run(c.env, 'UPDATE posts SET hidden = 1 WHERE id = ?', p.id);
-    if (p.user_id) {
-      const author = await first<{ role: string; username: string }>(c.env, 'SELECT role, username FROM users WHERE id = ?', p.user_id);
-      if (author && author.role !== 'admin') await run(c.env, 'UPDATE users SET trusted = 0 WHERE id = ?', p.user_id);
-      await logMod(c.env, null, 'troll_auto_hide', 'post', p.id, `${author?.username ?? 'member'} — ${flags} flag(s)`);
-      const admins = await all<{ id: number }>(c.env, "SELECT id FROM users WHERE role = 'admin' AND status = 'active'");
-      for (const a of admins) await notify(c.env, a.id, 'troll', `A post by ${author?.username ?? 'a member'} was hidden after ${flags} troll flag${flags === 1 ? '' : 's'}. Please review.`, '/admin/reports');
-    }
+    const author = p.user_id ? await first<{ username: string }>(c.env, 'SELECT username FROM users WHERE id = ?', p.user_id) : null;
+    await logMod(c.env, null, 'auto_hide_pending_review', 'post', p.id, `${flags} member flags`, p.user_id);
+    await notifyModerators(c.env, `A post by ${author?.username ?? 'a member'} is hidden after ${flags} troll flags and needs review.`, '/admin/reports');
+    if (p.user_id) await notify(c.env, p.user_id, 'moderation', 'One of your posts is temporarily hidden while moderators review it. This is not a judgment about you; most reviews finish quickly.', `/t/${p.thread_id}?post=${p.id}`);
   }
-  return c.json({ ok: true, hidden: hide, flags, threshold });
+  return c.json({ ok: true, hidden: hide || Boolean(already?.hidden), flags, threshold });
 });
 
 // ---------- Polls ----------
@@ -575,7 +580,7 @@ forum.get('/pulse', async (c) => {
       `SELECT COUNT(*) AS n FROM threads t LEFT JOIN thread_reads tr ON tr.thread_id = t.id AND tr.user_id = ?
         WHERE t.deleted = 0 AND t.pending = 0 AND t.last_post_at > ? AND (tr.last_read_post_id IS NULL OR tr.last_read_post_id < t.last_post_id)
           AND t.forum_id NOT IN (SELECT target_id FROM mutes WHERE user_id = ? AND target_type = 'forum')`, user.id, unreadBaseline(user), user.id),
-    user.role === 'admin' ? first<{ n: number }>(c.env, "SELECT (SELECT COUNT(*) FROM reports WHERE status = 'open' AND kind = 'report') + (SELECT COUNT(*) FROM posts WHERE pending = 1 AND deleted = 0) + (SELECT COUNT(*) FROM posts WHERE hidden = 1 AND deleted = 0) AS n") : Promise.resolve({ n: 0 }),
+    user.role === 'admin' ? first<{ n: number }>(c.env, "SELECT (SELECT COUNT(*) FROM reports WHERE status = 'open' AND kind = 'report') + (SELECT COUNT(*) FROM posts WHERE pending = 1 AND deleted = 0) + (SELECT COUNT(*) FROM posts WHERE hidden = 1 AND deleted = 0) + (SELECT COUNT(*) FROM appeals WHERE status = 'open') + (SELECT COUNT(*) FROM ban_proposals WHERE status = 'open') AS n") : Promise.resolve({ n: 0 }),
   ]);
   return c.json({ notifications: n?.n ?? 0, messages: dm?.n ?? 0, unread_threads: unread?.n ?? 0, open_reports: reports?.n ?? 0 });
 });

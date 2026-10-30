@@ -9,6 +9,7 @@ import { BADGES, SPORT_BY_KEY } from '../../shared/sports';
 import { awardBadge } from '../lib/members';
 import { createResetToken } from './auth';
 import { publishPost, broadcastThread } from '../lib/threads';
+import { BAN_APPROVALS_REQUIRED, MAX_SUSPENSION_DAYS, assertNotLastModerator, issueWarning, moderatorIds, notifyModerators, overturn, removePost, suspend, tellMember, voteBan } from '../lib/moderation';
 import type { SessionUser } from '../env';
 import { runGameLifecycle, syncAllFeeds, type GameRow } from '../lib/sports';
 import { presentGame } from './games';
@@ -87,21 +88,118 @@ admin.get('/members', async (c) => {
 admin.patch('/members/:id', async (c) => {
   const actor = c.get('user');
   const id = num(c.req.param('id'));
-  const body = parse(z.object({ role: z.enum(['member', 'admin']).optional(), status: z.enum(['active', 'suspended']).optional(), days: z.number().int().min(1).max(365).optional(), reason: z.string().max(300).optional() }), await c.req.json());
-  const target = await first<{ id: number; role: string; status: string; username: string }>(c.env, 'SELECT id, role, status, username FROM users WHERE id = ?', id);
+  const body = parse(z.object({
+    role: z.enum(['member', 'admin']).optional(),
+    status: z.enum(['active', 'suspended']).optional(),
+    days: z.number().int().min(1).max(MAX_SUSPENSION_DAYS).optional(),
+    reason: z.string().trim().max(500).optional(),
+  }), await c.req.json());
+  const target = await first<{ id: number; role: string; status: string; username: string; banned_at: number | null }>(c.env, 'SELECT id, role, status, username, banned_at FROM users WHERE id = ?', id);
   if (!target) throw new HttpError(404, 'Member not found.');
-  const losingAdmin = target.role === 'admin' && target.status === 'active' && (body.role === 'member' || body.status === 'suspended');
-  if (losingAdmin) {
-    const admins = await first<{ n: number }>(c.env, "SELECT COUNT(*) AS n FROM users WHERE role = 'admin' AND status = 'active'");
-    if ((admins?.n ?? 0) <= 1) throw new HttpError(400, 'The forum must always have at least one active administrator.');
+  if (id === actor.id && body.status === 'suspended') throw new HttpError(400, "You can't suspend yourself.");
+  if (body.role) {
+    if (body.role === 'member') await assertNotLastModerator(c.env, id);
+    await run(c.env, 'UPDATE users SET role = ? WHERE id = ?', body.role, id);
+    await logMod(c.env, actor.id, `set_role_${body.role}`, 'user', id, body.reason || target.username, id);
   }
-  if (body.role) await run(c.env, 'UPDATE users SET role = ? WHERE id = ?', body.role, id);
-  if (body.status) {
-    // A suspension with `days` lifts itself automatically.
-    await run(c.env, 'UPDATE users SET status = ?, suspended_until = ? WHERE id = ?', body.status, body.status === 'suspended' && body.days ? now() + body.days * DAY : null, id);
-    if (body.status === 'suspended') await run(c.env, 'DELETE FROM sessions WHERE user_id = ?', id);
+  if (body.status === 'suspended') {
+    // One moderator can only suspend temporarily; permanent bans need three moderators.
+    if (!body.days) throw new HttpError(400, `Choose a suspension length (1 to ${MAX_SUSPENSION_DAYS} days). Permanent bans need three moderators.`);
+    if (!body.reason || body.reason.length < 3) throw new HttpError(400, 'Give a reason. The member sees it and can appeal.');
+    await suspend(c.env, actor.id, id, body.days, body.reason);
+  } else if (body.status === 'active') {
+    if (!body.reason || body.reason.length < 3) throw new HttpError(400, 'Give a reason for lifting the suspension.');
+    await run(c.env, "UPDATE users SET status = 'active', suspended_until = NULL, banned_at = NULL, suspension_reason = NULL WHERE id = ?", id);
+    await logMod(c.env, actor.id, target.banned_at ? 'lift_ban' : 'lift_suspension', 'user', id, body.reason, id);
   }
-  await logMod(c.env, actor.id, body.status ? `set_status_${body.status}${body.days ? `_${body.days}d` : ''}` : `set_role_${body.role}`, 'user', id, body.reason ?? target.username);
+  return c.json({ ok: true });
+});
+
+admin.post('/members/:id/warn', async (c) => {
+  const { reason, post_id } = parse(z.object({ reason: z.string().trim().min(3).max(500), post_id: z.number().int().nullable().optional() }), await c.req.json());
+  const id = num(c.req.param('id'));
+  if (!(await first(c.env, 'SELECT id FROM users WHERE id = ?', id))) throw new HttpError(404, 'Member not found.');
+  await issueWarning(c.env, c.get('user').id, id, reason, post_id ?? null);
+  return c.json({ ok: true });
+});
+
+// Abusive flagging: a moderator can switch off a member's ability to flag (reporting still works).
+admin.post('/members/:id/flagging', async (c) => {
+  const { enabled, reason } = parse(z.object({ enabled: z.boolean(), reason: z.string().trim().min(3).max(500) }), await c.req.json());
+  const id = num(c.req.param('id'));
+  await run(c.env, 'UPDATE users SET can_flag = ? WHERE id = ?', enabled ? 1 : 0, id);
+  await logMod(c.env, c.get('user').id, enabled ? 'restore_flagging' : 'revoke_flagging', 'user', id, reason, id);
+  if (!enabled) await notify(c.env, id, 'moderation', `A moderator turned off troll flagging for your account: ${reason}`, '/settings#moderation');
+  return c.json({ ok: true });
+});
+
+admin.get('/flaggers', async (c) => {
+  const rows = await all(c.env,
+    `SELECT u.id, u.username, u.can_flag, COUNT(r.id) AS flags,
+            SUM(r.status = 'resolved') AS upheld, SUM(r.status = 'dismissed') AS dismissed, SUM(r.status = 'open') AS pending,
+            MAX(r.created_at) AS last_flag
+       FROM reports r JOIN users u ON u.id = r.reporter_id WHERE r.kind = 'troll' GROUP BY u.id ORDER BY dismissed DESC, flags DESC`);
+  return c.json({ flaggers: rows });
+});
+
+// ---------- Permanent bans: three moderators must approve ----------
+
+admin.get('/bans', async (c) => {
+  const proposals = await all<{ id: number; user_id: number; username: string; proposed_by_name: string; reason: string; status: string; created_at: number; decided_at: number | null }>(c.env,
+    `SELECT b.*, u.username, p.username AS proposed_by_name FROM ban_proposals b JOIN users u ON u.id = b.user_id LEFT JOIN users p ON p.id = b.proposed_by
+      ORDER BY (b.status = 'open') DESC, b.id DESC LIMIT 50`);
+  const votes = proposals.length ? await all<{ proposal_id: number; moderator: string; moderator_id: number; vote: string; reason: string; created_at: number }>(c.env,
+    `SELECT v.proposal_id, v.moderator_id, v.vote, v.reason, v.created_at, u.username AS moderator FROM ban_votes v JOIN users u ON u.id = v.moderator_id
+      WHERE v.proposal_id IN (${proposals.map(() => '?').join(',')})`, ...proposals.map((p) => p.id)) : [];
+  return c.json({ required: BAN_APPROVALS_REQUIRED, moderators: (await moderatorIds(c.env)).length, proposals: proposals.map((p) => ({ ...p, votes: votes.filter((v) => v.proposal_id === p.id) })) });
+});
+
+admin.post('/bans', async (c) => {
+  const actor = c.get('user');
+  const { user_id, reason } = parse(z.object({ user_id: z.number().int(), reason: z.string().trim().min(10, 'explain the reason (at least a sentence)').max(1000) }), await c.req.json());
+  if (user_id === actor.id) throw new HttpError(400, "You can't propose banning yourself.");
+  const target = await first<{ username: string; banned_at: number | null }>(c.env, 'SELECT username, banned_at FROM users WHERE id = ?', user_id);
+  if (!target) throw new HttpError(404, 'Member not found.');
+  if (target.banned_at) throw new HttpError(400, 'This member is already banned.');
+  if (await first(c.env, "SELECT id FROM ban_proposals WHERE user_id = ? AND status = 'open'", user_id)) throw new HttpError(409, 'There is already an open ban proposal for this member.');
+  const r = await run(c.env, 'INSERT INTO ban_proposals (user_id, proposed_by, reason, created_at) VALUES (?, ?, ?, ?)', user_id, actor.id, reason, now());
+  await logMod(c.env, actor.id, 'ban_proposed', 'ban_proposal', r.meta.last_row_id, reason, user_id);
+  const result = await voteBan(c.env, actor.id, r.meta.last_row_id, 'approve', reason);
+  await notifyModerators(c.env, `${actor.username} proposed permanently banning ${target.username}. ${BAN_APPROVALS_REQUIRED} moderators must approve.`, '/admin/bans', actor.id);
+  return c.json({ id: r.meta.last_row_id, ...result });
+});
+
+admin.post('/bans/:id/vote', async (c) => {
+  const { vote, reason } = parse(z.object({ vote: z.enum(['approve', 'reject']), reason: z.string().trim().min(3).max(500) }), await c.req.json());
+  return c.json(await voteBan(c.env, c.get('user').id, num(c.req.param('id')), vote, reason));
+});
+
+// ---------- Appeals: decided by a different moderator than the one who acted ----------
+
+admin.get('/appeals', async (c) => {
+  const rows = await all(c.env,
+    `SELECT a.*, u.username, l.action, l.detail, l.actor_id, l.created_at AS action_at, m.username AS acted_by, d.username AS decided_by_name
+       FROM appeals a JOIN users u ON u.id = a.user_id JOIN mod_log l ON l.id = a.log_id LEFT JOIN users m ON m.id = l.actor_id LEFT JOIN users d ON d.id = a.decided_by
+      ORDER BY (a.status = 'open') DESC, a.id DESC LIMIT 100`);
+  return c.json({ appeals: rows });
+});
+
+admin.post('/appeals/:id', async (c) => {
+  const actor = c.get('user');
+  const { decision, note } = parse(z.object({ decision: z.enum(['upheld', 'overturned']), note: z.string().trim().min(3).max(1000) }), await c.req.json());
+  const a = await first<{ id: number; user_id: number; log_id: number; status: string }>(c.env, 'SELECT * FROM appeals WHERE id = ?', num(c.req.param('id')));
+  if (!a || a.status !== 'open') throw new HttpError(400, 'This appeal is already decided.');
+  const log = await first<{ action: string; actor_id: number | null; target_id: number | null; subject_user_id: number | null }>(c.env, 'SELECT action, actor_id, target_id, subject_user_id FROM mod_log WHERE id = ?', a.log_id);
+  if (!log) throw new HttpError(404, 'Decision not found.');
+  if (log.actor_id === actor.id) throw new HttpError(403, 'A different moderator must decide this appeal.');
+  if (log.action === 'ban') {
+    const voters = await all<{ moderator_id: number }>(c.env, "SELECT v.moderator_id FROM ban_votes v JOIN ban_proposals b ON b.id = v.proposal_id WHERE b.user_id = ? AND b.status = 'approved' AND v.vote = 'approve'", a.user_id);
+    if (voters.some((v) => v.moderator_id === actor.id)) throw new HttpError(403, 'A moderator who did not vote for the ban must decide this appeal.');
+  }
+  if (decision === 'overturned') await overturn(c.env, log);
+  await run(c.env, 'UPDATE appeals SET status = ?, decided_by = ?, decision_note = ?, decided_at = ? WHERE id = ?', decision, actor.id, note, now(), a.id);
+  await logMod(c.env, actor.id, `appeal_${decision}`, 'appeal', a.id, note, a.user_id);
+  await tellMember(c.env, a.user_id, decision === 'overturned' ? `Your appeal was granted: ${note}` : `Your appeal was reviewed and the decision stands: ${note}`, '/settings#moderation', 'Your NMSU Sports Forum appeal was decided');
   return c.json({ ok: true });
 });
 
@@ -212,30 +310,41 @@ admin.post('/pending/:id', async (c) => {
 // ---------- Troll flags ----------
 
 admin.get('/flagged', async (c) => {
-  const rows = await all(c.env,
-    `SELECT p.id, p.thread_id, p.body, p.hidden, p.created_at, u.id AS user_id, u.username, t.title,
-            COUNT(DISTINCT r.reporter_id) AS flags, group_concat(DISTINCT ru.username) AS flagged_by
-       FROM reports r JOIN posts p ON p.id = r.post_id JOIN threads t ON t.id = p.thread_id
-       LEFT JOIN users u ON u.id = p.user_id LEFT JOIN users ru ON ru.id = r.reporter_id
+  const posts = await all<{ id: number; thread_id: number; body: string; hidden: number; created_at: number; user_id: number | null; username: string | null; title: string; flags: number }>(c.env,
+    `SELECT p.id, p.thread_id, p.body, p.hidden, p.created_at, u.id AS user_id, u.username, t.title, COUNT(DISTINCT r.reporter_id) AS flags
+       FROM reports r JOIN posts p ON p.id = r.post_id JOIN threads t ON t.id = p.thread_id LEFT JOIN users u ON u.id = p.user_id
       WHERE r.kind = 'troll' AND r.status = 'open' AND p.deleted = 0 GROUP BY p.id ORDER BY p.hidden DESC, flags DESC`);
-  return c.json({ flagged: rows });
+  const out = [];
+  for (const p of posts) {
+    // Context for spotting coordinated flagging: each flagger's history with this author and overall accuracy.
+    const flaggers = await all(c.env,
+      `SELECT u.id, u.username, u.can_flag, r.created_at,
+              (SELECT COUNT(*) FROM reports r2 JOIN posts p2 ON p2.id = r2.post_id WHERE r2.kind = 'troll' AND r2.reporter_id = u.id AND p2.user_id = ? AND r2.created_at > ?) AS on_author_30d,
+              (SELECT COUNT(*) FROM reports r3 WHERE r3.kind = 'troll' AND r3.reporter_id = u.id AND r3.status = 'dismissed') AS dismissed,
+              (SELECT COUNT(*) FROM reports r4 WHERE r4.kind = 'troll' AND r4.reporter_id = u.id) AS total
+         FROM reports r JOIN users u ON u.id = r.reporter_id WHERE r.post_id = ? AND r.kind = 'troll' AND r.status = 'open' ORDER BY r.created_at`,
+      p.user_id ?? 0, now() - 30 * DAY, p.id);
+    const priorWarnings = p.user_id ? (await first<{ n: number }>(c.env, 'SELECT COUNT(*) AS n FROM warnings WHERE user_id = ? AND withdrawn = 0', p.user_id))?.n ?? 0 : 0;
+    out.push({ ...p, flaggers, prior_warnings: priorWarnings });
+  }
+  return c.json({ flagged: out });
 });
 
 admin.post('/flagged/:id', async (c) => {
   const actor = c.get('user');
   const postId = num(c.req.param('id'));
-  const { action } = parse(z.object({ action: z.enum(['restore', 'remove']) }), await c.req.json());
-  const p = await first<{ id: number; user_id: number | null; body: string }>(c.env, 'SELECT id, user_id, body FROM posts WHERE id = ?', postId);
+  const body = parse(z.object({ action: z.enum(['restore', 'remove']), reason: z.string().trim().min(3, 'give a short reason').max(500), warn: z.boolean().optional() }), await c.req.json());
+  const p = await first<{ id: number; user_id: number | null; body: string; thread_id: number }>(c.env, 'SELECT id, user_id, body, thread_id FROM posts WHERE id = ?', postId);
   if (!p) throw new HttpError(404, 'Post not found.');
-  if (action === 'restore') {
+  if (body.action === 'restore') {
     await run(c.env, 'UPDATE posts SET hidden = 0 WHERE id = ?', postId);
-    if (p.user_id) await run(c.env, 'UPDATE users SET trusted = 1 WHERE id = ?', p.user_id);
+    await run(c.env, "UPDATE reports SET status = 'dismissed', resolved_by = ?, resolved_at = ?, resolution_note = ? WHERE post_id = ? AND kind = 'troll' AND status = 'open'", actor.id, now(), body.reason, postId);
+    await logMod(c.env, actor.id, 'restore_post', 'post', postId, body.reason, p.user_id);
+    if (p.user_id) await notify(c.env, p.user_id, 'moderation', `Your post was reviewed and restored: ${body.reason}`, `/t/${p.thread_id}?post=${postId}`);
   } else {
-    await run(c.env, 'UPDATE posts SET deleted = 1, deleted_by = ?, hidden = 0 WHERE id = ?', actor.id, postId);
+    await removePost(c.env, actor.id, postId, body.reason);
   }
-  await run(c.env, "UPDATE reports SET status = ?, resolved_by = ?, resolved_at = ? WHERE post_id = ? AND kind = 'troll' AND status = 'open'",
-    action === 'restore' ? 'dismissed' : 'resolved', actor.id, now(), postId);
-  await logMod(c.env, actor.id, action === 'restore' ? 'troll_restore' : 'troll_remove', 'post', postId, p.body.slice(0, 200));
+  if (body.warn && p.user_id) await issueWarning(c.env, actor.id, p.user_id, body.reason, postId);
   return c.json({ ok: true });
 });
 

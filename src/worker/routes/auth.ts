@@ -4,6 +4,7 @@ import type { AppEnv } from '../env';
 import { clientIp, createSession, destroySession, liftExpiredSuspension, rateLimit, requireUser } from '../auth';
 import { first, getSetting, logMod, run } from '../db';
 import { emailEnabled, sendEmail } from '../email';
+import { fileAppeal } from './community';
 import { HttpError, DAY, hashPassword, now, parse, passwordSchema, randomToken, sha256, usernameSchema, verifyPassword } from '../util';
 
 export const auth = new Hono<AppEnv>();
@@ -137,11 +138,15 @@ auth.post('/login', async (c) => {
     'SELECT id, password_hash, status FROM users WHERE username = ? OR email = ?', body.username, body.username);
   if (!u || !(await verifyPassword(body.password, u.password_hash))) throw new HttpError(401, 'Username or password is incorrect.');
   if (u.status !== 'active' && !(await liftExpiredSuspension(c.env, u.id))) {
-    const until = (await first<{ suspended_until: number | null; deleted_at: number | null }>(c.env, 'SELECT suspended_until, deleted_at FROM users WHERE id = ?', u.id));
-    if (until?.deleted_at) throw new HttpError(401, 'Username or password is incorrect.');
-    throw new HttpError(403, until?.suspended_until
-      ? `This account is suspended until ${new Date(until.suspended_until).toLocaleDateString('en-US', { timeZone: 'America/Denver', month: 'long', day: 'numeric' })}.`
-      : 'This account is suspended. Contact an administrator.');
+    const info = await first<{ suspended_until: number | null; deleted_at: number | null; banned_at: number | null; suspension_reason: string | null }>(c.env,
+      'SELECT suspended_until, deleted_at, banned_at, suspension_reason FROM users WHERE id = ?', u.id);
+    if (info?.deleted_at) throw new HttpError(401, 'Username or password is incorrect.');
+    const why = info?.suspension_reason ? ` Reason: ${info.suspension_reason}` : '';
+    throw new HttpError(403, info?.banned_at
+      ? `This account has been permanently banned by decision of three moderators.${why} You can appeal below.`
+      : info?.suspended_until
+        ? `This account is suspended until ${new Date(info.suspended_until).toLocaleDateString('en-US', { timeZone: 'America/Denver', month: 'long', day: 'numeric' })}.${why} You can appeal below.`
+        : `This account is suspended.${why} You can appeal below.`);
   }
   await createSession(c, u.id);
   return c.json({ ok: true });
@@ -200,5 +205,18 @@ auth.post('/password', requireUser, async (c) => {
   if (!u || !(await verifyPassword(body.current, u.password_hash))) throw new HttpError(400, 'Current password is incorrect.');
   await run(c.env, 'UPDATE users SET password_hash = ? WHERE id = ?', await hashPassword(body.password), user.id);
   await run(c.env, 'DELETE FROM sessions WHERE user_id = ? AND id != ?', user.id, c.get('sessionId'));
+  return c.json({ ok: true });
+});
+
+// Suspended or banned members can't sign in, so they appeal here with their credentials.
+auth.post('/appeal', async (c) => {
+  await rateLimit(c.env, `appeal:${clientIp(c)}`, 5, 3_600_000);
+  const body = parse(z.object({ username: z.string().trim().min(1).max(200), password: z.string().min(1).max(200), message: z.string().trim().min(10, 'explain why (at least a sentence)').max(2000) }), await c.req.json());
+  const u = await first<{ id: number; password_hash: string; status: string }>(c.env, 'SELECT id, password_hash, status FROM users WHERE username = ? OR email = ?', body.username, body.username);
+  if (!u || !(await verifyPassword(body.password, u.password_hash))) throw new HttpError(401, 'Username or password is incorrect.');
+  if (u.status !== 'suspended') throw new HttpError(400, 'Your account is active. Sign in to appeal from Settings → Moderation history.');
+  const log = await first<{ id: number }>(c.env, "SELECT id FROM mod_log WHERE subject_user_id = ? AND action IN ('ban', 'suspend') ORDER BY id DESC LIMIT 1", u.id);
+  if (!log) throw new HttpError(404, 'No suspension found to appeal.');
+  await fileAppeal(c.env, u.id, log.id, body.message);
   return c.json({ ok: true });
 });
