@@ -22,7 +22,7 @@
   --radius: 12px;
   --radius-sm: 8px;
   --shadow: 0 1px 2px rgb(0 0 0 / 0.05), 0 2px 8px rgb(0 0 0 / 0.04);
-  --header-h: 64px;
+  --header-h: 76px;
   --bottom-h: 64px;
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   font-size: 16px;
@@ -57,7 +57,7 @@ h3 { font-size: 1rem; }
 .site-header-inner { max-width: 1280px; margin: 0 auto; height: var(--header-h); display: flex; align-items: center; gap: 12px; padding: 0 16px; }
 .brand { display: flex; align-items: center; gap: 10px; color: var(--white); min-width: 0; flex: 1 1 auto; overflow: hidden; }
 .brand:hover { text-decoration: none; }
-.brand-crest { width: 46px; height: 46px; border-radius: 50%; background: var(--white); padding: 2px; object-fit: contain; flex: none; }
+.brand-crest { width: 68px; height: 68px; border-radius: 50%; background: var(--white); object-fit: contain; flex: none; }
 .brand-text { display: flex; flex-direction: column; min-width: 0; }
 .brand-name { font-weight: 800; letter-spacing: .02em; font-size: 1.05rem; white-space: nowrap; }
 .brand-tag { font-size: .66rem; letter-spacing: .14em; text-transform: uppercase; opacity: .85; white-space: nowrap; }
@@ -67,11 +67,12 @@ h3 { font-size: 1rem; }
 .top-nav a.active { background: rgb(255 255 255 / .2); }
 .header-actions { margin-left: auto; display: flex; align-items: center; gap: 2px; flex: none; }
 @media (max-width: 899px) {
+  :root { --header-h: 68px; }
   .site-header-inner { padding: 0 10px; gap: 8px; }
   .brand { gap: 8px; }
-  .brand-name { font-size: .8rem; letter-spacing: 0; overflow: hidden; text-overflow: ellipsis; }
+  .brand-name { font-size: .9rem; letter-spacing: 0; white-space: normal; line-height: 1.15; }
   .brand-tag { font-size: .58rem; letter-spacing: .08em; overflow: hidden; text-overflow: ellipsis; }
-  .brand-crest { width: 40px; height: 40px; }
+  .brand-crest { width: 58px; height: 58px; }
   .icon-btn { width: 34px; height: 34px; }
 }
 @media (max-width: 400px) { .brand-tag { display: none; } }
@@ -454,3 +455,10 @@ table.simple th { font-size: .72rem; text-transform: uppercase; letter-spacing: 
 .more-sports summary { cursor: pointer; padding: 10px 16px; font-weight: 700; font-size: 14px; color: var(--muted); border-top: 1px solid var(--line); }
 .rail-more { display: block; padding: 8px 14px 0; color: var(--muted); }
 .small-select { width: auto; padding: 6px 30px 6px 10px; font-size: 14px; min-height: 0; }
+
+/* Tap the header crest to see it full screen */
+.brand-crest-btn { background: none; border: 0; padding: 0; margin: 0; cursor: zoom-in; flex: none; display: flex; border-radius: 50%; }
+.brand-crest-btn:focus-visible { outline: 3px solid var(--white); outline-offset: 2px; }
+.crest-viewer { position: fixed; inset: 0; z-index: 100; background: rgb(0 0 0 / .88); display: flex; align-items: center; justify-content: center; padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom)); cursor: zoom-out; }
+.crest-viewer img { max-width: min(92vw, 900px); max-height: 88dvh; width: auto; height: auto; border-radius: 16px; background: var(--white); }
+.crest-close { position: absolute; top: max(12px, env(safe-area-inset-top)); right: 14px; width: 44px; height: 44px; border-radius: 50%; border: 0; background: rgb(255 255 255 / .15); color: var(--white); font-size: 28px; line-height: 1; cursor: pointer; }

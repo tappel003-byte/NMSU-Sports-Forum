@@ -3,26 +3,28 @@ import { z } from 'zod';
 import type { AppEnv, Env } from '../env';
 import { all, first, run } from '../db';
 import { HttpError, now, parse } from '../util';
-import { SPORT_BY_KEY } from '../../shared/sports';
+import { FEATURED_SPORTS, FEATURED_SQL, SPORT_BY_KEY } from '../../shared/sports';
 import { createPost, loadThread } from '../lib/threads';
 import { matchup, type GameRow } from '../lib/sports';
 import { presentGame } from './games';
 
 export const chat = new Hono<AppEnv>();
 
-async function resolveRoom(env: Env, room: string): Promise<{ room: string; game: GameRow | null }> {
+/** The Aggie Lounge is always open; live game chats exist only for football and men's basketball (archives stay readable). */
+async function resolveRoom(env: Env, room: string, live = false): Promise<{ room: string; game: GameRow | null }> {
   if (room === 'lounge') return { room, game: null };
   const m = room.match(/^game-(\d+)$/);
   if (!m) throw new HttpError(404, 'Chat room not found.');
   const game = await first<GameRow>(env, 'SELECT * FROM games WHERE id = ?', Number(m[1]));
   if (!game) throw new HttpError(404, 'Chat room not found.');
+  if (live && !FEATURED_SPORTS.includes(game.sport)) throw new HttpError(404, 'Game chats are for football and men\'s basketball. Join the Aggie Lounge instead.');
   return { room, game };
 }
 
 chat.get('/chat/rooms', async (c) => {
   const t = now();
   // Game rooms are listed from the day before a game until a day after.
-  const games = await all<GameRow>(c.env, "SELECT * FROM games WHERE removed = 0 AND status != 'canceled' AND starts_at BETWEEN ? AND ? ORDER BY starts_at", t - 86_400_000, t + 86_400_000);
+  const games = await all<GameRow>(c.env, `SELECT * FROM games WHERE removed = 0 AND status != 'canceled' AND sport IN ${FEATURED_SQL} AND starts_at BETWEEN ? AND ? ORDER BY starts_at`, t - 86_400_000, t + 86_400_000);
   const activity = await all<{ room: string; n: number }>(c.env, 'SELECT room, COUNT(DISTINCT user_id) AS n FROM chat_messages WHERE created_at > ? GROUP BY room', t - 15 * 60_000);
   const act = new Map(activity.map((a) => [a.room, a.n]));
   return c.json({
@@ -35,7 +37,7 @@ chat.get('/chat/rooms', async (c) => {
 
 // Rolling live window: the most recent N messages (admin setting `chat_window`).
 chat.get('/chat/:room/history', async (c) => {
-  const { room, game } = await resolveRoom(c.env, c.req.param('room'));
+  const { room, game } = await resolveRoom(c.env, c.req.param('room'), true);
   const windowSize = Number((await first<{ value: string }>(c.env, "SELECT value FROM settings WHERE key = 'chat_window'"))?.value) || 200;
   const before = Number(c.req.query('before')) || Number.MAX_SAFE_INTEGER;
   const rows = await all(c.env,
@@ -62,7 +64,7 @@ chat.get('/chat/:room/archive', async (c) => {
 });
 
 chat.get('/chat/:room/ws', async (c) => {
-  const { room } = await resolveRoom(c.env, c.req.param('room'));
+  const { room } = await resolveRoom(c.env, c.req.param('room'), true);
   if (c.req.header('Upgrade') !== 'websocket') throw new HttpError(426, 'Expected a WebSocket.');
   const user = c.get('user');
   const stub = c.env.CHAT.get(c.env.CHAT.idFromName(room));

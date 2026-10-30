@@ -18,9 +18,25 @@ function useForums() {
   return useApi<{ forums: ForumLite[] }>('/forums');
 }
 
+/** Full-screen view of the crest: tap anywhere or press Escape to close. */
+function CrestViewer({ onClose }: { onClose: () => void }) {
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', key);
+    return () => window.removeEventListener('keydown', key);
+  }, [onClose]);
+  return (
+    <div className="crest-viewer" role="dialog" aria-modal="true" aria-label="NMSU Sports Forum crest" onClick={onClose}>
+      <img src="/brand/crest-full.webp" alt="NMSU Sports Forum crest" />
+      <button type="button" className="crest-close" aria-label="Close" onClick={onClose}>×</button>
+    </div>
+  );
+}
+
 function Header() {
   const { me, pulse, refresh, site } = useApp();
   const [open, setOpen] = useState(false);
+  const [crest, setCrest] = useState(false);
   const nav = useNavigate();
   const loc = useLocation();
   const menuRef = useRef<HTMLDivElement>(null);
@@ -38,8 +54,11 @@ function Header() {
   return (
     <header className="site-header">
       <div className="site-header-inner">
+        <button type="button" className="brand-crest-btn" aria-label="View the crest full screen" onClick={() => setCrest(true)}>
+          <img src="/brand/crest-480.webp" alt="" className="brand-crest" width={68} height={68} />
+        </button>
+        {crest && <CrestViewer onClose={() => setCrest(false)} />}
         <Link to="/" className="brand" aria-label="NMSU Sports Forum home">
-          <img src="/brand/crest-160.webp" alt="" className="brand-crest" width={46} height={46} />
           <span className="brand-text">
             <span className="brand-name">NMSU SPORTS FORUM</span>
             <span className="brand-tag">Independent Aggie fan community</span>
