@@ -28,6 +28,12 @@ Updated October 29, 2026.
 - Home screen tests: a member immediately sees what is happening with the Aggies, reaches a good conversation in one or two taps, and feels recognized in a clubhouse-like community.
 - Layout: phone bottom navigation (Home · Forums · Games · Chat · Members); desktop three columns (navigation/venues · conversations · games/online/upcoming).
 
+## Approved October 30, 2026 (feature research round)
+- **Guiding principle:** a fun, very easy-to-use fan site. To win people over it must clearly offer more than the Aggie Alert board on Rivals. Money is not a goal; modest income later is acceptable but not planned.
+- **Next build round (approved):** (1) live-updating game threads, (2) phone push notifications, (3) dark mode, (4) spoiler tags in posts, (5) @mention autocomplete, (6) link previews (YouTube, articles), (7) thread tags with filtering, (8) moderation extras: auto-expiring suspensions, merging threads, approval of a new member's first posts, (9) member data download and account deletion, (10) Aggie-themed ranks by post count, (11) automatic postgame "Player of the Game" vote.
+- **Recruiting and transfer portal (wanted):** automatic where a free, permitted source exists. CollegeFootballData.com (free API key) is the leading candidate for football recruits and the transfer portal; confirm its terms before launch. Anything not covered is community-maintained with source links. See SPORTS_DATA.md.
+- **Deliberately skipped:** paid tiers or premium-only boards, extra reaction types, clubs/sub-groups.
+
 ## Decisions pending
 - Politics category and possible opt-in.
 - Confirm official feed URLs/terms (SPORTS_DATA.md); any future licensed live-score source and its cost.

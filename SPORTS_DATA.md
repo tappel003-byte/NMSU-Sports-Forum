@@ -28,3 +28,16 @@ Undocumented endpoints (e.g., ESPN's unofficial API) are not a production founda
 
 ## Verification status (be honest about this)
 As of October 30, 2026 the exact official feed URLs and their field formats have **not yet been verified** from a build environment (network access to nmstatesports.com was blocked during development). The importer is built against the standard iCalendar format such feeds use and is unit-tested with synthetic sample data. Before the Game Center is considered complete, the real feed URLs must be confirmed, configured, and a live sync observed. Check nmstatesports.com terms of use when confirming.
+
+## Recruiting and transfer portal (approved in principle Oct 30, 2026)
+Paid networks (247Sports, On3, Rivals) have no free public API, and copying their pages would break their terms, so they are not sources.
+
+| Data | Candidate free source | Notes |
+| --- | --- | --- |
+| Football high-school recruits (commits, star ratings, rankings) | **CollegeFootballData.com** API (free key; recruiting data back to 2000) | Confirm terms of use and attribution before launch |
+| Football transfer portal (entries to/from NMSU) | CollegeFootballData.com `/player/portal` (2021 to present) | Same |
+| Football and basketball results | CollegeFootballData.com / CollegeBasketballData.com | Possible second source to cross-check the official feed |
+| Basketball recruits and portal | No confirmed free source | Community-maintained entries with required source links |
+| Signings and roster additions | Official NMSU roster pages and announcements | Link out; headlines only |
+
+The free tiers have monthly call limits (CollegeBasketballData.com: 1,000 calls/month), so this syncs about once a day, not every 30 minutes. Each recruit or transfer gets a player card, member predictions and a linked discussion thread.

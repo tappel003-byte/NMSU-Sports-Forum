@@ -46,3 +46,15 @@ Status values: **Planned** · **Built** (code exists) · **Verified** (tested en
 | 39 | Low maintenance: no daily chores; automated jobs; failures alert admins | MILESTONE 14 | Verified — scheduled jobs run; feed failures notify admins |
 | 40 | Cloudflare hosting at NMSUSportsForum.com via repeatable GitHub deploy; inspect DNS first; no surprise costs | CLAUDE, MILESTONE 2 | Built — GitHub Actions deploy workflow. **Blocked: needs Cloudflare access** (docs/DEPLOYMENT.md) |
 | 41 | No secrets, invites or member data in the public repo | README, CLAUDE | Verified — secrets via Wrangler/GitHub secrets only |
+| 42 | Live-updating game threads | DECISIONS (Oct 30 research round), MILESTONE | Planned |
+| 43 | Phone push notifications (iPhone home-screen app) | DECISIONS (Oct 30 research round), MILESTONE | Planned |
+| 44 | Dark mode | DECISIONS (Oct 30 research round), MILESTONE | Planned |
+| 45 | Spoiler tags inside posts | DECISIONS (Oct 30 research round), MILESTONE | Planned |
+| 46 | @mention autocomplete | DECISIONS (Oct 30 research round), MILESTONE | Planned |
+| 47 | Link previews (YouTube, articles) | DECISIONS (Oct 30 research round), MILESTONE | Planned |
+| 48 | Thread tags with filtering | DECISIONS (Oct 30 research round), MILESTONE | Planned |
+| 49 | Moderation extras: auto-expiring suspensions, thread merge, first-post approval | DECISIONS (Oct 30 research round), MILESTONE | Planned |
+| 50 | Member data download and account deletion | DECISIONS (Oct 30 research round), MILESTONE | Planned |
+| 51 | Aggie-themed ranks by post count | DECISIONS (Oct 30 research round), MILESTONE | Planned |
+| 52 | Automatic postgame Player of the Game vote | DECISIONS (Oct 30 research round), MILESTONE | Planned |
+| 53 | Recruiting and transfer portal tracker (automatic where a free permitted source exists) | DECISIONS (Oct 30 research round), MILESTONE | Planned |
