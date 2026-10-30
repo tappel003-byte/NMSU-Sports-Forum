@@ -432,3 +432,18 @@ table.simple th { font-size: .72rem; text-transform: uppercase; letter-spacing: 
 /* Dark mode links inside posts and details stay recognizable without color. */
 :root[data-theme='dark'] .post-body a, :root[data-theme='dark'] .kv a, :root[data-theme='dark'] nav.small a { text-decoration: underline; text-decoration-color: rgb(255 255 255 / .4); text-underline-offset: 3px; }
 :root[data-theme='dark'] .site-header .avatar { background: var(--white); color: var(--crimson); }
+
+/* Scores strip on top of the Board */
+.scoreboard { display: flex; gap: 8px; overflow-x: auto; padding: 0 16px 12px; scrollbar-width: none; }
+.scoreboard::-webkit-scrollbar { display: none; }
+.score-chip { flex: 0 0 auto; min-width: 170px; max-width: 240px; display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2, var(--bg)); color: inherit; text-decoration: none; }
+.score-chip:hover { border-color: var(--crimson); }
+.score-line { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 14px; white-space: nowrap; }
+.score-line .grow { overflow: hidden; text-overflow: ellipsis; }
+
+/* Rosters & links hub */
+.hub-list { list-style: none; margin: 0; padding: 0; }
+.hub-list li { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-top: 1px solid var(--line); }
+.hub-list li:first-child { border-top: 0; }
+.hub-list .grow { flex: 1; min-width: 0; }
+.hub-list a.grow { font-weight: 700; display: inline-flex; align-items: center; gap: 6px; }

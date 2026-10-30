@@ -111,7 +111,7 @@ export function ThreadList({ threads, showForum = true, empty, compact }: { thre
         <li key={t.id} className="thread-item">
           <span className="thread-icon" aria-hidden="true">{t.sport ? sportIcon(t.sport) : t.forum.icon}</span>
           <div className="thread-main">
-            {showForum && <div className="thread-forum">{t.forum.name} · {t.sport ? sportName(t.sport) : t.forum.sport_label}</div>}
+            {showForum && t.forum.slug !== 'general' && <div className="thread-forum">{t.sport ? sportName(t.sport) : t.forum.name}</div>}
             <Link to={`/t/${t.id}${t.unread ? '?unread=1' : ''}`} className={`thread-title ${t.unread ? 'unread' : ''}`}>
               {t.pinned && '📌 '}{t.locked && '🔒 '}{t.title}
             </Link>

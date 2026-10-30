@@ -19,7 +19,7 @@ The product owner explicitly directs **one substantial initial build**, not a vi
 **Screenshots are layout references; colors must come from BRAND_COLORS.md** (primary crimson #8C0B42). Use the actual approved cowboy crest and do not redraw or replace it.
 
 ## Venue navigation
-The Pan Am = men's/women's basketball and volleyball; Aggie Memorial = football; Presley Askew Field = baseball; Softball Complex = softball; The Pitch = women's soccer; Track & Field = track and cross-country. Sport labels must always be visible alongside venue names.
+**Superseded Oct 30, 2026 by the owner (see DECISIONS.md): one Board, no venue forums in navigation.** Historical mapping, still used for game-thread sport labels: The Pan Am = men's/women's basketball and volleyball; Aggie Memorial = football; Presley Askew Field = baseball; Softball Complex = softball; The Pitch = women's soccer; Track & Field = track and cross-country. Sport labels must always be visible alongside venue names.
 
 ## Later-only Ring of Honor
 A simple list of Aggie Alert monikers, beginning with **Rojo**, in AGGIE_RING_OF_HONOR.md. **No initial visible Ring of Honor or navigation**. No biographies, memorial profiles, dates or reactions.

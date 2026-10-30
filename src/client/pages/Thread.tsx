@@ -207,7 +207,7 @@ export function ThreadPage() {
       )}
       {share && <ShareModal target={{ kind: 'thread', id: t.id, title: t.title }} onClose={() => setShare(false)} />}
       <nav className="small" aria-label="Breadcrumb">
-        <Link to="/forums">Forums</Link> › <Link to={`/f/${t.forum.slug}`}>{t.forum.name}</Link>{t.sport && <> · <span className="muted">{sportName(t.sport)}</span></>}
+        <Link to="/feed">Board</Link>{t.forum.slug !== 'general' && <> › <Link to={`/f/${t.forum.slug}`}>{t.forum.name}</Link></>}{t.sport && <> · <span className="muted">{sportName(t.sport)}</span></>}
       </nav>
       <section className="card">
         <div className="card-pad" style={{ borderBottom: '1px solid var(--line)' }}>

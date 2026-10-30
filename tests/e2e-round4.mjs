@@ -229,6 +229,19 @@ try {
   check('Members add Aggie Alert up votes (commas OK) and they show on the profile', aa.includes('RioRanchoAggie') && aa.includes('3,901 posts') && aa.includes('1,368 up votes received') && aa.includes('since 2010'));
   await reg.screenshot({ path: `${SHOTS}/profile-aggie-alert.png`, fullPage: true });
 
+  // ---------- Rosters & links, scores strip ----------
+  const hubSave = await api(admin, '/admin/settings', { method: 'PUT', body: { hub_links: 'Aggie radio | https://radio.example.test/live\nBad link | http://insecure.example.test\nnot a link' } });
+  const hub = (await api(reg, '/hub')).body;
+  check('Admins add radio and other links; only https links are shown', hubSave.status === 200 && hub.links.length === 1 && hub.links[0].label === 'Aggie radio');
+  await reg.goto(BASE + '/rosters');
+  await reg.waitForSelector('a:has-text("Aggie radio")');
+  await reg.screenshot({ path: `${SHOTS}/iphone-rosters.png`, fullPage: true });
+  const sb = (await api(reg, '/scoreboard')).body;
+  await reg.goto(BASE + '/feed');
+  await reg.waitForSelector('.score-chip');
+  check('The Board opens with the latest score', sb.recent.length > 0 && (await reg.textContent('.scoreboard')).includes('–'));
+  await reg.screenshot({ path: `${SHOTS}/iphone-board-scores.png` });
+
   // ---------- Audit history ----------
   const log = (await api(admin, '/admin/log')).body.log;
   const actions = new Set(log.map((l) => l.action));

@@ -62,6 +62,9 @@ Updated October 29, 2026.
 - **No gatekeeping when posting:** a new discussion needs only a title and a message. It files under General Discussion unless the member picks a venue ("File under", optional). The short description is optional.
 - **Invite by text and email:** in Admin → Invitations, enter a name plus a cell number and/or email. "Text it" opens the admin's own Messages app with the invitation written; "Email it" opens their email app (or the site emails it automatically once an email service is set up). Phone numbers are never stored on the site, and sending costs nothing.
 - **Aggie Alert up votes on profiles:** members can add their Aggie Alert up votes received (self-reported, beside moniker, join year and post count). Shown on the profile only; it does not change Aggie Reputation here.
+- **One Board instead of venue forums (supersedes the venue-navigation layout):** like Aggie Alert's Sports Trough, all discussion lives on a single Board, pinned topics on top. Venue forums are gone from navigation and from the new-post form. Automatic game threads still carry their sport label (e.g. FOOTBALL), and old venue pages remain reachable only by direct link. Aggie History and Suggestions stay as their own sections.
+- **Latest scores on top of the Board:** a strip shows the most recent results (from the automatic schedule feed; spoiler-free mode respected) and the next game.
+- **Rosters & links hub:** every sport links to its official roster and schedule (always current, nothing to maintain), plus an admin-maintained list of useful links (radio feeds, streams, tickets) in Admin → Settings. Shown in the desktop side column and from the phone home page.
 
 ## Decisions pending
 - Politics category and possible opt-in.

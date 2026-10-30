@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
-  Award, Bell, Bookmark, CalendarDays, History, Home, Lightbulb, LogOut, Mail, Map as MapIcon, MessageCircle, MessagesSquare,
+  Award, Bell, Bookmark, CalendarDays, ClipboardList, History, Home, Lightbulb, LogOut, Mail, Map as MapIcon, MessageCircle, MessagesSquare,
   Search, Settings, Shield, Sparkles, Trophy, Trophy as TrophyIcon, UserPlus, Users,
 } from 'lucide-react';
+import type { HubData } from '../pages/Rosters';
 import { PullToRefresh } from './PullToRefresh';
 import { api } from '../api';
 import { useApi, useApp } from '../state';
@@ -44,7 +45,7 @@ function Header() {
         </Link>
         <nav className="top-nav" aria-label="Main">
           <NavLink to="/" end>Home</NavLink>
-          <NavLink to="/forums">Forums</NavLink>
+          <NavLink to="/feed">Board</NavLink>
           <NavLink to="/games">Game Center</NavLink>
           <NavLink to="/chat">Live Chat</NavLink>
           <NavLink to="/members">Members</NavLink>
@@ -90,37 +91,23 @@ function Header() {
 function LeftRail() {
   const { me, pulse } = useApp();
   const { data } = useForums();
-  const venues = data?.forums.filter((f) => f.kind === 'sport') ?? [];
-  const community = data?.forums.filter((f) => f.kind !== 'sport') ?? [];
+  const community = data?.forums.filter((f) => f.kind !== 'sport' && f.kind !== 'general') ?? [];
   return (
     <aside className="left-rail" aria-label="Sections">
       <div className="rail-card">
         <p className="rail-title">Navigate</p>
         <nav className="side-nav">
           <NavLink to="/" end><Home size={17} /> Home</NavLink>
-          <NavLink to="/feed"><MessagesSquare size={17} /> All discussions{pulse.unread_threads > 0 && <span className="count hot">{pulse.unread_threads}</span>}</NavLink>
+          <NavLink to="/feed"><MessagesSquare size={17} /> Board{pulse.unread_threads > 0 && <span className="count hot">{pulse.unread_threads}</span>}</NavLink>
           <NavLink to="/games"><TrophyIcon size={17} /> Game Center</NavLink>
           <NavLink to="/chat"><MessageCircle size={17} /> Live chat</NavLink>
           <NavLink to="/calendar"><CalendarDays size={17} /> Calendar</NavLink>
           <NavLink to="/members"><Users size={17} /> Members</NavLink>
+          <NavLink to="/rosters"><ClipboardList size={17} /> Rosters &amp; links</NavLink>
           <NavLink to="/recruiting"><UserPlus size={17} /> Recruiting</NavLink>
           <NavLink to="/predictions"><Trophy size={17} /> Predictions</NavLink>
           <NavLink to="/time-machine"><History size={17} /> Time Machine</NavLink>
           {me?.role === 'admin' && <NavLink to="/admin"><Shield size={17} /> Admin{pulse.open_reports > 0 && <span className="count hot">{pulse.open_reports}</span>}</NavLink>}
-        </nav>
-      </div>
-      <div className="rail-card">
-        <p className="rail-title">Sports venues</p>
-        <nav className="side-nav">
-          {venues.map((f) => (
-            <NavLink key={f.slug} to={`/f/${f.slug}`} title={f.sport_label}>
-              <span aria-hidden="true">{f.icon}</span>
-              <span style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.15 }}>
-                <span>{f.name}</span><span className="tiny muted" style={{ fontWeight: 600 }}>{f.sport_label}</span>
-              </span>
-              <span className={`count ${f.unread ? 'hot' : ''}`}>{f.unread || f.threads || ''}</span>
-            </NavLink>
-          ))}
         </nav>
       </div>
       <div className="rail-card">
@@ -138,6 +125,20 @@ function LeftRail() {
   );
 }
 
+function RostersCard() {
+  const { data } = useApi<HubData>('/hub');
+  if (!data) return null;
+  return (
+    <div className="rail-card">
+      <p className="rail-title">Rosters</p>
+      <div className="chip-row">
+        {data.sports.map((s) => <a key={s.key} href={s.roster_url} target="_blank" rel="noopener noreferrer" className="chip gray">{s.icon} {s.label}</a>)}
+      </div>
+      <Link to="/rosters" className="row small" style={{ marginTop: 10 }}><ClipboardList size={16} /> Rosters, radio &amp; links</Link>
+    </div>
+  );
+}
+
 function RightRail() {
   const { data } = useApi<{ games: GameItem[]; live: GameItem[]; online: { id: number; username: string }[]; weekly: { thread_id: number; id: number; body: string; up: number; author: { username: string } | null } | null }>('/home');
   return (
@@ -151,6 +152,7 @@ function RightRail() {
         {data && !data.games.length && <div className="small muted" style={{ padding: '0 14px 12px' }}>No games scheduled yet. Schedules arrive automatically from the official athletics calendar.</div>}
         <div style={{ padding: 12 }}><Link to="/games" className="btn block small">Open Game Center</Link></div>
       </div>
+      <RostersCard />
       <div className="rail-card">
         <p className="rail-title">Online now</p>
         {data?.online.length ? (
@@ -179,7 +181,7 @@ function BottomNav() {
   return (
     <nav className="bottom-nav" aria-label="Main">
       <NavLink to="/" end><Home size={22} /> Home</NavLink>
-      <NavLink to="/forums"><MessagesSquare size={22} /> Forums{pulse.unread_threads > 0 && <span className="dot">{pulse.unread_threads > 99 ? '99+' : pulse.unread_threads}</span>}</NavLink>
+      <NavLink to="/feed"><MessagesSquare size={22} /> Board{pulse.unread_threads > 0 && <span className="dot">{pulse.unread_threads > 99 ? '99+' : pulse.unread_threads}</span>}</NavLink>
       <NavLink to="/games"><Trophy size={22} /> Games</NavLink>
       <NavLink to="/chat"><MessageCircle size={22} /> Chat</NavLink>
       <NavLink to="/members"><Users size={22} /> Members</NavLink>

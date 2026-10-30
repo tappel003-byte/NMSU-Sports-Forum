@@ -212,10 +212,15 @@ try {
   await member.waitForSelector(`.thread-title:has-text("Predictions for the home opener")`);
   check('Search finds the discussion', true);
   await member.goto(BASE + '/forums');
-  await member.click('a.venue-card:has-text("Aggie Memorial")');
-  await member.waitForSelector('h1:has-text("Aggie Memorial")');
-  check('Venue forums show sport labels and their discussions', (await member.textContent('main')).includes('Football') && (await member.isVisible(`a[href^="/t/${threadId}"]`)));
-  await member.screenshot({ path: `${SHOTS}/iphone-forum.png`, fullPage: true });
+  await member.waitForURL('**/feed');
+  await member.waitForSelector('h2:has-text("The Board")');
+  const onBoard = await member.waitForSelector(`.thread-list a[href^="/t/${threadId}"]`, { timeout: 8000 }).then(() => true, () => false);
+  check('One Board holds every discussion (old forum links land there)', onBoard);
+  await member.screenshot({ path: `${SHOTS}/iphone-board.png`, fullPage: true });
+  await member.goto(BASE + '/rosters');
+  await member.waitForSelector('h1:has-text("Rosters")');
+  const rosterHref = await member.getAttribute('.hub-list li:has-text("Football") a:has-text("Roster")', 'href');
+  check('Rosters & links page links every sport to its official roster', rosterHref === 'https://nmstatesports.com/sports/football/roster' && (await member.locator('.hub-list li').count()) >= 13);
 
   // ---------- 7. Game Center from the automatic feed ----------
   await admin.goto(BASE + '/admin/data');
@@ -310,6 +315,8 @@ try {
   await admin.click('.modal button:has-text("Pin")');
   await admin.waitForSelector('.chip:has-text("Pinned")');
   check('Admin pins a discussion', true);
+  const board = (await api(member, '/feed?tab=latest&games=1')).body.threads;
+  check('Pinned topics sit at the top of the Board', board[0]?.id === threadId && board[0].pinned === true);
   const reportRes = await api(member, `/posts/${(await api(member, `/threads/${threadId}`)).body.posts[1].id}/report`, { body: { reason: 'Testing the report flow' } });
   const reports = (await api(admin, '/admin/reports')).body.reports;
   check('Member reports a post and admins see it', reportRes.status === 200 && reports.length === 1);

@@ -5,7 +5,7 @@ import { ShareModal } from '../components/Share';
 import { TAGS } from '../../shared/forum';
 import { api } from '../api';
 import { useApi, useApp } from '../state';
-import { gameTime, matchup, sportName, timeAgo } from '../format';
+import { Score, gameTime, matchup, sportIcon, sportName, timeAgo } from '../format';
 import { ErrorState, GameRow, JoinCta, Loading, ThreadList, type GameItem, type MemberLite, type ThreadItem } from '../components/ui';
 
 interface HomeData {
@@ -22,12 +22,33 @@ interface HomeData {
 }
 
 const TABS = [
-  ['latest', 'Latest'], ['unread', 'Unread'], ['following', 'Following'], ['mysports', 'My sports'], ['popular', 'Popular'],
+  ['latest', 'Latest'], ['unread', 'Unread'], ['following', 'Following'], ['popular', 'Popular'],
 ] as const;
 
 function greeting() {
   const h = Number(new Intl.DateTimeFormat('en-US', { timeZone: 'America/Denver', hour: 'numeric', hourCycle: 'h23' }).format(new Date()));
   return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+}
+
+function Scoreboard() {
+  const { data } = useApi<{ recent: GameItem[]; next: GameItem[] }>('/scoreboard');
+  if (!data || (!data.recent.length && !data.next.length)) return null;
+  return (
+    <div className="scoreboard" aria-label="Latest scores">
+      {data.recent.map((g) => (
+        <Link key={g.id} to={`/games/${g.id}`} className="score-chip">
+          <span className="tiny muted">{sportIcon(g.sport)} {sportName(g.sport)}</span>
+          <span className="score-line"><span className="grow">{matchup(g)}</span> <Score game={g} /></span>
+        </Link>
+      ))}
+      {data.next.map((g) => (
+        <Link key={g.id} to={`/games/${g.id}`} className="score-chip">
+          <span className="tiny muted">{sportIcon(g.sport)} Next · {sportName(g.sport)}</span>
+          <span className="score-line"><span className="grow">{matchup(g)}</span> {g.live ? <span className="chip live">Game day</span> : <span className="tiny muted">{gameTime(g.starts_at, g.time_tba)}</span>}</span>
+        </Link>
+      ))}
+    </div>
+  );
 }
 
 export function Feed({ initialTab = 'latest', compact = false }: { initialTab?: string; compact?: boolean }) {
@@ -51,7 +72,7 @@ export function Feed({ initialTab = 'latest', compact = false }: { initialTab?: 
   return (
     <section className="card">
       <div className="section-head">
-        <h2>{compact ? 'Community discussions' : 'All discussions'}</h2>
+        <h2>{compact ? 'Community discussions' : 'The Board'}</h2>
         <div className="row">
           {tab === 'unread' && <button className="btn ghost small" onClick={markAll}>Mark all read</button>}
           {me && <button className="btn ghost small" onClick={toggleCompact} aria-pressed={Boolean(me?.prefs?.compact)} title="Compact list">{me?.prefs?.compact ? <List size={16} /> : <Rows3 size={16} />}<span className="sr-only">Compact list</span></button>}
@@ -59,6 +80,7 @@ export function Feed({ initialTab = 'latest', compact = false }: { initialTab?: 
           {me && <Link to="/new" className="btn small desktop-only-inline"><Plus size={16} /> New thread</Link>}
         </div>
       </div>
+      {!compact && <Scoreboard />}
       <div className="tabs" role="tablist">
         {TABS.filter(([k]) => me || k === 'latest' || k === 'popular').map(([k, label]) => (
           <button key={k} role="tab" aria-selected={tab === k} className={`tab ${tab === k ? 'active' : ''}`} onClick={() => { setPage(1); setParams((p) => { p.set('tab', k); return p; }, { replace: true }); }}>{label}</button>
@@ -177,20 +199,8 @@ export function Home() {
         </section>
       )}
 
-      <section className="card desktop-only">
-        <div className="section-head"><h2>Sports venues</h2><Link to="/forums" className="small">All forums</Link></div>
-        <div className="card-pad venue-grid">
-          {forums?.forums.filter((f) => f.kind === 'sport').map((f) => (
-            <Link key={f.slug} to={`/f/${f.slug}`} className="venue-card">
-              <span className="venue-emoji" aria-hidden="true">{f.icon}</span>
-              <span className="grow"><span className="venue-name">{f.name}</span><br /><span className="venue-sport">{f.sport_label}</span></span>
-              {f.unread > 0 && <span className="chip">{f.unread} new</span>}
-            </Link>
-          ))}
-        </div>
-      </section>
-
       <div className="row" style={{ justifyContent: 'center' }}>
+        <button className="btn ghost small" onClick={() => nav('/rosters')}>Rosters &amp; links</button>
         <button className="btn ghost small" onClick={() => nav('/recruiting')}>Recruiting &amp; portal</button>
         <button className="btn ghost small" onClick={() => nav('/time-machine')}>Aggie Time Machine</button>
         <button className="btn ghost small" onClick={() => nav('/predictions')}>Prediction standings</button>

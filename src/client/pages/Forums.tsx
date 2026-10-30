@@ -122,7 +122,7 @@ export function NewThread() {
   const { toast } = useApp();
   const nav = useNavigate();
   const { data } = useApi<{ forums: ForumInfo[] }>('/forums');
-  const [forum, setForum] = useState(params.get('forum') === 'general' ? '' : params.get('forum') ?? '');
+  const forum = params.get('forum') === 'general' ? '' : params.get('forum') ?? '';
   const gameId = Number(params.get('game')) || null;
   const phase = params.get('phase') as 'pregame' | 'postgame' | null;
   const draftKey = `new-${gameId ? `game-${gameId}-${phase ?? 'talk'}` : forum || 'any'}`;
@@ -171,23 +171,7 @@ export function NewThread() {
           <MentionTextarea id="body" textareaRef={bodyRef} className="textarea" style={{ minHeight: 180 }} value={draft.body} onChange={draft.setBody} required />
           <span className="hint">Tips: paste a tweet or YouTube link and it shows as a card; start a line with &gt; to quote; **bold**; ||spoiler||; @ to mention. {draft.status === 'saved' && draft.body ? 'Draft saved.' : draft.status === 'saving' ? 'Saving draft…' : ''}</span>
         </div>
-        <div className="field">
-          <label htmlFor="forum">File under <span className="muted small">(optional)</span></label>
-          <select id="forum" className="select" value={forum} onChange={(e) => { setForum(e.target.value); setSport(''); }}>
-            <option value="">General Discussion — Aggie Talk</option>
-            {data?.forums.filter((x) => x.slug !== 'general').map((x) => <option key={x.slug} value={x.slug}>{x.name} — {x.sport_label}</option>)}
-          </select>
-          <span className="hint">Leave it on General Discussion, or pick a venue so fans of that sport see it first.</span>
-        </div>
-        {f && f.sports.length > 1 && (
-          <div className="field">
-            <label htmlFor="sport">Sport</label>
-            <select id="sport" className="select" value={sport} onChange={(e) => setSport(e.target.value)}>
-              <option value="">General {f.sport_label}</option>
-              {f.sports.map((s) => <option key={s} value={s}>{sportName(s)}</option>)}
-            </select>
-          </div>
-        )}
+        {f && f.slug !== 'general' && <div className="note-box small" style={{ marginBottom: 12 }}>Posting in {f.name}.</div>}
         <div className="field"><label htmlFor="desc">Short description <span className="muted small">(optional)</span></label><input id="desc" className="input" value={description} onChange={(e) => setDescription(e.target.value)} maxLength={240} placeholder="One line shown in the thread list" /></div>
         <div className="field"><span className="label">Tags (optional, up to 3)</span><TagPicker value={tags} onChange={setTags} /></div>
         <PhotoThumbs photos={photos} setPhotos={setPhotos} />
