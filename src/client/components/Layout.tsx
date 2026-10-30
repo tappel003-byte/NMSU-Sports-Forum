@@ -2,8 +2,9 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   Award, Bell, Bookmark, CalendarDays, History, Home, Lightbulb, LogOut, Mail, Map as MapIcon, MessageCircle, MessagesSquare,
-  Search, Settings, Shield, Sparkles, Trophy, Trophy as TrophyIcon, Users,
+  Search, Settings, Shield, Sparkles, Trophy, Trophy as TrophyIcon, UserPlus, Users,
 } from 'lucide-react';
+import { PullToRefresh } from './PullToRefresh';
 import { api } from '../api';
 import { useApi, useApp } from '../state';
 import { Avatar, GameRow, type GameItem } from './ui';
@@ -65,6 +66,7 @@ function Header() {
                 <Link to={`/members/${me.id}`}>My profile</Link>
                 <Link to="/settings">Settings &amp; profile</Link>
                 <Link to="/bookmarks">Bookmarks &amp; reminders</Link>
+                <Link to="/recruiting">Recruiting &amp; portal</Link>
                 <Link to="/drafts">Drafts</Link>
                 {me.role === 'admin' && <Link to="/admin">Admin{pulse.open_reports ? ` (${pulse.open_reports} reports)` : ''}</Link>}
                 <hr />
@@ -94,6 +96,7 @@ function LeftRail() {
           <NavLink to="/chat"><MessageCircle size={17} /> Live chat</NavLink>
           <NavLink to="/calendar"><CalendarDays size={17} /> Calendar</NavLink>
           <NavLink to="/members"><Users size={17} /> Members</NavLink>
+          <NavLink to="/recruiting"><UserPlus size={17} /> Recruiting</NavLink>
           <NavLink to="/predictions"><Trophy size={17} /> Predictions</NavLink>
           <NavLink to="/time-machine"><History size={17} /> Time Machine</NavLink>
           {me?.role === 'admin' && <NavLink to="/admin"><Shield size={17} /> Admin{pulse.open_reports > 0 && <span className="count hot">{pulse.open_reports}</span>}</NavLink>}
@@ -182,6 +185,7 @@ export function Layout({ children, rail = true }: { children: ReactNode; rail?: 
     <>
       <a href="#main" className="sr-only">Skip to content</a>
       <Header />
+      <PullToRefresh />
       <div className={`shell ${rail ? '' : 'wide'}`}>
         <LeftRail />
         <main id="main" className="main">{children}</main>

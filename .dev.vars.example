@@ -1,1 +1,7 @@
 BOOTSTRAP_TOKEN=local-dev-bootstrap-token
+# Generate with: npm run vapid
+VAPID_PUBLIC_KEY=
+VAPID_PRIVATE_KEY=
+# Local testing uses a fake CollegeFootballData server (tests/e2e-round2.mjs)
+CFBD_API_KEY=local-test-key
+CFBD_BASE=http://localhost:8798

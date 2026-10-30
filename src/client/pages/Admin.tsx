@@ -13,7 +13,7 @@ function copy(text: string, toast: (m: string) => void) {
 interface Feed { id: number; sport: string; url: string; enabled: number; last_ok_at: number | null; last_error: string | null; last_error_at: number | null; failing: number; last_counts: string | null }
 
 function Overview() {
-  const { data, error, reload } = useApi<{ members: { total: number; admins: number; suspended: number }; open_reports: number; open_invites: number; feeds: Feed[]; log: { id: number; actor: string | null; action: string; target_type: string; detail: string | null; created_at: number }[]; emailEnabled: boolean }>('/admin/overview');
+  const { data, error, reload } = useApi<{ members: { total: number; admins: number; suspended: number }; open_reports: number; pending_posts: number; open_invites: number; feeds: Feed[]; log: { id: number; actor: string | null; action: string; target_type: string; detail: string | null; created_at: number }[]; emailEnabled: boolean }>('/admin/overview');
   if (error) return <ErrorState error={error} retry={reload} />;
   if (!data) return <Loading />;
   const failing = data.feeds.filter((f) => f.failing > 0);
@@ -22,7 +22,7 @@ function Overview() {
       <div className="stat-grid">
         <Link to="/admin/members" className="stat"><b>{data.members.total}</b><span>Members ({data.members.admins} admins)</span></Link>
         <Link to="/admin/reports" className="stat"><b>{data.open_reports}</b><span>Open reports</span></Link>
-        <Link to="/admin/invites" className="stat"><b>{data.open_invites}</b><span>Unused invites</span></Link>
+        <Link to="/admin/approvals" className="stat"><b>{data.pending_posts}</b><span>Waiting approval</span></Link>
       </div>
       {!data.feeds.length && <div className="notice small"><strong>Schedules aren't connected yet.</strong> Add the official NMSU Athletics calendar feed(s) under <Link to="/admin/data">Sports data</Link> so games populate automatically.</div>}
       {failing.length > 0 && <div className="error-box small">⚠️ {failing.length} schedule feed{failing.length > 1 ? 's are' : ' is'} failing. The forum keeps showing the last good data. See <Link to="/admin/data">Sports data</Link>.</div>}
@@ -95,10 +95,10 @@ function Invites() {
 
 function Members() {
   const { me, toast } = useApp();
-  const { data, reload } = useApi<{ members: { id: number; username: string; email: string; display_name: string | null; role: string; status: string; created_at: number; last_seen_at: number | null; posts: number }[] }>('/admin/members');
+  const { data, reload } = useApi<{ members: { id: number; username: string; email: string; display_name: string | null; role: string; status: string; suspended_until: number | null; created_at: number; last_seen_at: number | null; posts: number }[] }>('/admin/members');
   const [link, setLink] = useState<string | null>(null);
   const [badgeFor, setBadgeFor] = useState<{ id: number; username: string } | null>(null);
-  const patch = async (id: number, body: Record<string, string>, msg: string) => {
+  const patch = async (id: number, body: Record<string, unknown>, msg: string) => {
     try { await api(`/admin/members/${id}`, { method: 'PATCH', body }); toast(msg); reload(); } catch (e) { toast((e as Error).message); }
   };
   const reset = async (id: number) => {
@@ -114,7 +114,7 @@ function Members() {
           <tr key={m.id}>
             <td><Link to={`/members/${m.id}`}>{m.username}</Link><div className="tiny muted">{m.email}</div></td>
             <td>{m.role}</td>
-            <td>{m.status}</td>
+            <td>{m.status}{m.suspended_until ? <div className="tiny muted">until {fullTime(m.suspended_until)}</div> : null}</td>
             <td className="tiny">{m.posts} posts<br />joined {timeAgo(m.created_at)}<br />{m.last_seen_at ? `seen ${timeAgo(m.last_seen_at)}` : 'never seen'}</td>
             <td>
               <div className="row" style={{ gap: 4 }}>
@@ -122,7 +122,15 @@ function Members() {
                   ? <button className="btn ghost small" onClick={() => patch(m.id, { role: 'member' }, 'Admin role removed')}>Remove admin</button>
                   : <button className="btn ghost small" onClick={() => confirm(`Make ${m.username} an administrator?`) && patch(m.id, { role: 'admin' }, 'Now an administrator')}>Make admin</button>)}
                 {m.id !== me?.id && (m.status === 'active'
-                  ? <button className="btn ghost small" onClick={() => { const reason = prompt(`Suspend ${m.username}? Reason (private):`); if (reason !== null) patch(m.id, { status: 'suspended', reason }, 'Member suspended and signed out'); }}>Suspend</button>
+                  ? <button className="btn ghost small" onClick={() => {
+                      const reason = prompt(`Suspend ${m.username}? Reason (private):`);
+                      if (reason === null) return;
+                      const days = prompt('For how many days? Leave blank to suspend until you reinstate them.', '7');
+                      if (days === null) return;
+                      const body: Record<string, unknown> = { status: 'suspended', reason };
+                      if (days.trim()) body.days = Number(days);
+                      patch(m.id, body as Record<string, string>, days.trim() ? `Suspended for ${days} days` : 'Member suspended and signed out');
+                    }}>Suspend</button>
                   : <button className="btn ghost small" onClick={() => patch(m.id, { status: 'active' }, 'Member reinstated')}>Reinstate</button>)}
                 <button className="btn ghost small" onClick={() => reset(m.id)}>Reset link</button>
                 <button className="btn ghost small" onClick={() => setBadgeFor(m)}>Recognize</button>
@@ -195,6 +203,27 @@ function Reports() {
   );
 }
 
+function Approvals() {
+  const { toast, refreshPulse } = useApp();
+  const { data, reload } = useApi<{ pending: { id: number; body: string; created_at: number; thread_id: number; title: string; new_thread: number; user_id: number; username: string }[] }>('/admin/pending');
+  const decide = async (id: number, approve: boolean) => {
+    try { await api(`/admin/pending/${id}`, { body: { approve } }); toast(approve ? 'Approved' : 'Rejected'); refreshPulse(); reload(); } catch (e) { toast((e as Error).message); }
+  };
+  if (!data) return <Loading />;
+  return (
+    <section className="card">
+      <div className="section-head"><h2>Waiting for approval</h2><span className="small muted">Turn this on or off in Settings</span></div>
+      {data.pending.length ? data.pending.map((p) => (
+        <div key={p.id} className="card-pad" style={{ borderBottom: '1px solid var(--line)' }}>
+          <div className="small"><strong>{p.username}</strong> {p.new_thread ? 'started' : 'replied in'} <Link to={`/t/${p.thread_id}`}>“{p.title}”</Link> · {timeAgo(p.created_at)}</div>
+          <blockquote className="quote-embed small">{p.body.slice(0, 600)}</blockquote>
+          <div className="row"><button className="btn small" onClick={() => decide(p.id, true)}>Approve</button><button className="btn secondary small" onClick={() => decide(p.id, false)}>Reject</button></div>
+        </div>
+      )) : <div className="empty">Nothing waiting.</div>}
+    </section>
+  );
+}
+
 function SportsData() {
   const { toast } = useApp();
   const { data, reload } = useApi<{ feeds: Feed[] }>('/admin/overview');
@@ -257,6 +286,7 @@ function SportsData() {
           </div>
         )) : <div className="empty">No upcoming games imported yet.</div>}
       </section>
+      <RecruitingSync />
       {override && <OverrideModal game={override} onClose={() => { setOverride(null); reloadGames(); }} />}
     </div>
   );
@@ -304,6 +334,7 @@ function SettingsTab() {
         <div className="field"><label htmlFor="ld">Official launch date</label><input id="ld" type="date" className="input" value={cur.launch_date} onChange={set('launch_date')} /><span className="hint">Members who join within 30 days of this date are Founding Members. Leave blank until launch — everyone who joins before launch is a founder.</span></div>
         <div className="field"><label htmlFor="ht">Honorary Founding Member threshold</label><input id="ht" type="number" min={0} className="input" value={cur.honorary_threshold} onChange={set('honorary_threshold')} /><span className="hint">Thumbs-up from this many <em>different</em> members earns a later member Honorary Founding Member automatically. 0 = off (admins can still award it by hand).</span></div>
         <div className="field"><label htmlFor="cw">Live chat window (messages)</label><input id="cw" type="number" min={10} max={500} className="input" value={cur.chat_window} onChange={set('chat_window')} /><span className="hint">How many recent messages show in a live room. Everything is archived permanently regardless.</span></div>
+        <label className="check"><input type="checkbox" checked={cur.approve_first_post === '1'} onChange={(e) => setS({ ...cur, approve_first_post: e.target.checked ? '1' : '0' })} /><span>Approve each new member's first post<span className="hint" style={{ display: 'block' }}>New members' first post waits in Admin → Approvals. Once one post is approved, their posts appear right away.</span></span></label>
         <div className="field"><label htmlFor="an">Home page announcement</label><textarea id="an" className="textarea" style={{ minHeight: 70 }} value={cur.announcement} onChange={set('announcement')} maxLength={500} /></div>
         <button className="btn">Save settings</button>
       </form>
@@ -331,7 +362,7 @@ export function Admin() {
     <div className="stack">
       <div className="page-head"><div className="eyebrow">Community administration</div><h1>Admin</h1><p className="small muted" style={{ margin: 0 }}>Community administration is separate from technical ownership of hosting, the domain and GitHub.</p></div>
       <nav className="card tabs" aria-label="Admin sections">
-        {[['', 'Overview'], ['invites', 'Invitations'], ['members', 'Members'], ['reports', `Reports${pulse.open_reports ? ` (${pulse.open_reports})` : ''}`], ['data', 'Sports data'], ['settings', 'Settings'], ['log', 'Log']].map(([p, l]) => (
+        {[['', 'Overview'], ['invites', 'Invitations'], ['members', 'Members'], ['reports', 'Reports'], ['approvals', 'Approvals'], ['data', 'Sports data'], ['settings', 'Settings'], ['log', 'Log']].map(([p, l]) => (
           <NavLink key={p} to={`/admin${p ? `/${p}` : ''}`} end className={({ isActive }) => `tab ${isActive ? 'active' : ''}`}>{l}</NavLink>
         ))}
       </nav>
@@ -340,10 +371,37 @@ export function Admin() {
         <Route path="invites" element={<Invites />} />
         <Route path="members" element={<Members />} />
         <Route path="reports" element={<Reports />} />
+        <Route path="approvals" element={<Approvals />} />
         <Route path="data" element={<SportsData />} />
         <Route path="settings" element={<SettingsTab />} />
         <Route path="log" element={<Log />} />
       </Routes>
     </div>
+  );
+}
+
+function RecruitingSync() {
+  const { toast } = useApp();
+  const { data, reload } = useApi<{ sync: { configured: boolean; last_ok_at?: number | null; last_error?: string | null; last_counts?: string | null } }>('/players?kind=recruit');
+  const [busy, setBusy] = useState(false);
+  const run = async () => {
+    setBusy(true);
+    try {
+      const r = await api<{ ok: boolean; added?: number; updated?: number; error?: string; skipped?: string }>('/admin/recruiting/sync', { method: 'POST' });
+      toast(r.ok ? `Recruiting updated: ${r.added} new, ${r.updated} changed` : r.skipped ?? `Failed: ${r.error}`);
+      reload();
+    } catch (e) { toast((e as Error).message); } finally { setBusy(false); }
+  };
+  const s = data?.sync;
+  return (
+    <section className="card card-pad">
+      <div className="spread"><h2 style={{ margin: 0 }}>Football recruiting &amp; portal</h2><button className="btn small" disabled={busy || !s?.configured} onClick={run}>{busy ? 'Updating…' : 'Update now'}</button></div>
+      <p className="small muted">Updates automatically once a day from CollegeFootballData.com.</p>
+      <div className="small">
+        {!s ? '…' : !s.configured ? 'Not connected: the technical owner adds the free CFBD_API_KEY secret (see docs/DEPLOYMENT.md).'
+          : s.last_error ? <span style={{ color: 'var(--crimson)' }}>Last update failed: {s.last_error}</span>
+          : s.last_ok_at ? <>OK · {timeAgo(s.last_ok_at)}{s.last_counts && <> · {(() => { const c = JSON.parse(s.last_counts); return `${c.total} players, ${c.added} new, ${c.updated} changed`; })()}</>}</> : 'Waiting for the first update.'}
+      </div>
+    </section>
   );
 }

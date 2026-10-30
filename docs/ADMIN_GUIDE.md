@@ -18,6 +18,12 @@ Community administrators run the forum day to day. You don't need any technical 
 
 Private messages are strictly private. There is no way for administrators to read them. If a member reports a message, only that one message is shared with you.
 
+## New-member approval (optional)
+Turn on **Admin → Settings → Approve each new member's first post** if you want to check newcomers. Their first post waits in **Admin → Approvals**; once you approve one post, the rest appear immediately. Off by default since the forum is invite-only.
+
+## Timed suspensions and merging
+When suspending, enter a number of days and the suspension lifts itself. To combine duplicate threads, open the duplicate → **Moderate** → **Merge into another discussion**.
+
 ## Recognition
 **Admin → Members → Recognize** (or "Award recognition" on a profile). Pick the recognition and write a short reason; it appears on their profile and in the community contribution history. Recognition never grants moderation powers. Founding Member is automatic, and marking a suggestion **Implemented** awards Idea Contributor automatically.
 

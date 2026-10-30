@@ -1,4 +1,5 @@
-import { Fragment, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useState, type ReactNode } from 'react';
+import { parseTweetUrl, parseYouTubeId } from '../shared/forum';
 import { Link } from 'react-router-dom';
 import { SPORT_BY_KEY, TIME_ZONE } from '../shared/sports';
 import { useApp } from './state';
@@ -76,8 +77,86 @@ function inline(text: string, keyBase: string): ReactNode[] {
   return out;
 }
 
-/** Safe post renderer: paragraphs, > quotes, **bold**, links and @mentions. No raw HTML is ever rendered. */
-export function PostBody({ text }: { text: string }) {
+function Spoiler({ children }: { children: ReactNode }) {
+  const [shown, setShown] = useState(false);
+  return (
+    <span className={`spoiler-text ${shown ? 'shown' : ''}`} role="button" tabIndex={0} aria-label={shown ? undefined : 'Spoiler, tap to reveal'}
+      onClick={() => setShown(true)} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setShown(true)}>{children}</span>
+  );
+}
+
+const SPOILER_RE = /\|\|([\s\S]+?)\|\||\[spoiler\]([\s\S]*?)\[\/spoiler\]/gi;
+
+function withSpoilers(text: string, keyBase: string): ReactNode[] {
+  const out: ReactNode[] = [];
+  let last = 0;
+  let i = 0;
+  for (const m of text.matchAll(SPOILER_RE)) {
+    const idx = m.index ?? 0;
+    if (idx > last) out.push(...inline(text.slice(last, idx), `${keyBase}-t${i}`));
+    out.push(<Spoiler key={`${keyBase}-s${i}`}>{inline(m[1] ?? m[2] ?? '', `${keyBase}-si${i}`)}</Spoiler>);
+    last = idx + m[0].length;
+    i++;
+  }
+  if (last < text.length) out.push(...inline(text.slice(last), `${keyBase}-t${i}`));
+  return out;
+}
+
+interface PreviewData { url: string; kind: 'x' | 'youtube' | 'link'; ok: boolean; title: string | null; description: string | null; site: string | null; author: string | null; published: string | null }
+const previewCache = new Map<string, Promise<PreviewData | null>>();
+
+function loadPreview(url: string): Promise<PreviewData | null> {
+  if (!previewCache.has(url)) {
+    previewCache.set(url, fetch(`/api/preview?url=${encodeURIComponent(url)}`, { credentials: 'same-origin' })
+      .then((r) => (r.ok ? (r.json() as Promise<{ preview?: PreviewData }>) : null)).then((d) => d?.preview ?? null).catch(() => null));
+  }
+  return previewCache.get(url)!;
+}
+
+function YouTube({ id, title }: { id: string; title?: string | null }) {
+  const [play, setPlay] = useState(false);
+  return (
+    <div className="yt">
+      {play ? (
+        <iframe src={`https://www.youtube-nocookie.com/embed/${id}?autoplay=1`} title={title ?? 'YouTube video'} allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen />
+      ) : (
+        <>
+          <img src={`https://i.ytimg.com/vi/${id}/hqdefault.jpg`} alt="" loading="lazy" />
+          <button type="button" onClick={() => setPlay(true)} aria-label={`Play ${title ?? 'video'}`}>▶</button>
+        </>
+      )}
+    </div>
+  );
+}
+
+/** Rich card for a pasted link: tweets, YouTube videos and articles. */
+export function LinkPreview({ url }: { url: string }) {
+  const [p, setP] = useState<PreviewData | null | undefined>(undefined);
+  const yt = parseYouTubeId(url);
+  const tweet = parseTweetUrl(url);
+  useEffect(() => { let live = true; loadPreview(url).then((d) => live && setP(d)); return () => { live = false; }; }, [url]);
+  if (yt) return <YouTube id={yt} title={p?.title} />;
+  if (tweet) {
+    return (
+      <a className="preview x" href={tweet.canonical.replace('twitter.com', 'x.com')} target="_blank" rel="noopener noreferrer nofollow">
+        <div className="head"><span className="logo" aria-hidden="true">𝕏</span><span>{p?.author ?? `@${tweet.user}`}</span><span className="tiny muted">@{tweet.user}</span></div>
+        <div className="text" style={{ marginTop: 4 }}>{p === undefined ? 'Loading post…' : p?.ok && p.description ? p.description : 'This post is unavailable (it may have been deleted or made private). Tap to try it on X.'}</div>
+        <div className="tiny muted" style={{ marginTop: 4 }}>{p?.published ? `${p.published} · ` : ''}View on X ↗</div>
+      </a>
+    );
+  }
+  if (!p || !p.ok || !p.title) return null;
+  return (
+    <a className="preview" href={url} target="_blank" rel="noopener noreferrer nofollow">
+      <div className="site">{p.site}</div>
+      <div className="title">{p.title}</div>
+      {p.description && <div className="text small muted">{p.description.slice(0, 220)}</div>}
+    </a>
+  );
+}
+
+/** Safe post renderer: paragraphs, > quotes, **bold**, spoilers, links with previews and @mentions. No raw HTML is ever rendered. */
+export function PostBody({ text, previews = true }: { text: string; previews?: boolean }) {
   const blocks: { quote: boolean; lines: string[] }[] = [];
   for (const line of text.split('\n')) {
     const quote = line.startsWith('>');
@@ -86,15 +165,19 @@ export function PostBody({ text }: { text: string }) {
     if (lastBlock && lastBlock.quote === quote && !(content === '' && !quote)) lastBlock.lines.push(content);
     else blocks.push({ quote, lines: [content] });
   }
+  const urls = previews
+    ? [...new Set(blocks.filter((b) => !b.quote).flatMap((b) => b.lines.join(' ').replace(SPOILER_RE, ' ').match(URL_RE) ?? []))].slice(0, 3)
+    : [];
   return (
     <div className="post-body">
       {blocks.map((b, bi) => {
         const paras = b.lines.join('\n').split(/\n{2,}/).filter((p) => p.trim());
         const content = paras.map((p, pi) => (
-          <p key={pi}>{p.split('\n').map((l, li) => <Fragment key={li}>{li > 0 && <br />}{inline(l, `${bi}-${pi}-${li}`)}</Fragment>)}</p>
+          <p key={pi}>{p.split('\n').map((l, li) => <Fragment key={li}>{li > 0 && <br />}{withSpoilers(l, `${bi}-${pi}-${li}`)}</Fragment>)}</p>
         ));
         return b.quote ? <blockquote key={bi}>{content}</blockquote> : <Fragment key={bi}>{content}</Fragment>;
       })}
+      {urls.map((u) => <LinkPreview key={u} url={u} />)}
     </div>
   );
 }

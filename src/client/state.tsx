@@ -21,6 +21,9 @@ export interface Prefs {
   large_text?: boolean;
   digest?: boolean;
   my_sports?: string[];
+  theme?: 'system' | 'light' | 'dark';
+  compact?: boolean;
+  push?: boolean;
 }
 
 export interface Pulse { notifications: number; messages: number; unread_threads: number; open_reports: number }
@@ -80,6 +83,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
     document.documentElement.classList.toggle('large-text', Boolean(me?.prefs?.large_text));
   }, [me?.prefs?.large_text]);
 
+  // Theme: follow the phone's setting unless the member picked light or dark.
+  useEffect(() => {
+    const pref = me?.prefs?.theme ?? 'system';
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const apply = () => {
+      const dark = pref === 'dark' || (pref === 'system' && mq.matches);
+      document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', '#8C0B42');
+    };
+    apply();
+    mq.addEventListener('change', apply);
+    return () => mq.removeEventListener('change', apply);
+  }, [me?.prefs?.theme]);
+
   const toast = useCallback((msg: string) => {
     setToastMsg(msg);
     window.clearTimeout(toastTimer.current);
@@ -114,5 +131,11 @@ export function useApi<T>(path: string | null) {
     }
   }, [path]);
   useEffect(() => { load(); }, [load]);
+  // Pull-to-refresh and returning to the app refresh whatever is on screen.
+  useEffect(() => {
+    const onRefresh = () => load(true);
+    window.addEventListener('nsf:refresh', onRefresh);
+    return () => window.removeEventListener('nsf:refresh', onRefresh);
+  }, [load]);
   return { data, error, loading, reload: () => load(true), setData };
 }

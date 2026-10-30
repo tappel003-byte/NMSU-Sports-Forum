@@ -52,6 +52,12 @@ END:VCALENDAR
 `;
 const feedServer = http.createServer((req, res) => { res.writeHead(200, { 'content-type': 'text/calendar' }); res.end(feed); }).listen(8799);
 
+// On phones the reply box lives in a bottom bar until tapped.
+async function openReply(page) {
+  if (await page.isVisible('.dock-bar .fake-input')) await page.click('.dock-bar .fake-input');
+  await page.waitForSelector('#reply-box', { state: 'visible' });
+}
+
 async function api(page, path, opts = {}) {
   return page.evaluate(async ({ path, opts }) => {
     const r = await fetch(`/api${path}`, { method: opts.method ?? (opts.body ? 'POST' : 'GET'), headers: { 'x-nsf': '1', 'content-type': 'application/json' }, body: opts.body ? JSON.stringify(opts.body) : undefined });
@@ -144,6 +150,8 @@ try {
   await member.screenshot({ path: `${SHOTS}/iphone-thread.png`, fullPage: true });
 
   // ---------- 4. Another member replies and reacts ----------
+  // The member leaves the thread; while it is open, live updates would mark new replies read immediately.
+  await member.goto(BASE + '/forums');
   const adminBaselinePulse = (await api(member, '/pulse')).body;
   await admin.goto(`${BASE}/t/${threadId}`);
   await admin.waitForSelector('article.post');
@@ -180,11 +188,12 @@ try {
   check('Opening the discussion clears its unread state', pulseAfter.unread_threads === pulse.unread_threads - 1, `unread now ${pulseAfter.unread_threads}`);
 
   // Draft autosave survives a reload.
+  await openReply(member);
   await member.fill('#reply-box', 'Draft that should survive a reload');
   await member.waitForTimeout(1600);
   await member.reload();
-  await member.waitForSelector('#reply-box');
-  await member.waitForTimeout(500);
+  await member.waitForTimeout(800);
+  await openReply(member);
   check('Reply drafts autosave on the server', (await member.inputValue('#reply-box')) === 'Draft that should survive a reload');
 
   // Photo attachment.

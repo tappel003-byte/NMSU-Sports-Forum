@@ -6,6 +6,7 @@ import { useApi, useApp, type Prefs } from '../state';
 import { PostBody, fullTime, timeAgo } from '../format';
 import { Avatar, Badges, ErrorState, Loading, ThreadList, type MemberLite, type ThreadItem } from '../components/ui';
 import { BADGES, SPORTS } from '../../shared/sports';
+import { rankFor } from '../../shared/forum';
 import { ReportModal } from './Thread';
 
 type MemberRow = MemberLite & { city: string | null; state: string | null; legacy_moniker: string | null; joined: number; reputation: number; post_count: number };
@@ -87,7 +88,7 @@ export function MemberPage() {
           <div className="grow">
             <h1 style={{ marginBottom: 2 }}>{m.display_name || m.username}</h1>
             <div className="small muted">@{m.username} · joined {fullTime(m.joined).replace(/,? \d+:\d+ [AP]M MT$/, '')}{m.last_seen_at ? ` · active ${timeAgo(m.last_seen_at)}` : ''}</div>
-            <div style={{ marginTop: 6 }}><Badges member={m} max={10} /></div>
+            <div style={{ marginTop: 6 }}><span className="rank">{rankFor(m.post_count)}</span> <Badges member={m} max={10} /></div>
           </div>
           <div className="row">
             {data.is_me ? <Link className="btn secondary small" to="/settings">Edit profile</Link> : (
@@ -291,7 +292,32 @@ export function Settings() {
         {prefCheck('auto_follow', 'Automatically follow discussions I post in')}
         {prefCheck('spoiler_free', 'Spoiler-free mode', 'Hide final scores until you tap to reveal — handy when watching on delay.')}
         {prefCheck('large_text', 'Larger text')}
+        {prefCheck('compact', 'Compact discussion lists', 'Hide descriptions so more discussions fit on screen.')}
+        <div className="field" style={{ marginTop: 8 }}>
+          <span className="label">Appearance</span>
+          <div className="row" role="radiogroup" aria-label="Appearance" style={{ marginTop: 6 }}>
+            {(['system', 'light', 'dark'] as const).map((t) => (
+              <button key={t} type="button" role="radio" aria-checked={(prefs.theme ?? 'system') === t} className={`btn small ${(prefs.theme ?? 'system') === t ? '' : 'secondary'}`} onClick={() => savePrefs({ ...prefs, theme: t })}>
+                {t === 'system' ? 'Match my phone' : t === 'light' ? 'Light' : 'Dark'}
+              </button>
+            ))}
+          </div>
+        </div>
         {prefCheck('digest', 'Weekly email digest', 'A Monday summary of the week\'s busiest discussions (when email is enabled for the forum).')}
+      </section>
+
+      <PushSettings />
+
+      <section className="card card-pad">
+        <h2>Share tweets in one tap (iPhone)</h2>
+        <p className="small" style={{ marginTop: 0 }}>The quickest way: in the X app tap <strong>Share → Copy link</strong>, then tap <strong>Share a tweet → Paste</strong> here.</p>
+        <p className="small">For one tap from the X share sheet, create an iPhone Shortcut once:</p>
+        <ol className="small" style={{ paddingLeft: 20 }}>
+          <li>Open the <strong>Shortcuts</strong> app → <strong>+</strong> → name it <strong>NMSU Forum</strong>.</li>
+          <li>Tap the <strong>ⓘ</strong> button and turn on <strong>Show in Share Sheet</strong>, accepting URLs and Text.</li>
+          <li>Add the action <strong>Open URLs</strong> with: <code style={{ wordBreak: 'break-all' }}>{location.origin}/share?url=</code> followed by the <strong>Shortcut Input</strong> variable.</li>
+          <li>Done. In the X app, tap Share → <strong>NMSU Forum</strong>, and the tweet opens here ready to post.</li>
+        </ol>
       </section>
 
       <section className="card card-pad">
@@ -313,6 +339,13 @@ export function Settings() {
           <div><button className="btn secondary">Change password</button></div>
         </form>
         <button className="btn ghost small" style={{ marginTop: 10 }} onClick={() => api('/auth/logout-all', { method: 'POST' }).then(() => refresh())}>Sign out on all devices</button>
+      </section>
+
+      <section className="card card-pad">
+        <h2>Your data</h2>
+        <p className="small muted" style={{ marginTop: 0 }}>Download everything you've posted and your settings, including your private messages, as a file.</p>
+        <a className="btn secondary small" href="/api/me/export" download>Download my data</a>
+        <DeleteAccount />
       </section>
     </div>
   );
@@ -488,6 +521,78 @@ export function Drafts() {
           </div>
         )) : <div className="empty">No drafts.</div>}
       </section>
+    </div>
+  );
+}
+
+function PushSettings() {
+  const { toast } = useApp();
+  const { data, reload } = useApi<{ enabled: boolean; devices: number }>('/push/status');
+  const [busy, setBusy] = useState(false);
+  const supported = 'serviceWorker' in navigator && 'PushManager' in window;
+  const standalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as unknown as { standalone?: boolean }).standalone === true;
+  const isIos = /iPhone|iPad|iPod/.test(navigator.userAgent);
+  const enable = async () => {
+    setBusy(true);
+    try {
+      const { key } = await api<{ key: string | null }>('/push/key');
+      if (!key) throw new Error('Phone notifications are not set up on this forum yet.');
+      if ((await Notification.requestPermission()) !== 'granted') throw new Error('Notifications were not allowed. You can change this in your phone settings.');
+      const reg = await navigator.serviceWorker.ready;
+      const pad = '='.repeat((4 - (key.length % 4)) % 4);
+      const raw = Uint8Array.from(atob((key + pad).replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0));
+      const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: raw });
+      await api('/push/subscribe', { body: sub.toJSON() });
+      toast('Phone notifications are on for this device');
+      reload();
+    } catch (e) { toast((e as Error).message); } finally { setBusy(false); }
+  };
+  const disable = async () => {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (sub) { await api('/push/unsubscribe', { body: { endpoint: sub.endpoint } }); await sub.unsubscribe(); }
+    toast('Phone notifications are off for this device');
+    reload();
+  };
+  return (
+    <section className="card card-pad">
+      <h2>Phone notifications</h2>
+      <p className="small muted" style={{ marginTop: 0 }}>Get a notification for replies, mentions, private messages and game starts (based on the choices above).</p>
+      {data && !data.enabled ? <div className="small muted">Not set up on this forum yet.</div>
+        : !supported ? <div className="small muted">{isIos && !standalone ? 'On iPhone, first add the forum to your Home Screen (Share → Add to Home Screen), open it from there, then come back here.' : 'This browser does not support notifications.'}</div>
+        : (
+          <div className="row">
+            <button className="btn small" disabled={busy} onClick={enable}>Turn on for this device</button>
+            {Boolean(data?.devices) && <button className="btn ghost small" onClick={disable}>Turn off for this device</button>}
+            <span className="tiny muted">{data?.devices ? `On for ${data.devices} device${data.devices === 1 ? '' : 's'}` : ''}</span>
+          </div>
+        )}
+    </section>
+  );
+}
+
+function DeleteAccount() {
+  const { refresh, toast } = useApp();
+  const [open, setOpen] = useState(false);
+  const [password, setPassword] = useState('');
+  const [confirmText, setConfirmText] = useState('');
+  const go = async () => {
+    try {
+      await api('/me/delete', { body: { password, confirm: confirmText } });
+      await refresh();
+      window.location.href = '/login';
+    } catch (e) { toast((e as Error).message); }
+  };
+  return (
+    <div style={{ marginTop: 14 }}>
+      {!open ? <button className="btn ghost small" onClick={() => setOpen(true)}>Delete my account…</button> : (
+        <div className="note-box small">
+          <p style={{ marginTop: 0 }}><strong>Delete your account permanently.</strong> Your profile, private messages, bookmarks and settings are erased. Your posts stay in their discussions so conversations still make sense, shown as “Former member.” This can't be undone.</p>
+          <div className="field"><label htmlFor="dpw">Password</label><input id="dpw" type="password" className="input" value={password} onChange={(e) => setPassword(e.target.value)} /></div>
+          <div className="field"><label htmlFor="dcf">Type DELETE to confirm</label><input id="dcf" className="input" value={confirmText} onChange={(e) => setConfirmText(e.target.value)} /></div>
+          <div className="row"><button className="btn small" disabled={confirmText !== 'DELETE' || !password} onClick={go}>Delete my account</button><button className="btn ghost small" onClick={() => setOpen(false)}>Cancel</button></div>
+        </div>
+      )}
     </div>
   );
 }

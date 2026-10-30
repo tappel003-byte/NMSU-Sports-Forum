@@ -46,16 +46,17 @@ Status values: **Planned** · **Built** (code exists) · **Verified** (tested en
 | 39 | Low maintenance: no daily chores; automated jobs; failures alert admins | MILESTONE 14 | Verified — scheduled jobs run; feed failures notify admins |
 | 40 | Cloudflare hosting at NMSUSportsForum.com via repeatable GitHub deploy; inspect DNS first; no surprise costs | CLAUDE, MILESTONE 2 | Built — GitHub Actions deploy workflow. **Blocked: needs Cloudflare access** (docs/DEPLOYMENT.md) |
 | 41 | No secrets, invites or member data in the public repo | README, CLAUDE | Verified — secrets via Wrangler/GitHub secrets only |
-| 42 | Live-updating game threads | DECISIONS (Oct 30 research round), MILESTONE | Planned |
-| 43 | Phone push notifications (iPhone home-screen app) | DECISIONS (Oct 30 research round), MILESTONE | Planned |
-| 44 | Dark mode | DECISIONS (Oct 30 research round), MILESTONE | Planned |
-| 45 | Spoiler tags inside posts | DECISIONS (Oct 30 research round), MILESTONE | Planned |
-| 46 | @mention autocomplete | DECISIONS (Oct 30 research round), MILESTONE | Planned |
-| 47 | Link previews (YouTube, articles) | DECISIONS (Oct 30 research round), MILESTONE | Planned |
-| 48 | Thread tags with filtering | DECISIONS (Oct 30 research round), MILESTONE | Planned |
-| 49 | Moderation extras: auto-expiring suspensions, thread merge, first-post approval | DECISIONS (Oct 30 research round), MILESTONE | Planned |
-| 50 | Member data download and account deletion | DECISIONS (Oct 30 research round), MILESTONE | Planned |
-| 51 | Aggie-themed ranks by post count | DECISIONS (Oct 30 research round), MILESTONE | Planned |
-| 52 | Automatic postgame Player of the Game vote | DECISIONS (Oct 30 research round), MILESTONE | Planned |
-| 53 | Recruiting and transfer portal tracker (automatic where a free permitted source exists) | DECISIONS (Oct 30 research round), MILESTONE | Planned |
-| 54 | Effortless tweet sharing: pasted links embed, Share a tweet button, iPhone share-sheet Shortcut, tweets attach to recruit cards | DECISIONS, MILESTONE | Planned |
+| 42 | Live-updating game threads | DECISIONS (Oct 30 research round), MILESTONE | Verified — WebSocket signal; new replies appear in an open thread (e2e) |
+| 43 | Phone push notifications (iPhone home-screen app) | DECISIONS (Oct 30 research round), MILESTONE | Built — Web Push with VAPID; payload encryption unit-tested; device registration verified. Real delivery needs a phone after deployment (iPhone: add to Home Screen first) |
+| 44 | Dark mode | DECISIONS (Oct 30 research round), MILESTONE | Verified — follows the phone setting or member choice |
+| 45 | Spoiler tags inside posts | DECISIONS (Oct 30 research round), MILESTONE | Verified — ||text|| or [spoiler]…[/spoiler]; hidden in notification excerpts |
+| 46 | @mention autocomplete | DECISIONS (Oct 30 research round), MILESTONE | Verified |
+| 47 | Link previews (YouTube, articles) | DECISIONS (Oct 30 research round), MILESTONE | Verified for articles and YouTube. Tweet text comes from X's free embed service, which was blocked in the build environment, so tweet cards were tested only in their "unavailable" state |
+| 48 | Thread tags with filtering | DECISIONS (Oct 30 research round), MILESTONE | Verified |
+| 49 | Moderation extras: auto-expiring suspensions, thread merge, first-post approval | DECISIONS (Oct 30 research round), MILESTONE | Verified — timed suspensions lift themselves; merge; first-post approval (off by default, toggle in Admin → Settings) |
+| 50 | Member data download and account deletion | DECISIONS (Oct 30 research round), MILESTONE | Verified |
+| 51 | Aggie-themed ranks by post count | DECISIONS (Oct 30 research round), MILESTONE | Verified |
+| 52 | Automatic postgame Player of the Game vote | DECISIONS (Oct 30 research round), MILESTONE | Verified — automatic poll on every postgame thread; members nominate and vote |
+| 53 | Recruiting and transfer portal tracker (automatic where a free permitted source exists) | DECISIONS (Oct 30 research round), MILESTONE | Built and verified with synthetic CollegeFootballData responses. **Blocked: needs the free CFBD_API_KEY and network access; confirm CFBD terms before launch** |
+| 54 | Effortless tweet sharing: pasted links embed, Share a tweet button, iPhone share-sheet Shortcut, tweets attach to recruit cards | DECISIONS, MILESTONE | Verified — paste-to-embed, Share a tweet (home, threads, player cards), clipboard Paste button, /share page for the iPhone Shortcut (setup steps in Settings) |
+| 55 | Phone refinements: pinned reply bar, floating new-thread button, pull to refresh, shorter phone home, game threads grouped under the game card, bigger reaction buttons, compact list option | DECISIONS (Oct 30) | Verified |

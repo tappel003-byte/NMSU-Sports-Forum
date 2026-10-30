@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Bookmark, BookmarkCheck, Flag, History, MoreHorizontal, Pencil, Quote, ThumbsDown, ThumbsUp, Trash2, Star, VolumeX } from 'lucide-react';
 import { api } from '../api';
@@ -6,6 +6,8 @@ import { useApi, useApp } from '../state';
 import { PostBody, fullTime, matchup, sportName, timeAgo } from '../format';
 import { Avatar, Badges, ErrorState, Loading, MemberName, Modal, Pager, SUGGESTION_LABELS, type MemberLite } from '../components/ui';
 import { ReplyComposer, type QuoteRef } from '../components/Composer';
+import { ShareModal } from '../components/Share';
+import { TAGS, rankFor } from '../../shared/forum';
 
 interface Post {
   id: number;
@@ -20,6 +22,7 @@ interface Post {
   my_reaction: number;
   bookmarked: boolean;
   muted: boolean;
+  pending: boolean;
   quote: { id: number; thread_id: number; username: string; body: string; deleted: boolean } | null;
   attachments: { id: string; content_type: string; expires_at: number | null }[];
   expired_attachments: number;
@@ -33,10 +36,11 @@ interface ThreadData {
     pinned: boolean; locked: boolean; archived: boolean; deleted: boolean; reply_count: number; followed: boolean;
     game: { id: number; sport: string; opponent: string; starts_at: number; status: string; home_away: string } | null;
     game_phase: string | null; suggestion_status: string | null; can_reply: boolean; first_unread_post_id: number | null;
+    tags: string[]; pending: boolean; last_post_id: number;
   };
   page: number;
   pages: number;
-  poll: { id: number; question: string; closed: boolean; closes_at: number | null; options: { id: number; label: string; votes: number }[]; my_vote: number | null; total: number } | null;
+  poll: { id: number; question: string; closed: boolean; closes_at: number | null; allow_add: number; kind: string | null; options: { id: number; label: string; votes: number }[]; my_vote: number | null; total: number } | null;
   posts: Post[];
 }
 
@@ -56,6 +60,46 @@ export function ThreadPage() {
   const [adminOpen, setAdminOpen] = useState(false);
   const [editTitle, setEditTitle] = useState(false);
   const [highlight, setHighlight] = useState<number | null>(null);
+  const [replyOpen, setReplyOpen] = useState(false);
+  const [share, setShare] = useState(false);
+  const [newPosts, setNewPosts] = useState(0);
+  const [nominee, setNominee] = useState('');
+  const latestSeen = useRef(0);
+
+  // Live thread: a WebSocket announces new posts; the last page refreshes itself.
+  useEffect(() => {
+    if (!data) return;
+    latestSeen.current = Math.max(latestSeen.current, data.thread.last_post_id);
+  }, [data]);
+  const onLastPage = data ? data.page >= data.pages : false;
+  useEffect(() => {
+    let closed = false;
+    let sock: WebSocket | null = null;
+    let timer: number | undefined;
+    let tries = 0;
+    const check = async () => {
+      try {
+        const r = await api<{ last_post_id: number }>(`/threads/${id}/latest`);
+        if (r.last_post_id > latestSeen.current) {
+          if (onLastPage) {
+            const nearBottom = window.innerHeight + window.scrollY > document.body.scrollHeight - 400;
+            await reload();
+            if (!nearBottom) setNewPosts((n) => n + 1);
+          } else setNewPosts((n) => n + 1);
+          latestSeen.current = r.last_post_id;
+        }
+      } catch { /* offline; next signal retries */ }
+    };
+    const connect = () => {
+      sock = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/api/threads/${id}/ws`);
+      sock.onopen = () => { tries = 0; check(); };
+      sock.onmessage = (ev) => { if (JSON.parse(ev.data).type === 'post') check(); };
+      sock.onclose = () => { if (!closed) timer = window.setTimeout(connect, Math.min(15000, 1000 * 2 ** tries++)); };
+    };
+    connect();
+    return () => { closed = true; window.clearTimeout(timer); sock?.close(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, onLastPage]);
 
   useEffect(() => {
     if (!data) return;
@@ -136,7 +180,13 @@ export function ThreadPage() {
   const goPage = (n: number) => setParams({ page: String(n) });
 
   return (
-    <div className="stack">
+    <div className="stack thread-page">
+      {newPosts > 0 && (
+        <button className="btn small live-banner" onClick={() => { setNewPosts(0); if (onLastPage) window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }); else setParams({ post: String(latestSeen.current) }); }}>
+          ↓ {newPosts} new {newPosts === 1 ? 'reply' : 'replies'}
+        </button>
+      )}
+      {share && <ShareModal target={{ kind: 'thread', id: t.id, title: t.title }} onClose={() => setShare(false)} />}
       <nav className="small" aria-label="Breadcrumb">
         <Link to="/forums">Forums</Link> › <Link to={`/f/${t.forum.slug}`}>{t.forum.name}</Link>{t.sport && <> · <span className="muted">{sportName(t.sport)}</span></>}
       </nav>
@@ -149,7 +199,9 @@ export function ThreadPage() {
             {t.deleted && <span className="chip gray">Removed (admins only)</span>}
             {t.game_phase && <span className="chip">{t.game_phase === 'pregame' ? 'Pregame' : 'Postgame'}</span>}
             {t.suggestion_status && <span className={`status-pill status-${t.suggestion_status}`}>{SUGGESTION_LABELS[t.suggestion_status]}</span>}
+            {t.tags.map((tg) => <Link key={tg} to={`/feed?tag=${tg}`} className="tag">{TAGS[tg]}</Link>)}
           </div>
+          {t.pending && <div className="note-box small" style={{ marginBottom: 8 }}>This discussion is waiting for an administrator to approve it. Only you and the admins can see it for now.</div>}
           {editTitle ? (
             <TitleEditor thread={t} onDone={() => { setEditTitle(false); reload(); }} />
           ) : (
@@ -166,7 +218,8 @@ export function ThreadPage() {
           <div className="row" style={{ marginTop: 12 }}>
             <button className="btn secondary small" onClick={follow}>{t.followed ? 'Following ✓' : 'Follow'}</button>
             {t.first_unread_post_id && <Link className="btn secondary small" to={`/t/${t.id}?post=${t.first_unread_post_id}`}>Jump to first unread</Link>}
-            {t.can_reply && <a className="btn secondary small" href="#reply">Reply</a>}
+            {t.can_reply && <button className="btn secondary small desktop-only" onClick={() => { setReplyOpen(true); document.getElementById('reply')?.scrollIntoView({ behavior: 'smooth' }); }}>Reply</button>}
+            {t.can_reply && <button className="btn secondary small" onClick={() => setShare(true)}>Share a tweet</button>}
             {(t.user_id === me?.id || isAdmin) && !editTitle && <button className="btn ghost small" onClick={() => setEditTitle(true)}>Edit title</button>}
             {isAdmin && <button className="btn ghost small" onClick={() => setAdminOpen(true)}><MoreHorizontal size={16} /> Moderate</button>}
           </div>
@@ -186,6 +239,15 @@ export function ThreadPage() {
               );
             })}
             {!data.poll.my_vote && !data.poll.closed && <div className="tiny muted" style={{ marginTop: 6 }}>Vote to see results. One vote per member; you can change it.</div>}
+            {Boolean(data.poll.allow_add) && !data.poll.closed && (
+              <form className="row" style={{ marginTop: 8 }} onSubmit={async (e) => {
+                e.preventDefault();
+                try { const poll = await api<ThreadData['poll']>(`/polls/${data.poll!.id}/options`, { body: { label: nominee } }); setData({ ...data, poll }); setNominee(''); } catch (err) { toast((err as Error).message); }
+              }}>
+                <input className="input grow" value={nominee} onChange={(e) => setNominee(e.target.value)} placeholder="Nominate a player (adds your vote)" aria-label="Nominate a player" maxLength={60} />
+                <button className="btn small" disabled={nominee.trim().length < 2}>Nominate</button>
+              </form>
+            )}
           </div>
         )}
 
@@ -200,7 +262,9 @@ export function ThreadPage() {
               <div className="post-head">
                 <MemberName member={p.author} />
                 {p.author && <Badges member={p.author} max={2} />}
+                {p.author && <span className="rank">{rankFor(p.author.post_count)}</span>}
                 {p.author && <span className="tiny muted">· {p.author.reputation} rep</span>}
+                {p.pending && <span className="chip gray">Waiting for approval</span>}
                 <span className="tiny muted">· <a href={`#p${p.id}`} title={fullTime(p.created_at)} style={{ color: 'inherit' }}>{timeAgo(p.created_at)}</a></span>
                 {p.edit_count > 0 && <button className="tiny muted" style={{ border: 0, background: 'none', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => api(`/posts/${p.id}/history`).then(setHistory)}>edited</button>}
               </div>
@@ -248,7 +312,8 @@ export function ThreadPage() {
         <Pager page={data.page} pages={data.pages} onPage={goPage} />
 
         {t.can_reply ? (
-          <ReplyComposer threadId={t.id} quote={quote} clearQuote={() => setQuote(null)} onPosted={(pid) => { setParams({ post: String(pid) }); reload(); }} />
+          <ReplyComposer threadId={t.id} quote={quote} clearQuote={() => setQuote(null)} open={replyOpen} setOpen={setReplyOpen}
+            onPosted={(pid, pending) => { if (pending) toast('Thanks! Your first post will appear once an admin approves it.'); setParams({ post: String(pid) }); reload(); }} />
         ) : (
           <div className="composer small muted">{t.archived ? 'This discussion is archived because it had no replies for 90 days. It stays searchable; an administrator can reopen it.' : 'This discussion is locked.'}</div>
         )}
@@ -279,6 +344,9 @@ export function ThreadPage() {
               <button className="btn secondary" onClick={() => confirm('Remove this whole discussion?') && adminAction({ deleted: !t.deleted }, t.deleted ? 'Restored' : 'Discussion removed')}>{t.deleted ? 'Restore' : 'Remove discussion'}</button>
             </div>
             <MoveForum current={t.forum.slug} onMove={(slug) => adminAction({ forum: slug }, 'Moved')} />
+            <MergeThread onMerge={async (into) => {
+              try { await api(`/admin/threads/${t.id}/merge`, { body: { into } }); toast('Merged'); nav(`/t/${into}`); } catch (e) { toast((e as Error).message); }
+            }} />
             {t.forum.slug === 'suggestions' && (
               <div>
                 <div className="label">Suggestion status</div>
@@ -294,17 +362,19 @@ export function ThreadPage() {
   );
 }
 
-function TitleEditor({ thread, onDone }: { thread: { id: number; title: string; description: string }; onDone: () => void }) {
+function TitleEditor({ thread, onDone }: { thread: { id: number; title: string; description: string; tags: string[] }; onDone: () => void }) {
   const [title, setTitle] = useState(thread.title);
   const [desc, setDesc] = useState(thread.description);
+  const [tags, setTags] = useState<string[]>(thread.tags);
   const { toast } = useApp();
   const save = async () => {
-    try { await api(`/threads/${thread.id}`, { method: 'PATCH', body: { title, description: desc } }); onDone(); } catch (e) { toast((e as Error).message); }
+    try { await api(`/threads/${thread.id}`, { method: 'PATCH', body: { title, description: desc, tags } }); onDone(); } catch (e) { toast((e as Error).message); }
   };
   return (
     <div>
       <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} aria-label="Title" />
       <input className="input" style={{ marginTop: 8 }} value={desc} onChange={(e) => setDesc(e.target.value)} aria-label="Description" />
+      <TagPicker value={tags} onChange={setTags} />
       <div className="row" style={{ marginTop: 8 }}><button className="btn small" onClick={save}>Save</button><button className="btn ghost small" onClick={onDone}>Cancel</button></div>
     </div>
   );
@@ -373,5 +443,33 @@ function BookmarkModal({ post, onClose, onSaved }: { post: Post; onClose: () => 
       </div>
       <button className="btn" onClick={save}>Save bookmark</button>
     </Modal>
+  );
+}
+
+export function TagPicker({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
+  return (
+    <div className="chip-row" style={{ marginTop: 8 }} role="group" aria-label="Tags (up to 3)">
+      {Object.entries(TAGS).map(([k, label]) => {
+        const on = value.includes(k);
+        return (
+          <button key={k} type="button" className={`btn small ${on ? '' : 'secondary'}`} aria-pressed={on}
+            onClick={() => onChange(on ? value.filter((x) => x !== k) : value.length < 3 ? [...value, k] : value)}>{label}</button>
+        );
+      })}
+    </div>
+  );
+}
+
+function MergeThread({ onMerge }: { onMerge: (into: number) => void }) {
+  const [into, setInto] = useState('');
+  const id = Number(into.match(/(\d+)\s*$/)?.[1] ?? into.match(/\/t\/(\d+)/)?.[1]);
+  return (
+    <div>
+      <label className="label" htmlFor="merge">Merge into another discussion</label>
+      <div className="row" style={{ marginTop: 6 }}>
+        <input id="merge" className="input grow" placeholder="Paste the other discussion's link or number" value={into} onChange={(e) => setInto(e.target.value)} />
+        <button className="btn small" disabled={!id} onClick={() => confirm('Move all posts into that discussion and remove this one?') && onMerge(id)}>Merge</button>
+      </div>
+    </div>
   );
 }

@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { BellOff, Plus } from 'lucide-react';
 import { api } from '../api';
 import { useApi, useApp } from '../state';
 import { sportName } from '../format';
 import { ErrorState, GameRow, Loading, SUGGESTION_LABELS, ThreadList, type GameItem, type ThreadItem } from '../components/ui';
-import { PhotoPicker, PhotoThumbs, useDraft } from '../components/Composer';
+import { ComposerTools, MentionTextarea, PhotoPicker, PhotoThumbs, useDraft } from '../components/Composer';
+import { TagPicker } from './Thread';
+import { TAGS } from '../../shared/forum';
 import { timeAgo } from '../format';
 
 interface ForumInfo { id: number; slug: string; name: string; sport_label: string; description: string; icon: string; sports: string[]; kind: string; muted: boolean; threads?: number; unread?: number; last_post_at?: number | null }
@@ -30,6 +32,7 @@ export function Forums() {
   return (
     <div className="stack">
       <div className="page-head"><div className="eyebrow">Sports forums</div><h1>Explore the Aggie sports communities</h1><p className="muted small" style={{ margin: 0 }}>Each venue has its own discussions, schedule and game-day threads.</p></div>
+      <Link to="/recruiting" className="venue-card"><span className="venue-emoji" aria-hidden="true">📋</span><span className="grow"><span className="venue-name">Recruiting &amp; Transfer Portal</span><br /><span className="venue-sport">Player cards · news · predictions</span></span></Link>
       <div className="venue-grid">{venues.map(card)}</div>
       <h2 style={{ marginTop: 24 }}>Community</h2>
       <div className="venue-grid">{other.map(card)}</div>
@@ -42,9 +45,10 @@ export function ForumPage() {
   const [params, setParams] = useSearchParams();
   const sport = params.get('sport') ?? '';
   const status = params.get('status') ?? '';
+  const tag = params.get('tag') ?? '';
   const [page, setPage] = useState(1);
   const { toast } = useApp();
-  const q = new URLSearchParams({ page: String(page), ...(sport ? { sport } : {}), ...(status ? { status } : {}) });
+  const q = new URLSearchParams({ page: String(page), ...(sport ? { sport } : {}), ...(status ? { status } : {}), ...(tag ? { tag } : {}) });
   const { data, error, loading, reload } = useApi<{ forum: ForumInfo; threads: ThreadItem[]; hasMore: boolean; games: GameItem[] }>(`/forums/${slug}?${q}`);
   if (error) return <ErrorState error={error} retry={reload} />;
   if (!data) return <Loading />;
@@ -94,7 +98,14 @@ export function ForumPage() {
             )}
           </div>
         )}
+        {f.kind === 'sport' && (
+          <div className="filter-row" aria-label="Filter by tag">
+            <button className={`btn small ${tag ? 'secondary' : ''}`} onClick={() => setFilter('tag', '')}>All topics</button>
+            {Object.entries(TAGS).map(([k, v]) => <button key={k} className={`btn small ${tag === k ? '' : 'secondary'}`} onClick={() => setFilter('tag', k)}>{v}</button>)}
+          </div>
+        )}
         {loading ? <Loading /> : <ThreadList threads={data.threads} showForum={false} empty="No discussions here yet. Start the first one!" />}
+        <Link to={`/new?forum=${f.slug}`} className="fab" aria-label="Start a new discussion"><Plus size={26} /></Link>
         {(page > 1 || data.hasMore) && (
           <div className="pager">
             <button className="btn secondary small" disabled={page <= 1} onClick={() => setPage(page - 1)}>Newer</button>
@@ -108,6 +119,7 @@ export function ForumPage() {
 
 export function NewThread() {
   const [params] = useSearchParams();
+  const { toast } = useApp();
   const nav = useNavigate();
   const { data } = useApi<{ forums: ForumInfo[] }>('/forums');
   const [forum, setForum] = useState(params.get('forum') ?? '');
@@ -119,6 +131,8 @@ export function NewThread() {
   const [sport, setSport] = useState('');
   const [photos, setPhotos] = useState<{ id: string; url: string }[]>([]);
   const [pollOn, setPollOn] = useState(false);
+  const [tags, setTags] = useState<string[]>([]);
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
   const [poll, setPoll] = useState({ question: '', options: ['', ''], closes: '' });
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -129,14 +143,15 @@ export function NewThread() {
     setBusy(true);
     setError(null);
     try {
-      const r = await api<{ id: number }>('/threads', {
+      const r = await api<{ id: number; pending: boolean }>('/threads', {
         body: {
-          forum, title: draft.title, description, body: draft.body, sport: sport || null, attachments: photos.map((p) => p.id), draft_key: draftKey,
+          forum, title: draft.title, description, body: draft.body, sport: sport || null, attachments: photos.map((p) => p.id), draft_key: draftKey, tags,
           game_id: gameId, game_phase: phase,
           poll: pollOn ? { question: poll.question, options: poll.options.filter((o) => o.trim()), closes_at: poll.closes ? new Date(poll.closes).getTime() : null } : null,
         },
       });
       draft.clear();
+      if (r.pending) toast('Thanks! Your first post will appear once an admin approves it.');
       nav(`/t/${r.id}`);
     } catch (err) {
       setError((err as Error).message);
@@ -170,12 +185,14 @@ export function NewThread() {
         <div className="field"><label htmlFor="desc">Short topic description</label><input id="desc" className="input" value={description} onChange={(e) => setDescription(e.target.value)} required minLength={3} maxLength={240} placeholder="One line so members know what it's about" /></div>
         <div className="field">
           <label htmlFor="body">Your post</label>
-          <textarea id="body" className="textarea" style={{ minHeight: 180 }} value={draft.body} onChange={(e) => draft.setBody(e.target.value)} required />
-          <span className="hint">Tips: start a line with &gt; to quote, wrap text in **double asterisks** for bold, @username to mention. {draft.status === 'saved' && draft.body ? 'Draft saved.' : draft.status === 'saving' ? 'Saving draft…' : ''}</span>
+          <MentionTextarea id="body" textareaRef={bodyRef} className="textarea" style={{ minHeight: 180 }} value={draft.body} onChange={draft.setBody} required />
+          <span className="hint">Tips: paste a tweet or YouTube link and it shows as a card; start a line with &gt; to quote; **bold**; ||spoiler||; @ to mention. {draft.status === 'saved' && draft.body ? 'Draft saved.' : draft.status === 'saving' ? 'Saving draft…' : ''}</span>
         </div>
+        <div className="field"><span className="label">Tags (optional, up to 3)</span><TagPicker value={tags} onChange={setTags} /></div>
         <PhotoThumbs photos={photos} setPhotos={setPhotos} />
         <div className="row" style={{ margin: '8px 0 14px' }}>
           <PhotoPicker photos={photos} setPhotos={setPhotos} onError={setError} />
+          <ComposerTools value={draft.body} onChange={draft.setBody} textareaRef={bodyRef} onError={setError} />
           <button type="button" className="btn secondary small" onClick={() => setPollOn(!pollOn)}>{pollOn ? 'Remove poll' : 'Add a poll'}</button>
         </div>
         {pollOn && (

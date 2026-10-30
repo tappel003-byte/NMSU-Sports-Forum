@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Plus } from 'lucide-react';
+import { List, Plus, Rows3 } from 'lucide-react';
+import { ShareModal } from '../components/Share';
+import { TAGS } from '../../shared/forum';
 import { api } from '../api';
 import { useApi, useApp } from '../state';
 import { gameTime, matchup, sportName, timeAgo } from '../format';
@@ -30,10 +32,16 @@ function greeting() {
 
 export function Feed({ initialTab = 'latest', compact = false }: { initialTab?: string; compact?: boolean }) {
   const [params, setParams] = useSearchParams();
-  const tab = compact ? params.get('tab') ?? initialTab : params.get('tab') ?? initialTab;
+  const tab = params.get('tab') ?? initialTab;
+  const tag = params.get('tag') ?? '';
   const [page, setPage] = useState(1);
-  const { data, error, loading, reload } = useApi<{ threads: ThreadItem[]; hasMore: boolean; needsSports?: boolean }>(`/feed?tab=${tab}&page=${page}`);
-  const { refreshPulse, toast } = useApp();
+  const { data, error, loading, reload } = useApi<{ threads: ThreadItem[]; hasMore: boolean; needsSports?: boolean }>(`/feed?tab=${tab}&page=${page}${tag ? `&tag=${tag}` : ''}${compact ? '' : '&games=1'}`);
+  const { me, refreshPulse, toast, refresh } = useApp();
+  const [share, setShare] = useState(false);
+  const toggleCompact = async () => {
+    await api('/me/prefs', { method: 'PATCH', body: { compact: !me?.prefs?.compact } });
+    refresh();
+  };
   const markAll = async () => {
     await api('/mark-all-read', { method: 'POST' });
     toast('Everything marked as read');
@@ -46,7 +54,9 @@ export function Feed({ initialTab = 'latest', compact = false }: { initialTab?: 
         <h2>{compact ? 'Community discussions' : 'All discussions'}</h2>
         <div className="row">
           {tab === 'unread' && <button className="btn ghost small" onClick={markAll}>Mark all read</button>}
-          <Link to="/new" className="btn small"><Plus size={16} /> New thread</Link>
+          <button className="btn ghost small" onClick={toggleCompact} aria-pressed={Boolean(me?.prefs?.compact)} title="Compact list">{me?.prefs?.compact ? <List size={16} /> : <Rows3 size={16} />}<span className="sr-only">Compact list</span></button>
+          <button className="btn secondary small" onClick={() => setShare(true)}>Share a tweet</button>
+          <Link to="/new" className="btn small desktop-only-inline"><Plus size={16} /> New thread</Link>
         </div>
       </div>
       <div className="tabs" role="tablist">
@@ -54,6 +64,14 @@ export function Feed({ initialTab = 'latest', compact = false }: { initialTab?: 
           <button key={k} role="tab" aria-selected={tab === k} className={`tab ${tab === k ? 'active' : ''}`} onClick={() => { setPage(1); setParams((p) => { p.set('tab', k); return p; }, { replace: true }); }}>{label}</button>
         ))}
       </div>
+      <div className="filter-row" aria-label="Filter by tag">
+        <button className={`btn small ${tag ? 'secondary' : ''}`} onClick={() => { setPage(1); setParams((p) => { p.delete('tag'); return p; }, { replace: true }); }}>All topics</button>
+        {Object.entries(TAGS).map(([k, v]) => (
+          <button key={k} className={`btn small ${tag === k ? '' : 'secondary'}`} onClick={() => { setPage(1); setParams((p) => { p.set('tag', k); return p; }, { replace: true }); }}>{v}</button>
+        ))}
+      </div>
+      {share && <ShareModal onClose={() => setShare(false)} />}
+      <Link to="/new" className="fab" aria-label="Start a new discussion"><Plus size={26} /></Link>
       {loading && !data ? <Loading /> : error ? <ErrorState error={error} retry={reload} /> : data?.needsSports ? (
         <div className="empty">Pick your favorite sports in <Link to="/settings">Settings</Link> to build your personal feed.</div>
       ) : (
@@ -98,6 +116,8 @@ export function Home() {
               <div className="row">
                 <Link to={`/games/${next.id}`} className="btn on-crimson small">Game page</Link>
                 <Link to={`/chat/game-${next.id}`} className="btn on-crimson outline small">Game chat</Link>
+                {next.pregame_thread_id && <Link to={`/t/${next.pregame_thread_id}`} className="btn on-crimson outline small">Pregame thread</Link>}
+                {next.postgame_thread_id && <Link to={`/t/${next.postgame_thread_id}`} className="btn on-crimson outline small">Postgame thread</Link>}
                 <a href={next.official_url} target="_blank" rel="noopener noreferrer" className="btn on-crimson outline small">Official info</a>
               </div>
             </>
@@ -134,7 +154,7 @@ export function Home() {
       )}
 
       {data && data.games.length > 1 && (
-        <section className="card">
+        <section className="card desktop-only">
           <div className="section-head"><h2>Upcoming games</h2><Link to="/games" className="small">Full schedule</Link></div>
           {data.games.slice(0, 4).map((g) => <GameRow key={g.id} game={g} />)}
         </section>
@@ -148,7 +168,7 @@ export function Home() {
       )}
 
       {data && data.events.length > 0 && (
-        <section className="card">
+        <section className="card desktop-only">
           <div className="section-head"><h2>Watch parties &amp; gatherings</h2><Link to="/calendar" className="small">Calendar</Link></div>
           {data.events.map((e) => (
             <Link key={e.id} to={`/events/${e.id}`} className="list-row"><span>📍</span><div className="grow"><strong>{e.title}</strong><div className="small muted">{gameTime(e.starts_at)} · {e.location}</div></div></Link>
@@ -156,7 +176,7 @@ export function Home() {
         </section>
       )}
 
-      <section className="card">
+      <section className="card desktop-only">
         <div className="section-head"><h2>Sports venues</h2><Link to="/forums" className="small">All forums</Link></div>
         <div className="card-pad venue-grid">
           {forums?.forums.filter((f) => f.kind === 'sport').map((f) => (
@@ -170,6 +190,7 @@ export function Home() {
       </section>
 
       <div className="row" style={{ justifyContent: 'center' }}>
+        <button className="btn ghost small" onClick={() => nav('/recruiting')}>Recruiting &amp; portal</button>
         <button className="btn ghost small" onClick={() => nav('/time-machine')}>Aggie Time Machine</button>
         <button className="btn ghost small" onClick={() => nav('/predictions')}>Prediction standings</button>
         <button className="btn ghost small" onClick={() => nav('/calendar')}>Community calendar</button>

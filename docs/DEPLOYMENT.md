@@ -33,6 +33,11 @@ Everything happens in web browsers; no command line needed.
 7. **Create the first administrator.** Visit `/setup` on the site (the workers.dev address works before the domain is connected), enter the `BOOTSTRAP_TOKEN` and choose the admin's username, email and password. Setup works only while the database has no users. After that, you can delete the `BOOTSTRAP_TOKEN` secret in GitHub and in the Worker's settings.
 8. **Connect the official schedule feeds.** Sign in as an admin, open **Admin → Sports data** and add the official NMSU Athletics calendar feed (the "Sync to calendar / iCal" link on nmstatesports.com). Press **Sync now**. From then on it updates every 30 minutes by itself. See `SPORTS_DATA.md`.
 
+## Phone notifications and recruiting data (one-time)
+- **Phone notifications:** run `npm run vapid` once. Put the `VAPID_PUBLIC_KEY` value in `wrangler.jsonc` under `vars` (it's public) and store `VAPID_PRIVATE_KEY` as a secret (`npx wrangler secret put VAPID_PRIVATE_KEY`). Optionally set `VAPID_SUBJECT` (e.g. `mailto:you@example.com`). Members then turn notifications on in Settings; on iPhone they must add the site to the Home Screen first.
+- **Football recruiting and transfer portal:** create a free key at collegefootballdata.com and store it as the `CFBD_API_KEY` secret. The forum syncs once a day (a few API calls, inside the free tier); admins can press **Admin → Sports data → Update now**. Confirm CollegeFootballData's terms allow display on the forum before launch.
+- **Tweet cards** use X's free embed service (`publish.twitter.com`); no key needed.
+
 ## Optional: R2 for photos
 Only worth doing if photo volume grows. Enable R2 in the dashboard, run `npx wrangler r2 bucket create nmsu-sports-forum-uploads`, then uncomment `r2_buckets` in `wrangler.jsonc`. New photos go to R2; existing ones stay readable only from D1, so do this early or not at all.
 

@@ -1,6 +1,8 @@
 import { useEffect, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { BADGES } from '../../shared/sports';
+import { TAGS } from '../../shared/forum';
+import { useApp } from '../state';
 import { Score, dateParts, gameTime, matchup, sportIcon, sportName, timeAgo } from '../format';
 
 export interface MemberLite {
@@ -26,6 +28,7 @@ export function Avatar({ member, size = '' }: { member: MemberLite | null; size?
 
 export function MemberName({ member }: { member: MemberLite | null }) {
   if (!member) return <span className="post-author">NMSU Sports Forum</span>;
+  if (member.username.startsWith('former_member_')) return <span className="post-author muted">Former member</span>;
   return <Link className="post-author" to={`/members/${member.id}`}>{member.display_name || member.username}</Link>;
 }
 
@@ -91,16 +94,19 @@ export interface ThreadItem {
   game_id: number | null;
   game_phase: string | null;
   suggestion_status: string | null;
+  tags?: string[];
+  pending?: boolean;
 }
 
 export const SUGGESTION_LABELS: Record<string, string> = {
   under_consideration: 'Under consideration', planned: 'Planned', implemented: 'Implemented', declined: 'Not planned',
 };
 
-export function ThreadList({ threads, showForum = true, empty }: { threads: ThreadItem[]; showForum?: boolean; empty?: ReactNode }) {
+export function ThreadList({ threads, showForum = true, empty, compact }: { threads: ThreadItem[]; showForum?: boolean; empty?: ReactNode; compact?: boolean }) {
+  const { me } = useApp();
   if (!threads.length) return <div className="empty">{empty ?? 'No discussions yet.'}</div>;
   return (
-    <ul className="thread-list">
+    <ul className={`thread-list ${(compact ?? me?.prefs?.compact) ? 'compact' : ''}`}>
       {threads.map((t) => (
         <li key={t.id} className="thread-item">
           <span className="thread-icon" aria-hidden="true">{t.sport ? sportIcon(t.sport) : t.forum.icon}</span>
@@ -118,6 +124,8 @@ export function ThreadList({ threads, showForum = true, empty }: { threads: Thre
               {t.game_phase && <span className="chip">{t.game_phase === 'pregame' ? 'Pregame' : 'Postgame'}</span>}
               {t.archived && <span className="chip gray">Archived</span>}
               {t.suggestion_status && <span className={`status-pill status-${t.suggestion_status}`}>{SUGGESTION_LABELS[t.suggestion_status]}</span>}
+              {t.tags?.map((tg) => <span key={tg} className="tag">{TAGS[tg]}</span>)}
+              {t.pending && <span className="chip gray">Awaiting approval</span>}
             </div>
           </div>
           <div className="thread-count"><b>{t.reply_count}</b>replies</div>

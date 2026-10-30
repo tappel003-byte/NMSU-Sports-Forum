@@ -12,6 +12,7 @@ import { ChatArchive, ChatRoomPage, ChatRooms } from './pages/Chat';
 import { Bookmarks, Conversation, Drafts, MemberPage, Members, Messages, Notifications, SearchPage, Settings, UserRedirect } from './pages/Members';
 import { Calendar, Contributions, EventPage, MapPage, YearInReview } from './pages/Community';
 import { Admin } from './pages/Admin';
+import { PlayerPage, Recruiting, SharePage } from './pages/Recruiting';
 
 function Private({ children, rail = true }: { children: React.ReactElement; rail?: boolean }) {
   const { me, loading } = useApp();
@@ -59,6 +60,9 @@ export function App() {
       <Route path="/year-in-review" element={<Private><YearInReview /></Private>} />
       <Route path="/contributions" element={<Private><Contributions /></Private>} />
       <Route path="/map" element={<Private><MapPage /></Private>} />
+      <Route path="/recruiting" element={<Private><Recruiting /></Private>} />
+      <Route path="/recruiting/:id" element={<Private><PlayerPage /></Private>} />
+      <Route path="/share" element={<Private><SharePage /></Private>} />
       <Route path="/admin/*" element={<Private rail={false}><Admin /></Private>} />
       <Route path="*" element={<Private><div className="empty">Page not found.</div></Private>} />
     </Routes>

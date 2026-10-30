@@ -194,6 +194,7 @@ community.patch('/me/prefs', async (c) => {
     notify_replies: z.boolean().optional(), notify_mentions: z.boolean().optional(), notify_quotes: z.boolean().optional(),
     notify_games: z.boolean().optional(), notify_dm: z.boolean().optional(), auto_follow: z.boolean().optional(),
     spoiler_free: z.boolean().optional(), large_text: z.boolean().optional(), digest: z.boolean().optional(),
+    compact: z.boolean().optional(), push: z.boolean().optional(), theme: z.enum(['system', 'light', 'dark']).optional(),
     my_sports: z.array(z.string()).max(20).optional(),
   }), await c.req.json());
   if (body.my_sports) body.my_sports = body.my_sports.filter((s) => s in SPORT_BY_KEY);
