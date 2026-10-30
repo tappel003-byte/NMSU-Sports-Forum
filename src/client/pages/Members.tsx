@@ -20,7 +20,7 @@ export function Members() {
     <div className="stack">
       <div className="page-head spread">
         <div><div className="eyebrow">Members</div><h1>The Aggie family</h1></div>
-        <div className="row"><Link to="/map" className="btn secondary small">Member map</Link><Link to="/contributions" className="btn secondary small">Contributions</Link></div>
+        <div className="row"><Link to="/invite" className="btn small">Invite friends</Link><Link to="/map" className="btn secondary small">Member map</Link><Link to="/contributions" className="btn secondary small">Contributions</Link></div>
       </div>
       <input className="input" placeholder="Search by username, name, city or Aggie Alert moniker" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search members" />
       {error ? <ErrorState error={error} retry={reload} /> : !data ? <Loading /> : (

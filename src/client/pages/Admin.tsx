@@ -4,6 +4,7 @@ import { api } from '../api';
 import { useApi, useApp } from '../state';
 import { fullTime, gameTime, matchup, sportName, timeAgo } from '../format';
 import { ErrorState, Loading, Modal, type GameItem } from '../components/ui';
+import { InviteSheet, type CreatedInvite } from '../components/Invite';
 import { BADGES, SPORTS } from '../../shared/sports';
 
 function copy(text: string, toast: (m: string) => void) {
@@ -36,23 +37,12 @@ function Overview() {
 }
 
 /** US numbers: 10 digits become +1XXXXXXXXXX; anything else is passed through as typed digits. */
-export function smsNumber(raw: string): string {
-  const digits = raw.replace(/\D/g, '');
-  if (digits.length === 10) return `+1${digits}`;
-  if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`;
-  return raw.trim().startsWith('+') ? `+${digits}` : digits;
-}
-
-export function inviteMessage(name: string, link: string, days: number): string {
-  return `${name ? `Hey ${name}, you're` : "You're"} invited to NMSU Sports Forum, the new home for Aggie fans. Free, no ads, built for your phone. Join here (the link works once and expires in ${days} days): ${link}`;
-}
-
 function Invites() {
   const { toast, emailEnabled } = useApp();
   const { data, reload } = useApi<{ invites: { id: number; email: string | null; note: string | null; max_uses: number; uses: number; expires_at: number; revoked: number; created_at: number; created_by: string; used_by: string | null }[] }>('/admin/invites');
   const blank = { name: '', phone: '', email: '', lock: false, note: '', days: '14', max_uses: '1' };
   const [f, setF] = useState(blank);
-  const [created, setCreated] = useState<{ link: string; emailed: boolean; name: string; phone: string; email: string; days: number } | null>(null);
+  const [created, setCreated] = useState<CreatedInvite | null>(null);
   const make = async (v: typeof blank) => {
     try {
       // The phone number stays on this device: it's only used to open your Messages app.
@@ -72,11 +62,6 @@ function Invites() {
     } catch { /* picker closed */ }
   };
   const revoke = async (id: number) => { await api(`/admin/invites/${id}`, { method: 'DELETE' }); toast('Invitation revoked'); reload(); };
-  const msg = created ? inviteMessage(created.name, created.link, created.days) : '';
-  const ios = /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent);
-  // With no number or address, Messages and Mail open with an empty "To:" so you can pick anyone from your contacts.
-  const smsHref = created ? `sms:${created.phone ? smsNumber(created.phone) : ''}${ios ? '&' : '?'}body=${encodeURIComponent(msg)}` : '';
-  const mailHref = created ? `mailto:${created.email ? encodeURIComponent(created.email) : ''}?subject=${encodeURIComponent("You're invited to NMSU Sports Forum")}&body=${encodeURIComponent(msg)}` : '';
   return (
     <div className="stack">
       <section className="card card-pad">
@@ -105,27 +90,7 @@ function Invites() {
           <button className="btn">Create invitation</button>
         </form>
       </section>
-      {created && (
-        <Modal title="Invitation ready" onClose={() => setCreated(null)}>
-          {created.emailed && <div className="note-box small" style={{ marginBottom: 10 }}>✓ The site emailed the invitation to {created.email}.</div>}
-          <p className="small" style={{ marginTop: 0 }}>
-            {created.phone || created.email ? 'Tap a button to open your app with the invitation already written, then press Send.' : 'Tap Text it or Email it, type their name in the "To:" line to pick them from your contacts, then press Send.'}
-          </p>
-          <div className="row" style={{ marginBottom: 12 }}>
-            <a className="btn" href={smsHref}>💬 Text it</a>
-            <a className="btn secondary" href={mailHref}>✉️ Email it</a>
-            {'share' in navigator && <button className="btn ghost" onClick={() => navigator.share({ title: 'NMSU Sports Forum invitation', text: msg }).catch(() => {})}>Other apps…</button>}
-          </div>
-          <div className="label">The message</div>
-          <div className="quote-embed small" style={{ whiteSpace: 'pre-wrap' }}>{msg}</div>
-          <p className="tiny muted">The link is shown only once. Copy it now if you'd rather send it another way.</p>
-          <input className="input" readOnly value={created.link} onFocus={(e) => e.target.select()} aria-label="Invitation link" />
-          <div className="row" style={{ marginTop: 10 }}>
-            <button className="btn secondary" onClick={() => copy(msg, toast)}>Copy message</button>
-            <button className="btn ghost" onClick={() => copy(created.link, toast)}>Copy link only</button>
-          </div>
-        </Modal>
-      )}
+      {created && <InviteSheet created={created} onClose={() => setCreated(null)} />}
       <section className="card">
         <div className="section-head"><h2>Invitations</h2></div>
         <div className="table-scroll"><table className="simple"><thead><tr><th>Created</th><th>For</th><th>Used</th><th>Status</th><th /></tr></thead><tbody>
@@ -515,6 +480,7 @@ function SettingsTab() {
         </div>
         <label className="check"><input type="checkbox" checked={cur.public_read === '1'} onChange={(e) => setS({ ...cur, public_read: e.target.checked ? '1' : '0' })} /><span>Anyone can read discussions without an account<span className="hint" style={{ display: 'block' }}>Posting, reacting, chat, private messages, the member directory, map and calendar still require an account.</span></span></label>
         <div className="field"><label htmlFor="tt">Troll flags needed to hide a post</label><input id="tt" type="number" min={1} max={99} className="input" value={cur.troll_threshold || '3'} onChange={(e) => setS({ ...cur, troll_threshold: e.target.value })} /><span className="hint">Different established members must flag it. An admin's flag hides it immediately.</span></div>
+        <label className="check"><input type="checkbox" checked={cur.member_invites !== '0'} onChange={(e) => setS({ ...cur, member_invites: e.target.checked ? '1' : '0' })} /><span>Members can invite friends<span className="hint" style={{ display: 'block' }}>Each member can send up to 10 invitations a day from Invite friends. Every invitation works once and expires in 14 days.</span></span></label>
         <h3>Posting</h3>
         <label className="check"><input type="checkbox" checked={cur.approve_first_post === '1'} onChange={(e) => setS({ ...cur, approve_first_post: e.target.checked ? '1' : '0' })} /><span>Approve each new member's first post<span className="hint" style={{ display: 'block' }}>New members' first post waits in Admin → Approvals. Once one post is approved, their posts appear right away.</span></span></label>
         <div className="field"><label htmlFor="an">Home page announcement</label><textarea id="an" className="textarea" style={{ minHeight: 70 }} value={cur.announcement} onChange={set('announcement')} maxLength={500} /></div>

@@ -213,6 +213,29 @@ try {
   await admin.screenshot({ path: `${SHOTS}/admin-invite-quick.png` });
   await admin.click('button:has-text("Close")');
 
+  // ---------- Members invite friends ----------
+  await reg.goto(BASE + '/invite');
+  await reg.click('button:has-text("Invite someone from my phone")');
+  await reg.waitForSelector('text=Invitation ready');
+  const mlink = await reg.inputValue('input[aria-label="Invitation link"]');
+  const msms = await reg.getAttribute('a:has-text("Text it")', 'href');
+  await reg.screenshot({ path: `${SHOTS}/iphone-invite-friends.png` });
+  await reg.click('button:has-text("Close")');
+  const friend = await (await browser.newContext()).newPage();
+  await friend.goto(mlink);
+  await friend.fill('#un', 'FriendOfRick');
+  await friend.fill('#em', 'friend.of.rick@example.test');
+  await friend.fill('#pw', 'friend-password-123');
+  await friend.fill('#pc', 'friend-password-123');
+  await friend.click('button:has-text("Join NMSU Sports Forum")');
+  await friend.waitForURL('**/settings?welcome=1');
+  const mine = (await api(reg, '/invites/mine')).body.invites;
+  check('A member invites a friend from their phone and the friend joins', /^sms:[?&]body=/.test(msms) && mine[0]?.used_by === 'FriendOfRick');
+  await api(admin, '/admin/settings', { method: 'PUT', body: { member_invites: '0' } });
+  const off = await api(reg, '/invites', { body: {} });
+  await api(admin, '/admin/settings', { method: 'PUT', body: { member_invites: '1' } });
+  check('Admins can switch member invitations off', off.status === 403);
+
   // ---------- Posting without gatekeeping ----------
   await reg.goto(BASE + '/new');
   await reg.fill('#title', 'Tailgate spot this Saturday?');

@@ -200,6 +200,7 @@ export function Home() {
       )}
 
       <div className="row" style={{ justifyContent: 'center' }}>
+        {me && <button className="btn small" onClick={() => nav('/invite')}>Invite friends</button>}
         <button className="btn ghost small" onClick={() => nav('/rosters')}>Rosters &amp; links</button>
         <button className="btn ghost small" onClick={() => nav('/recruiting')}>Recruiting &amp; portal</button>
         <button className="btn ghost small" onClick={() => nav('/time-machine')}>Aggie Time Machine</button>

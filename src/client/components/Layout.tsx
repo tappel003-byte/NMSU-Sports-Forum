@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   Award, Bell, Bookmark, CalendarDays, ClipboardList, History, Home, Lightbulb, LogOut, Mail, Map as MapIcon, MessageCircle, MessagesSquare,
-  Search, Settings, Shield, Sparkles, Trophy, Trophy as TrophyIcon, UserPlus, Users,
+  Search, Send, Settings, Shield, Sparkles, Trophy, Trophy as TrophyIcon, UserPlus, Users,
 } from 'lucide-react';
 import type { HubData } from '../pages/Rosters';
 import { PullToRefresh } from './PullToRefresh';
@@ -89,7 +89,7 @@ function Header() {
 }
 
 function LeftRail() {
-  const { me, pulse } = useApp();
+  const { me, pulse, site } = useApp();
   const { data } = useForums();
   const community = data?.forums.filter((f) => f.kind !== 'sport' && f.kind !== 'general') ?? [];
   return (
@@ -103,6 +103,7 @@ function LeftRail() {
           <NavLink to="/chat"><MessageCircle size={17} /> Live chat</NavLink>
           <NavLink to="/calendar"><CalendarDays size={17} /> Calendar</NavLink>
           <NavLink to="/members"><Users size={17} /> Members</NavLink>
+          {me && (site.memberInvites || me.role === 'admin') && <NavLink to="/invite"><Send size={17} /> Invite friends</NavLink>}
           <NavLink to="/rosters"><ClipboardList size={17} /> Rosters &amp; links</NavLink>
           <NavLink to="/recruiting"><UserPlus size={17} /> Recruiting</NavLink>
           <NavLink to="/predictions"><Trophy size={17} /> Predictions</NavLink>

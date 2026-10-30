@@ -7,6 +7,7 @@ import { Forgot, Join, Login, Reset, Setup, SignUp, Verify } from './pages/Auth'
 import { Feed, Home } from './pages/Home';
 import { ForumPage, NewThread } from './pages/Forums';
 import { Rosters } from './pages/Rosters';
+import { InviteFriends } from './components/Invite';
 import { ThreadPage } from './pages/Thread';
 import { GamePage, Games, Predictions, TimeMachine } from './pages/Games';
 import { ChatArchive, ChatRoomPage, ChatRooms } from './pages/Chat';
@@ -64,6 +65,7 @@ export function App() {
       <Route path="/year-in-review" element={<Private><YearInReview /></Private>} />
       <Route path="/contributions" element={<Private><Contributions /></Private>} />
       <Route path="/map" element={<Private><MapPage /></Private>} />
+      <Route path="/invite" element={<Private><InviteFriends /></Private>} />
       <Route path="/rosters" element={<Private publicOk><Rosters /></Private>} />
       <Route path="/recruiting" element={<Private publicOk><Recruiting /></Private>} />
       <Route path="/recruiting/:id" element={<Private publicOk><PlayerPage /></Private>} />

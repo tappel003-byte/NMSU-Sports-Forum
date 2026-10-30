@@ -20,6 +20,7 @@ auth.get('/me', async (c) => {
     emailEnabled: emailEnabled(c.env),
     signupMode: (await getSetting(c.env, 'signup_mode')) || 'invite',
     publicRead: (await getSetting(c.env, 'public_read')) === '1',
+    memberInvites: (await getSetting(c.env, 'member_invites')) !== '0',
     turnstileSiteKey: c.env.TURNSTILE_SITE_KEY || null,
     emailVerified: user ? (await first<{ v: number }>(c.env, 'SELECT email_verified AS v FROM users WHERE id = ?', user.id))?.v !== 0 : true,
   });

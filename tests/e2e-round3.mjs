@@ -60,9 +60,9 @@ try {
   await anon.goto(`${BASE}/t/${threadId}`);
   await anon.waitForSelector('article.post');
   check('Visitors can read a discussion, with no reply box or reaction buttons', (await anon.isVisible('text=Join free to reply')) && !(await anon.isVisible('#reply-box')) && !(await anon.isVisible('.post-actions')));
-  const reads = await Promise.all(['/feed?tab=latest', `/threads/${threadId}`, '/games', '/players?kind=recruit', '/forums'].map((p) => api(anon, p)));
+  const reads = await Promise.all(['/feed?tab=latest', `/threads/${threadId}`, '/games', '/players?kind=recruit', '/forums', '/hub', '/scoreboard'].map((p) => api(anon, p)));
   check('Public read APIs work without an account', reads.every((r) => r.status === 200));
-  const privateApis = await Promise.all(['/members', '/messages', '/chat/rooms', '/calendar', '/map', '/notifications', '/admin/overview'].map((p) => api(anon, p)));
+  const privateApis = await Promise.all(['/members', '/messages', '/chat/rooms', '/calendar', '/map', '/notifications', '/admin/overview', '/invites/mine'].map((p) => api(anon, p)));
   check('Members, messages, chat, calendar, map and admin stay private', privateApis.every((r) => r.status === 401), privateApis.map((r) => r.status).join(','));
   const write = await api(anon, `/threads/${threadId}/posts`, { body: { body: 'drive-by' } });
   check('Visitors cannot post', write.status === 401);
