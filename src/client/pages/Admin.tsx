@@ -53,26 +53,40 @@ function Invites() {
   const blank = { name: '', phone: '', email: '', lock: false, note: '', days: '14', max_uses: '1' };
   const [f, setF] = useState(blank);
   const [created, setCreated] = useState<{ link: string; emailed: boolean; name: string; phone: string; email: string; days: number } | null>(null);
-  const create = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const make = async (v: typeof blank) => {
     try {
       // The phone number stays on this device: it's only used to open your Messages app.
-      const r = await api<{ link: string; emailed: boolean; days: number }>('/admin/invites', { body: { name: f.name, email: f.email, lock_email: f.lock, note: f.note, days: Number(f.days), max_uses: Number(f.max_uses) } });
-      setCreated({ ...r, name: f.name, phone: f.phone, email: f.email });
+      const r = await api<{ link: string; emailed: boolean; days: number }>('/admin/invites', { body: { name: v.name, email: v.email, lock_email: v.lock, note: v.note, days: Number(v.days), max_uses: Number(v.max_uses) } });
+      setCreated({ ...r, name: v.name, phone: v.phone, email: v.email });
       setF(blank);
       reload();
     } catch (err) { toast((err as Error).message); }
   };
+  const create = (e: React.FormEvent) => { e.preventDefault(); make(f); };
+  // Contact Picker is available on some phones (Android Chrome; iPhone only behind a Safari setting).
+  const contacts = (navigator as Navigator & { contacts?: { select: (props: string[], opts: { multiple: boolean }) => Promise<{ name?: string[]; tel?: string[]; email?: string[] }[]> } }).contacts;
+  const pick = async () => {
+    try {
+      const [c] = await contacts!.select(['name', 'tel', 'email'], { multiple: false });
+      if (c) setF({ ...f, name: c.name?.[0]?.split(' ')[0] ?? f.name, phone: c.tel?.[0] ?? '', email: c.email?.[0] ?? '' });
+    } catch { /* picker closed */ }
+  };
   const revoke = async (id: number) => { await api(`/admin/invites/${id}`, { method: 'DELETE' }); toast('Invitation revoked'); reload(); };
   const msg = created ? inviteMessage(created.name, created.link, created.days) : '';
   const ios = /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent);
-  const smsHref = created?.phone ? `sms:${smsNumber(created.phone)}${ios ? '&' : '?'}body=${encodeURIComponent(msg)}` : '';
-  const mailHref = created?.email ? `mailto:${encodeURIComponent(created.email)}?subject=${encodeURIComponent("You're invited to NMSU Sports Forum")}&body=${encodeURIComponent(msg)}` : '';
+  // With no number or address, Messages and Mail open with an empty "To:" so you can pick anyone from your contacts.
+  const smsHref = created ? `sms:${created.phone ? smsNumber(created.phone) : ''}${ios ? '&' : '?'}body=${encodeURIComponent(msg)}` : '';
+  const mailHref = created ? `mailto:${created.email ? encodeURIComponent(created.email) : ''}?subject=${encodeURIComponent("You're invited to NMSU Sports Forum")}&body=${encodeURIComponent(msg)}` : '';
   return (
     <div className="stack">
       <section className="card card-pad">
-        <h2>Invite a member</h2>
-        <p className="small muted" style={{ marginTop: 0 }}>Enter their cell number to text the invitation from your phone, their email to email it, or both.</p>
+        <h2>Invite someone</h2>
+        <p className="small muted" style={{ marginTop: 0 }}>Tap the button, then choose Text or Email and pick the person from your phone's contacts. The invitation is already written for you.</p>
+        <button className="btn block" onClick={() => make(blank)}>📱 Invite someone from my phone</button>
+      </section>
+      <section className="card card-pad">
+        <h2>Or type in their details</h2>
+        {contacts && <button type="button" className="btn secondary small" style={{ marginBottom: 10 }} onClick={pick}>Choose from contacts</button>}
         <form onSubmit={create}>
           <div className="grid-2">
             <div className="field"><label htmlFor="iname">Their name (optional)</label><input id="iname" className="input" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} placeholder="e.g. Rick" maxLength={60} /><span className="hint">Used to greet them in the message.</span></div>
@@ -94,10 +108,13 @@ function Invites() {
       {created && (
         <Modal title="Invitation ready" onClose={() => setCreated(null)}>
           {created.emailed && <div className="note-box small" style={{ marginBottom: 10 }}>✓ The site emailed the invitation to {created.email}.</div>}
-          {(smsHref || mailHref) && <p className="small" style={{ marginTop: 0 }}>Tap a button to open your {smsHref && 'Messages'}{smsHref && mailHref && ' or '}{mailHref && 'email'} app with the invitation already written, then press Send.</p>}
+          <p className="small" style={{ marginTop: 0 }}>
+            {created.phone || created.email ? 'Tap a button to open your app with the invitation already written, then press Send.' : 'Tap Text it or Email it, type their name in the "To:" line to pick them from your contacts, then press Send.'}
+          </p>
           <div className="row" style={{ marginBottom: 12 }}>
-            {smsHref && <a className="btn" href={smsHref}>💬 Text it</a>}
-            {mailHref && <a className={`btn ${smsHref ? 'secondary' : ''}`} href={mailHref}>✉️ Email it</a>}
+            <a className="btn" href={smsHref}>💬 Text it</a>
+            <a className="btn secondary" href={mailHref}>✉️ Email it</a>
+            {'share' in navigator && <button className="btn ghost" onClick={() => navigator.share({ title: 'NMSU Sports Forum invitation', text: msg }).catch(() => {})}>Other apps…</button>}
           </div>
           <div className="label">The message</div>
           <div className="quote-embed small" style={{ whiteSpace: 'pre-wrap' }}>{msg}</div>
@@ -106,7 +123,6 @@ function Invites() {
           <div className="row" style={{ marginTop: 10 }}>
             <button className="btn secondary" onClick={() => copy(msg, toast)}>Copy message</button>
             <button className="btn ghost" onClick={() => copy(created.link, toast)}>Copy link only</button>
-            {'share' in navigator && <button className="btn ghost" onClick={() => navigator.share({ title: 'NMSU Sports Forum invitation', text: msg }).catch(() => {})}>Share…</button>}
           </div>
         </Modal>
       )}

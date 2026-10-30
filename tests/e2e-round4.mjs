@@ -202,6 +202,17 @@ try {
   await reg.waitForURL('**/settings?welcome=1');
   check('The texted invitation link works for sign-up', true);
 
+  // ---------- One-tap invite (pick the person in Messages or Mail) ----------
+  await admin.goto(BASE + '/admin/invites');
+  await admin.click('button:has-text("Invite someone from my phone")');
+  await admin.waitForSelector('text=Invitation ready');
+  const qsms = await admin.getAttribute('a:has-text("Text it")', 'href');
+  const qmail = await admin.getAttribute('a:has-text("Email it")', 'href');
+  const qlink = await admin.inputValue('input[aria-label="Invitation link"]');
+  check('One tap creates an invitation that opens Messages or Mail ready to pick a contact', /^sms:[?&]body=/.test(qsms) && decodeURIComponent(qsms).includes(qlink) && qmail.startsWith('mailto:?subject=') && decodeURIComponent(qmail).includes(qlink));
+  await admin.screenshot({ path: `${SHOTS}/admin-invite-quick.png` });
+  await admin.click('button:has-text("Close")');
+
   // ---------- Posting without gatekeeping ----------
   await reg.goto(BASE + '/new');
   await reg.fill('#title', 'Tailgate spot this Saturday?');
