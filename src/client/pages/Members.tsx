@@ -52,7 +52,7 @@ export function UserRedirect() {
 }
 
 interface Profile {
-  member: MemberRow & { bio: string | null; grad_year: number | null; interests: string | null; legacy_join_year: number | null; legacy_post_count: number | null; email: string | null; birthday: string | null; last_seen_at: number | null; prediction_points: number; status: string; badges: { badge: string; reason: string; awarded_at: number }[] };
+  member: MemberRow & { bio: string | null; grad_year: number | null; interests: string | null; legacy_join_year: number | null; legacy_post_count: number | null; legacy_upvotes: number | null; email: string | null; birthday: string | null; last_seen_at: number | null; prediction_points: number; status: string; badges: { badge: string; reason: string; awarded_at: number }[] };
   most_appreciated: { id: number; thread_id: number; body: string; up: number; title: string } | null;
   featured: { id: number; thread_id: number; body: string; up: number; title: string } | null;
   recent_threads: ThreadItem[];
@@ -125,12 +125,13 @@ export function MemberPage() {
           {m.email && <><dt>Email</dt><dd><a href={`mailto:${m.email}`}>{m.email}</a>{data.is_me && <span className="tiny muted"> (visible only to you unless you share it)</span>}</dd></>}
           {m.birthday && <><dt>Birthday</dt><dd>{m.birthday}</dd></>}
         </dl>
-        {(m.legacy_moniker || m.legacy_post_count) && (
+        {(m.legacy_moniker || m.legacy_post_count != null || m.legacy_upvotes != null) && (
           <div className="note-box small" style={{ marginTop: 12 }}>
             <strong>Aggie Alert history (self-reported):</strong> {m.legacy_moniker && <>moniker <strong>{m.legacy_moniker}</strong></>}
-            {m.legacy_join_year && <> · joined {m.legacy_join_year}</>}
-            {m.legacy_post_count !== null && m.legacy_post_count !== undefined && <> · {m.legacy_post_count.toLocaleString()} posts</>}
-            <div className="tiny muted">Separate from this forum's automatic post count.</div>
+            {m.legacy_join_year && <> · member since {m.legacy_join_year}</>}
+            {m.legacy_post_count != null && <> · {m.legacy_post_count.toLocaleString()} posts</>}
+            {m.legacy_upvotes != null && <> · {m.legacy_upvotes.toLocaleString()} up votes received</>}
+            <div className="tiny muted">Separate from this forum's automatic post count and Aggie Reputation.</div>
           </div>
         )}
       </section>
@@ -159,7 +160,7 @@ export function MemberPage() {
 interface MeData {
   me: {
     id: number; username: string; email: string; display_name: string | null; bio: string | null; avatar_key: string | null; grad_year: number | null;
-    city: string | null; state: string | null; interests: string | null; legacy_moniker: string | null; legacy_join_year: number | null; legacy_post_count: number | null;
+    city: string | null; state: string | null; interests: string | null; legacy_moniker: string | null; legacy_join_year: number | null; legacy_post_count: number | null; legacy_upvotes: number | null;
     show_email: number; show_on_map: number; birthday_md: string | null; show_birthday: number; prefs: Prefs;
   };
 }
@@ -179,7 +180,7 @@ export function Settings() {
     const m = data.me;
     setP({
       display_name: m.display_name ?? '', bio: m.bio ?? '', grad_year: m.grad_year ? String(m.grad_year) : '', city: m.city ?? '', state: m.state ?? '', interests: m.interests ?? '',
-      legacy_moniker: m.legacy_moniker ?? '', legacy_join_year: m.legacy_join_year ? String(m.legacy_join_year) : '', legacy_post_count: m.legacy_post_count !== null ? String(m.legacy_post_count) : '',
+      legacy_moniker: m.legacy_moniker ?? '', legacy_join_year: m.legacy_join_year ? String(m.legacy_join_year) : '', legacy_post_count: m.legacy_post_count !== null ? String(m.legacy_post_count) : '', legacy_upvotes: m.legacy_upvotes != null ? String(m.legacy_upvotes) : '',
       show_email: Boolean(m.show_email), show_on_map: Boolean(m.show_on_map), birthday_md: m.birthday_md ?? '', show_birthday: Boolean(m.show_birthday),
     });
     setPrefs({ notify_replies: true, notify_mentions: true, notify_quotes: true, notify_games: true, notify_dm: true, auto_follow: true, ...m.prefs });
@@ -187,7 +188,7 @@ export function Settings() {
 
   if (!data) return <Loading />;
   const str = (k: string) => (p[k] as string) ?? '';
-  const intOrNull = (k: string) => (str(k).trim() ? Number(str(k)) : null);
+  const intOrNull = (k: string) => (str(k).trim() ? Number(str(k).replace(/[,\s]/g, '')) : null);
 
   const saveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -196,7 +197,7 @@ export function Settings() {
         method: 'PATCH',
         body: {
           display_name: str('display_name'), bio: str('bio'), grad_year: intOrNull('grad_year'), city: str('city'), state: str('state'), interests: str('interests'),
-          legacy_moniker: str('legacy_moniker'), legacy_join_year: intOrNull('legacy_join_year'), legacy_post_count: intOrNull('legacy_post_count'),
+          legacy_moniker: str('legacy_moniker'), legacy_join_year: intOrNull('legacy_join_year'), legacy_post_count: intOrNull('legacy_post_count'), legacy_upvotes: intOrNull('legacy_upvotes'),
           show_email: Boolean(p.show_email), show_on_map: Boolean(p.show_on_map), birthday_md: str('birthday_md'), show_birthday: Boolean(p.show_birthday),
         },
       });
@@ -262,6 +263,7 @@ export function Settings() {
             {field('legacy_moniker', 'Aggie Alert moniker', { maxLength: 60 }, 'Helps old friends find you.')}
             {field('legacy_join_year', 'Year you joined Aggie Alert', { inputMode: 'numeric' })}
             {field('legacy_post_count', 'Aggie Alert post count', { inputMode: 'numeric' }, 'Shown separately from this forum\'s count.')}
+            {field('legacy_upvotes', 'Aggie Alert up votes received', { inputMode: 'numeric' }, 'From your Aggie Alert profile. Shown on your profile; it doesn\'t change your reputation here.')}
             {field('birthday_md', 'Birthday (MM-DD, optional)', { placeholder: '04-15', pattern: '(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])' })}
           </div>
           <h3 style={{ marginTop: 10 }}>Privacy</h3>

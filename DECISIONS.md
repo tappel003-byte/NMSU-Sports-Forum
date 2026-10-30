@@ -61,6 +61,7 @@ Updated October 29, 2026.
 ## Approved October 30, 2026 (after first live review)
 - **No gatekeeping when posting:** a new discussion needs only a title and a message. It files under General Discussion unless the member picks a venue ("File under", optional). The short description is optional.
 - **Invite by text and email:** in Admin → Invitations, enter a name plus a cell number and/or email. "Text it" opens the admin's own Messages app with the invitation written; "Email it" opens their email app (or the site emails it automatically once an email service is set up). Phone numbers are never stored on the site, and sending costs nothing.
+- **Aggie Alert up votes on profiles:** members can add their Aggie Alert up votes received (self-reported, beside moniker, join year and post count). Shown on the profile only; it does not change Aggie Reputation here.
 
 ## Decisions pending
 - Politics category and possible opt-in.
