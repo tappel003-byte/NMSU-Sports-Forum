@@ -30,7 +30,11 @@
   "vars": {
     "SITE_NAME": "NMSU Sports Forum",
     "MAIL_FROM": ""
-  }
-  // Custom domain: add after verifying existing DNS (docs/DEPLOYMENT.md):
-  // "routes": [{ "pattern": "nmsusportsforum.com", "custom_domain": true }]
+  },
+  // Custom domains (the zone had no DNS records on Oct 30, 2026, so nothing is overwritten).
+  // Cloudflare creates the DNS records and certificates automatically.
+  "routes": [
+    { "pattern": "nmsusportsforum.com", "custom_domain": true },
+    { "pattern": "www.nmsusportsforum.com", "custom_domain": true }
+  ]
 }

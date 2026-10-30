@@ -76,7 +76,8 @@ jobs:
           npx wrangler deploy "${ARGS[@]}"
       # Uploads any secrets that are set in GitHub (setup token, push, recruiting data, email, human check).
       - name: Upload Worker secrets
-        if: steps.configured.outputs.ok == 'true'
+        # Runs even if connecting the custom domain failed, so the workers.dev site still works.
+        if: always() && steps.configured.outputs.ok == 'true'
         run: |
           for NAME in BOOTSTRAP_TOKEN VAPID_PRIVATE_KEY CFBD_API_KEY RESEND_API_KEY TURNSTILE_SECRET; do
             VALUE="${!NAME}"
