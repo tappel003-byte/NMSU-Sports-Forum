@@ -1,0 +1,53 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Synthetic test fixture//NMSU Sports Forum//EN
+X-WR-CALNAME:Synthetic sample (not real NMSU data)
+BEGIN:VEVENT
+UID:sample-fb-001@example.test
+DTSTART;TZID=America/Denver:20261107T190000
+SUMMARY:Football vs Sample State
+LOCATION:Las Cruces\, N.M.
+DESCRIPTION:TV: ESPN+\nRadio: Aggie Radio Network
+URL:https://nmstatesports.com/sports/football/schedule
+END:VEVENT
+BEGIN:VEVENT
+UID:sample-mbb-002@example.test
+DTSTART:20261112T020000Z
+SUMMARY:Men's Basketball at #12 Example Tech
+LOCATION:Lubbock\, Texas
+DESCRIPTION:Watch: CBS Sports Network
+END:VEVENT
+BEGIN:VEVENT
+UID:sample-vb-003@example.test
+DTSTART;VALUE=DATE:20261120
+SUMMARY:Volleyball vs Placeholder U
+LOCATION:Las Cruces\, N.M.
+END:VEVENT
+BEGIN:VEVENT
+UID:sample-fb-004@example.test
+DTSTART;TZID=America/Denver:20261024T180000
+SUMMARY:Football vs Demo College (W\, 31-14)
+LOCATION:Las Cruces\, N.M.
+END:VEVENT
+BEGIN:VEVENT
+UID:sample-wsoc-005@example.test
+DTSTART;TZID=America/Denver:20261015T190000
+SUMMARY:Women's Soccer vs Test A&M
+LOCATION:Las Cruces\, N.M.
+DESCRIPTION:Final: L\, 1-2
+END:VEVENT
+BEGIN:VEVENT
+UID:sample-base-006@example.test
+DTSTART;TZID=America/Denver:20260301T130000
+SUMMARY:Baseball vs Mock University - Canceled
+STATUS:CANCELLED
+LOCATION:Las Cruces\, N.M.
+END:VEVENT
+BEGIN:VEVENT
+UID:sample-soft-007@example.test
+DTSTART;TZID=America/Denver:20260305T120000
+SUMMARY:Softball vs Sample Tournament Opponent
+LOCATION:Phoenix\, Ariz.
+DESCRIPTION:Part of the Desert Classic. Live Stats: https://example.test/stats
+END:VEVENT
+END:VCALENDAR

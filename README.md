@@ -12,10 +12,17 @@ Independent, invitation-only fan forum for New Mexico State Aggies. **Mobile-fir
 3. Read **[BRAND_COLORS.md](BRAND_COLORS.md)** for exact official NMSU color values.
 4. Read **[DECISIONS.md](DECISIONS.md)** for approved vs unresolved decisions.
 5. Read **[MILESTONE.md](MILESTONE.md)** for the **currently authorized** build stage.
-6. Read **[AGGIE_RING_OF_HONOR.md](AGGIE_RING_OF_HONOR.md)** for the future-only moniker list.
+6. Read **[SPORTS_DATA.md](SPORTS_DATA.md)** for self-populating schedules/results.
+7. Read **[REQUIREMENTS_CHECKLIST.md](REQUIREMENTS_CHECKLIST.md)** to audit coverage.
+8. Read **[AGGIE_RING_OF_HONOR.md](AGGIE_RING_OF_HONOR.md)** for the future-only moniker list.
 
-## Current status
-Planning documents are committed. The owner plans to supply the approved **cowboy crest, website header and mobile/desktop PNG mockups directly to Claude Code**. These reference images are not assumed to be in this repository. The app itself has not been developed or deployed from this repository.
+## Current status (October 30, 2026)
+The integrated first release is built and verified locally: an end-to-end browser suite (86 checks, iPhone and desktop sizes) plus unit tests pass. It is **not deployed yet** because this build environment has no access to the owner's Cloudflare account. Deployment is a one-time setup described in **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**; after that, every merge to `main` deploys automatically.
+
+- **Stack:** one Cloudflare Worker (Hono API + React/Vite app), D1 database, Durable Objects for live chat, Cron Triggers for schedule sync and housekeeping. Expected cost at launch: $0 beyond the domain.
+- **Admins:** see **[docs/ADMIN_GUIDE.md](docs/ADMIN_GUIDE.md)**.
+- **Status of every requirement:** **[REQUIREMENTS_CHECKLIST.md](REQUIREMENTS_CHECKLIST.md)**.
+- **Crest:** the icons in `public/` are cropped from the owner's phone screenshot of the approved crest as an interim measure. Replace them with the original `Approved_Cowboy_Crest.jpeg` when it's added to the repo.
 
 ## Development approach
 Claude Code takes the first controlled build. Cursor may help with screenshot-led polishing later. GitHub remains the single source of truth; don't let multiple agents make conflicting edits.

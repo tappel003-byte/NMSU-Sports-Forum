@@ -65,10 +65,19 @@ The **Aggie Ring of Honor** is a simple permanent list honoring deceased Aggie A
 
 ## Games and live chat
 - NMSU athletics schedule by sport: opponent, date/time, venue, home/away, links to official schedule, TV/stream/radio, tickets, stats and live scores where available.
-- Game Center per event with game-specific chat room and relevant forum links. Chat is distinct from permanent threads; design retention policy before launch.
-- Admin-created scheduled chats and game reminders; member opt-in notifications (in-app, and PWA push only when supported and explicitly permitted).
-- Official nmstatesports.com can be used for outbound reference links; any automated feed must have permitted, dependable data access. Do not rely on undocumented ESPN endpoints as guaranteed production integrations. Provide graceful fallback and admin manual updates.
+- **Schedules and results self-populate from official sources; see SPORTS_DATA.md. Manual entry is an emergency override only.**
+- Game Center per event with game-specific chat room and relevant forum links. Live chat shows a rolling window; every game's full chat is archived permanently and linked to the game.
+- Automatic game reminders and pregame → live → postgame lifecycle; member opt-in notifications (in-app, and PWA push only when supported and explicitly permitted).
+- Official nmstatesports.com can be used for outbound reference links; any automated feed must have permitted, dependable data access. Do not rely on undocumented ESPN endpoints as guaranteed production integrations. Provide graceful fallback (keep last good data, alert admins); manual edits are emergency overrides only.
 - Live chat must handle bursts, moderation, blocked users, and reconnect behavior.
+
+## Community features approved October 30, 2026
+- Auto-saved drafts, jump to first unread, bookmarks with reminders, personal feeds, mute member/forum, spoiler-free scores mode.
+- Strictly private 1:1 messages (admins cannot read; block and voluntary report).
+- Predictions with season standings; community calendar (games, watch parties, gatherings, opt-in birthdays).
+- Aggie History forum (never archived); **Aggie Time Machine**: every past game keeps its predictions, chat archive, pregame/postgame threads and most appreciated posts; Year in Review.
+- Turn a chat moment into a permanent thread.
+- Low maintenance by design: no daily chores for the owner.
 
 ## Member directory and map
 - Searchable member cards and profiles. Optional approximate city/state map pins, member controlled and opt-in; never display precise coordinates or addresses. Pin opens profile. Allow members to hide location and email independently.
@@ -95,11 +104,11 @@ The **Aggie Ring of Honor** is a simple permanent list honoring deceased Aggie A
 ## Open decisions before full functional build
 1. Politics category: visible to everyone or opt-in?
 2. Final approved logo/header source assets and independent trademark-safe production branding.
-3. Whether launch requires live game chat or can follow basic forum.
+3. ~~Whether launch requires live game chat~~ Decided: live chat is in the first build.
 4. Final category list and moderation/reaction rules.
 5. Hosting/domain account ownership and allowed data-source licensing.
 6. Launch date used to calculate Founding Member window; honorary badge thresholds.
-7. Live-chat retention and notification preferences.
+7. ~~Live-chat retention~~ Decided: rolling live window, permanent archive per game.
 8. Site cost/renewal disclosure and voluntary sponsor confirmation process.\n9. Confirm venue names, photo licensing, and which sports receive dedicated forums at launch.\n10. When to make the simple moniker-only Ring of Honor visible; until then, hide it.
 
 ## Working agreement for coding agents

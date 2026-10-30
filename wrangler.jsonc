@@ -1,0 +1,40 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "nmsu-sports-forum",
+  "main": "src/worker/index.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  "assets": {
+    "directory": "./dist/client",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*", "/__scheduled"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "nmsu-sports-forum",
+      "database_id": "f5db5668-301e-46cb-a845-07532741d3d9",
+      "migrations_dir": "migrations"
+    }
+  ],
+  // R2 is optional. Without it, photos are stored in D1 (see src/worker/storage.ts).
+  // Uncomment after enabling R2 and running `wrangler r2 bucket create nmsu-sports-forum-uploads`.
+  // "r2_buckets": [{ "binding": "UPLOADS", "bucket_name": "nmsu-sports-forum-uploads" }],
+  "durable_objects": {
+    "bindings": [{ "name": "CHAT", "class_name": "ChatRoom" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["ChatRoom"] }],
+  "triggers": { "crons": ["*/30 * * * *", "17 9 * * *"] },
+  "vars": {
+    "SITE_NAME": "NMSU Sports Forum",
+    "MAIL_FROM": ""
+  },
+  // Custom domains (the zone had no DNS records on Oct 30, 2026, so nothing is overwritten).
+  // Cloudflare creates the DNS records and certificates automatically.
+  "routes": [
+    { "pattern": "nmsusportsforum.com", "custom_domain": true },
+    { "pattern": "www.nmsusportsforum.com", "custom_domain": true }
+  ]
+}

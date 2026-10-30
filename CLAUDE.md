@@ -14,7 +14,7 @@ Build NMSU Sports Forum, an independent, invite-only Aggie sports forum. **Mobil
 - Local preview is useful, but **live website review is the workflow**.
 
 ## Current scope — functional integrated first release
-The product owner explicitly directs **one substantial initial build**, not a visual-only proof of concept or serial micro-milestones. **MILESTONE.md is the build specification.** Implement actual secure invitations/accounts, persistent threads/replies, reactions, profiles, admin features, sports navigation, Game Center and real game chat, in one cohesive effort. Use self-checks and tests rather than repeatedly pausing for approval of small UI details. Never claim a feature works when it is mocked.
+The product owner explicitly directs **one substantial initial build**, not a visual-only proof of concept or serial micro-milestones. **MILESTONE.md is the build specification.** Implement actual secure invitations/accounts, persistent threads/replies, reactions, profiles, admin features, sports navigation, Game Center and real game chat, in one cohesive effort. **Sports schedules and results must self-populate from external sources per [SPORTS_DATA.md](SPORTS_DATA.md); never substitute manual admin entry for an automatic feature without telling the owner.** Do not claim the requirements are fully covered without auditing them against [REQUIREMENTS_CHECKLIST.md](REQUIREMENTS_CHECKLIST.md). Use self-checks and tests rather than repeatedly pausing for approval of small UI details. Never claim a feature works when it is mocked.
 
 **Screenshots are layout references; colors must come from BRAND_COLORS.md** (primary crimson #8C0B42). Use the actual approved cowboy crest and do not redraw or replace it.
 
