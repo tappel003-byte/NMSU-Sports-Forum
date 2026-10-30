@@ -407,7 +407,7 @@ function SportsData() {
         <form onSubmit={add} style={{ marginTop: 14 }}>
           <div className="grid-2">
             <div className="field"><label htmlFor="fs">Sport</label><select id="fs" className="select" value={f.sport} onChange={(e) => setF({ ...f, sport: e.target.value })}><option value="auto">All sports (composite calendar)</option>{SPORTS.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}</select></div>
-            <div className="field"><label htmlFor="fu">Official calendar feed URL (.ics)</label><input id="fu" className="input" type="url" value={f.url} onChange={(e) => setF({ ...f, url: e.target.value })} required placeholder="https://nmstatesports.com/…" /><span className="hint">Use the “Sync to calendar / iCal” link on the official schedule page.</span></div>
+            <div className="field"><label htmlFor="fu">Official calendar feed URL (.ics)</label><input id="fu" className="input" type="text" inputMode="url" value={f.url} onChange={(e) => setF({ ...f, url: e.target.value })} required placeholder="https://nmstatesports.com/…" /><span className="hint">Use the “Sync to calendar / iCal” link on the official schedule page. Links starting with webcal:// work too.</span></div>
           </div>
           <button className="btn secondary">Add feed</button>
         </form>

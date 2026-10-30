@@ -410,7 +410,10 @@ admin.put('/settings', async (c) => {
 // ---------- Sports data feeds ----------
 
 admin.post('/feeds', async (c) => {
-  const body = parse(z.object({ sport: z.string(), url: z.string().url() }), await c.req.json());
+  const raw = (await c.req.json()) as { sport?: unknown; url?: unknown };
+  // Calendar "subscribe" buttons often hand out webcal:// links; they are the same feed over https.
+  if (typeof raw.url === 'string') raw.url = raw.url.trim().replace(/^webcals?:\/\//i, 'https://');
+  const body = parse(z.object({ sport: z.string(), url: z.string().url() }), raw);
   const u = new URL(body.url);
   // Feeds must use HTTPS; plain HTTP is allowed only for local development.
   if (u.protocol !== 'https:' && !(u.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(u.hostname))) throw new HttpError(400, 'Feed URLs must use https.');
