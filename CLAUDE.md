@@ -3,7 +3,7 @@
 Read **VISION.md**, **DECISIONS.md**, **MILESTONE.md**, then **AGGIE_RING_OF_HONOR.md** and inspect all current files before work. The owner supplies approved logo/header and four mobile/desktop screenshots directly to Claude Code. Those screenshots are visual acceptance references; do not invent replacement images.
 
 ## Purpose
-Build NMSU Sports Forum, an independent, invite-only Aggie sports forum. **Mobile-first and desktop polished.** Site name must remain NMSU Sports Forum, never Aggie Clubhouse. The approved cowboy crest—not the rejected crossed-pistols concepts—is the visual authority. Colors start at #801828, #701020, #981830, #080808, #FFFFFF, #B0B0B0, #D0D0D0 and #D8C0A8, refined against the user's screenshots.
+Build NMSU Sports Forum, an independent, invite-only Aggie sports forum. **Mobile-first and desktop polished.** Site name must remain NMSU Sports Forum, never Aggie Clubhouse. The approved cowboy crest—not the rejected crossed-pistols concepts—is the visual authority. **Website colors MUST follow [BRAND_COLORS.md](BRAND_COLORS.md): official Aggie Crimson #8C0B42, White #FFFFFF, Organ Mountain #B6A5AD, Desert Sand #D7C9C4, Desert Monsoon #6D6E71. Do not use previous colors sampled from the logo or invent an athletics HEX value.**
 
 ## Hosting and iteration — approved
 - **Cloudflare hosts the website**, with **NMSUSportsForum.com** as the real owner-review destination. GitHub repo `tappel003-byte/NMSU-Sports-Forum` is source of truth.
