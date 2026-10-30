@@ -273,6 +273,21 @@ try {
     feat.length > 0 && feat.every((g) => ['fb', 'mbb'].includes(g.sport)) && allG.length > feat.length
     && home.games.every((g) => ['fb', 'mbb'].includes(g.sport)) && home.other_games.every((g) => !['fb', 'mbb'].includes(g.sport)));
 
+  // ---------- Crest full screen; chats only for the Lounge and headline sports ----------
+  await reg.goto(BASE + '/feed');
+  await reg.click('button[aria-label="View the crest full screen"]');
+  await reg.waitForSelector('.crest-viewer img');
+  await reg.screenshot({ path: `${SHOTS}/iphone-crest-full.png` });
+  await reg.click('.crest-viewer');
+  const crestClosed = await reg.waitForSelector('.crest-viewer', { state: 'detached', timeout: 3000 }).then(() => true, () => false);
+  check('Tapping the header crest opens it full screen, and a tap closes it', crestClosed);
+  const rooms = (await api(reg, '/chat/rooms')).body.rooms;
+  const season = (await api(reg, '/games?range=season')).body.games;
+  const minor = season.find((g) => !['fb', 'mbb'].includes(g.sport));
+  const minorChat = minor ? await api(reg, `/chat/game-${minor.id}/history`) : { status: 404 };
+  const lounge = await api(reg, '/chat/lounge/history');
+  check('Chat rooms: the Aggie Lounge plus football and men\'s basketball games only', rooms[0].room === 'lounge' && rooms.slice(1).every((r) => ['fb', 'mbb'].includes(r.game.sport)) && minorChat.status === 404 && lounge.status === 200);
+
   // ---------- Posting without gatekeeping ----------
   await reg.goto(BASE + '/new');
   await reg.fill('#title', 'Tailgate spot this Saturday?');

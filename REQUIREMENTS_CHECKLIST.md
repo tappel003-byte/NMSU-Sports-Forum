@@ -25,7 +25,7 @@ Audit, October 30, 2026 (after first live review): 65 rows. 57 Verified, 7 Built
 | 16 | **Schedules and results self-populate from official sources; manual = emergency override only** | SPORTS_DATA | Verified live — the official nmstatesports.com composite feed is connected in production (181 games, syncing without errors) |
 | 17 | No live in-game scores at launch; link to official live stats; never invent scores | SPORTS_DATA | Verified |
 | 18 | Game-day lifecycle: member-started game threads from a game picker (automatic pregame/postgame threads optional, off by default), game chat rooms | SPORTS_DATA, DECISIONS | Verified — picker links threads to games and refuses duplicates; automatic mode still tested with the switch on |
-| 19 | Authenticated live chat, moderation, reconnect; rolling window; permanent per-game archive | MILESTONE 10 | Verified — two members chatting live, presence, reconnect, admin removal, permanent archive |
+| 19 | Authenticated live chat, moderation, reconnect; rolling window; permanent per-game archive. Rooms: the Aggie Lounge, plus automatic game chats for football and men's basketball only | MILESTONE 10, DECISIONS | Verified — two members chatting live, presence, reconnect, admin removal, permanent archive |
 | 20 | Turn a chat moment into a thread | MILESTONE 10 | Verified |
 | 21 | Polls (one vote per member, optional close date) | MILESTONE 11 | Verified |
 | 22 | Bookmarks with reminders | MILESTONE 13 | Verified — reminder delivered by the scheduled job |

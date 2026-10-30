@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { FEATURED_SPORTS } from '../../shared/sports';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../api';
 import { useApi, useApp } from '../state';
@@ -98,7 +99,7 @@ export function GamePage() {
           <div className="hero-meta">{[g.tv && `TV/Stream: ${g.tv}`, g.radio && `Radio: ${g.radio}`].filter(Boolean).join(' · ')}</div>
           <div style={{ marginTop: 8 }}><Score game={g} /></div>
           <div className="row">
-            <Link to={`/chat/${data.chat.room}`} className="btn on-crimson small">{g.live ? 'Join live chat' : 'Game chat'}</Link>
+            {FEATURED_SPORTS.includes(g.sport) && <Link to={`/chat/${data.chat.room}`} className="btn on-crimson small">{g.live ? 'Join live chat' : 'Game chat'}</Link>}
             {g.audio_url && <a href={g.audio_url} target="_blank" rel="noopener noreferrer" className="btn on-crimson outline small">🎧 Listen live ↗</a>}
             {g.video_url && <a href={g.video_url} target="_blank" rel="noopener noreferrer" className="btn on-crimson outline small">📺 Watch ↗</a>}
             <a href={g.official_url} target="_blank" rel="noopener noreferrer" className="btn on-crimson outline small">{g.live ? 'Official live stats ↗' : 'Official game info ↗'}</a>
@@ -143,7 +144,7 @@ export function GamePage() {
           {!pregame && <Link className="btn secondary small" to={`/new?forum=${forum}&game=${g.id}&phase=pregame`}>Start pregame thread</Link>}
           {!postgame && g.status === 'final' && <Link className="btn secondary small" to={`/new?forum=${forum}&game=${g.id}&phase=postgame`}>Start postgame thread</Link>}
           <Link className="btn secondary small" to={`/new?forum=${forum}&game=${g.id}`}>New thread about this game</Link>
-          <Link className="btn ghost small" to={`/chat/${data.chat.room}/archive`}>Chat archive ({data.chat.messages} messages)</Link>
+          {(FEATURED_SPORTS.includes(g.sport) || data.chat.messages > 0) && <Link className="btn ghost small" to={`/chat/${data.chat.room}/archive`}>Chat archive ({data.chat.messages} messages)</Link>}
         </div>
       </section>
 

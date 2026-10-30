@@ -15,7 +15,7 @@ export function ChatRooms() {
   if (!data) return <Loading />;
   return (
     <div className="stack">
-      <div className="page-head"><div className="eyebrow">Live chat</div><h1>Talk it over in real time</h1><p className="muted small" style={{ margin: 0 }}>Game rooms open the day before each game. Every game's chat is archived permanently on its game page.</p></div>
+      <div className="page-head"><div className="eyebrow">Live chat</div><h1>Talk it over in real time</h1><p className="muted small" style={{ margin: 0 }}>The Aggie Lounge is always open. A chat room opens automatically the day before every football and men's basketball game, and each one is archived permanently on its game page.</p></div>
       <section className="card">
         {data.rooms.map((r) => (
           <Link key={r.room} to={`/chat/${r.room}`} className="list-row">
@@ -24,7 +24,7 @@ export function ChatRooms() {
             {r.active > 0 ? <span className="chip live">{r.active} chatting</span> : r.game?.live ? <span className="chip live">Live</span> : null}
           </Link>
         ))}
-        {data.rooms.length === 1 && <div className="small muted card-pad">No game rooms open right now. They appear automatically as games approach.</div>}
+        {data.rooms.length === 1 && <div className="small muted card-pad">No football or men's basketball game chat right now. One opens automatically the day before each game.</div>}
       </section>
     </div>
   );
