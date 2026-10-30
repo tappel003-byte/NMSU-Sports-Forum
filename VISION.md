@@ -89,8 +89,8 @@ The **Aggie Ring of Honor** is a simple permanent list honoring deceased Aggie A
 - Provide documented ownership handoff procedure for repository, domain, infrastructure, secrets, backups and service accounts; don't presume one provider's ownership automatically transfers another.
 - Community rules: respectful disagreement, no harassment/personal attacks/doxxing/spam, no politics outside designated area, clear reporting and proportionate moderation. Admins may move, lock, remove, or suspend as needed.
 
-## Proposed technical direction — validate before implementation
-- Installable responsive PWA. React front end; Cloudflare Pages/Workers, D1 for persistent records, R2 for images, and Durable Objects or another justified real-time chat approach.
+## Approved hosting and proposed technical architecture
+- **Approved:** Cloudflare will host the site at **NMSUSportsForum.com**, the domain controlled by the product owner. GitHub is the source of truth. Claude Code is to configure/verify a repeatable deployment to the live domain so the owner can review visual iterations directly on iPhone and desktop. Inspect existing Cloudflare project and DNS before changing them; do not assume hosting is already connected. Protect any existing live site.\n- **Proposed, pending implementation choice:** Installable responsive PWA. React front end; Cloudflare Pages or Workers as appropriate, D1 for persistent records, R2 for images, and Durable Objects or another justified real-time chat approach. Do not provision future data services for the first visual-only milestone.
 - Single source of truth for identity and permissions. Backups/export and clear retention policy. Monitor cost as usage grows.
 - Private website content requires authentication regardless of whether GitHub repo is public/private.
 - Current GitHub repo is **public**; never commit secrets, personal contact lists, invitation tokens, member data, or private conversations.
@@ -98,13 +98,13 @@ The **Aggie Ring of Honor** is a simple permanent list honoring deceased Aggie A
 - Mobile and desktop acceptance testing, including iPhone PWA install, chat, offline/reconnect behavior, and desktop layout.
 
 ## Release sequencing (proposal, not authorization)
-**Initial usable release:** identity/invitations; responsive forum home; categories/threads/replies; basic reactions; member cards; admin moderation; simple schedule links; approved branding.
+**Milestone 01 (active):** branded responsive visual shell with example data, sports directories, readable threads, navigation, and verified live Cloudflare publishing at NMSUSportsForum.com. See MILESTONE.md.\n**Initial functional forum (future):** identity/invitations; categories/threads/replies; basic reactions; member cards; admin moderation; simple schedule links; approved branding.
 **Next:** game chat and Game Center, polls, notifications, member map, archive/image lifecycle, reputation/featured posts.
 **Later:** suggestion workflow, richer badges and sponsor history, refined feeds/automations, more live-data integrations, advanced admin and community features.
 
 This sequencing does not remove any feature from the overall vision. Review it before implementation.
 
-## Open decisions before build
+## Open decisions before full functional build
 1. Politics category: visible to everyone or opt-in?
 2. Final approved logo/header source assets and independent trademark-safe production branding.
 3. Whether launch requires live game chat or can follow basic forum.
@@ -115,7 +115,7 @@ This sequencing does not remove any feature from the overall vision. Review it b
 8. Site cost/renewal disclosure and voluntary sponsor confirmation process.\n9. Confirm venue names, photo licensing, and which sports receive dedicated forums at launch.\n10. When to make the simple moniker-only Ring of Honor visible; until then, hide it.
 
 ## Working agreement for coding agents
-- Read this vision and the repository's current state before making changes.
+- Read CLAUDE.md, this vision, DECISIONS.md, MILESTONE.md and the repository's current state before making changes.
 - The product owner approves scope. Do not open PRs, create branches, implement features, or change architecture on your own.
 - Distinguish decided requirements from proposals. Ask about consequential unknowns instead of silently choosing.
 - Work in small, reviewable stages with visible acceptance criteria. Do not claim something is complete without verifying it.
