@@ -74,6 +74,12 @@ community.get('/members', async (c) => {
   return c.json({ members: rows.map((r) => ({ ...members.get(r.id), city: r.city, state: r.state, legacy_moniker: r.legacy_moniker, joined: r.created_at, last_seen_at: r.last_seen_at })) });
 });
 
+community.get('/members/by-name/:username', async (c) => {
+  const u = await first<{ id: number }>(c.env, "SELECT id FROM users WHERE username = ? AND status = 'active'", c.req.param('username'));
+  if (!u) throw new HttpError(404, 'Member not found.');
+  return c.json({ id: u.id });
+});
+
 community.get('/members/:id', async (c) => {
   const me = c.get('user');
   const id = num(c.req.param('id'));
