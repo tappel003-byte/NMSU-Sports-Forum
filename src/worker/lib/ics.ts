@@ -27,6 +27,8 @@ export interface ParsedGame {
   opp_score: number | null;
   tv: string | null;
   radio: string | null;
+  audio_url: string | null;
+  video_url: string | null;
   official_url: string | null;
   raw_summary: string;
 }
@@ -92,7 +94,7 @@ export function parseIcs(text: string): IcsEvent[] {
       case 'SUMMARY': cur.summary = unescapeText(value).trim(); break;
       case 'DESCRIPTION': cur.description = unescapeText(value); break;
       case 'LOCATION': cur.location = unescapeText(value).trim(); break;
-      case 'URL': cur.url = value.trim(); break;
+      case 'URL': cur.url = value.trim().replace(/&amp;/g, '&'); break;
       case 'STATUS': cur.status = value.trim().toUpperCase(); break;
       case 'DTSTART': {
         const d = parseDate(value.trim(), params);
@@ -145,6 +147,8 @@ export function toGame(ev: IcsEvent, feedSport: string | null): ParsedGame {
     .replace(RESULT_RE, '')
     .replace(/#\d+\s*/g, '')
     .replace(/\s*[-–|]\s*(canceled|cancelled|postponed).*$/i, '')
+    // Promotions follow a spaced dash ("Western Kentucky - Pink Game"); hyphenated names ("A&M-Corpus Christi") are kept.
+    .replace(/\s+[-–]\s+.*$/, '')
     .replace(/\s+/g, ' ')
     .trim();
   if (homeAway === 'home' && ev.location && !/las cruces/i.test(ev.location)) homeAway = 'neutral';
@@ -162,6 +166,8 @@ export function toGame(ev: IcsEvent, feedSport: string | null): ParsedGame {
     opp = result === 'L' ? Math.max(a, b) : Math.min(a, b);
     status = 'final';
   }
+  // Exhibitions and meets often end "Completed" with no score.
+  if (status === 'scheduled' && /(?:^|\n)\s*(?:Completed|Final)\s*(?:\n|$)/i.test(ev.description)) status = 'final';
   if (ev.status === 'CANCELLED' || /\bcancel+ed\b/i.test(ev.summary)) status = 'canceled';
   else if (/\bpostponed\b/i.test(ev.summary)) status = 'postponed';
 
@@ -180,6 +186,8 @@ export function toGame(ev: IcsEvent, feedSport: string | null): ParsedGame {
     opp_score: opp,
     tv: line(/(?:^|\n)\s*(?:TV|Television|Watch|Stream(?:ing)?|Network)\s*:\s*([^\n]+)/i),
     radio: line(/(?:^|\n)\s*Radio\s*:\s*([^\n]+)/i),
+    audio_url: line(/(?:^|\n)\s*Streaming Audio\s*:\s*(https:\/\/\S+)/i),
+    video_url: line(/(?:^|\n)\s*Streaming Video\s*:\s*(https:\/\/\S+)/i),
     official_url: ev.url || null,
     raw_summary: ev.summary,
   };

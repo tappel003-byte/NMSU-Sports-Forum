@@ -41,3 +41,6 @@ Paid networks (247Sports, On3, Rivals) have no free public API, and copying thei
 | Signings and roster additions | Official NMSU roster pages and announcements | Link out; headlines only |
 
 The free tiers have monthly call limits (CollegeBasketballData.com: 1,000 calls/month), so this syncs about once a day, not every 30 minutes. Each recruit or transfer gets a player card, member predictions and a linked discussion thread.
+
+## Verified official feed format (October 30, 2026)
+The owner downloaded the nmstatesports.com composite calendar (Calendar → All Games → Add To Calendar). It is a SIDEARM Sports iCalendar feed: 181 events across 11 sports. Every event mapped to a sport, and all 21 final scores parsed. The importer handles the format's details: results on the second description line ("W 34-13"), "TV:", "Radio:", "Streaming Audio:" and "Streaming Video:" lines, promotion suffixes ("vs Western Kentucky - Pink Game"), "Completed" events without a score, and `&amp;` in event URLs. Unit tests use the same format with fictional events. Still to do: paste the feed's subscription URL into Admin → Sports data and watch the first live sync.

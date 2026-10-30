@@ -63,3 +63,47 @@ describe('detectSport', () => {
     expect(detectSport("Men's Basketball vs X")).toBe('mbb');
   });
 });
+
+// Mirrors the official SIDEARM composite feed (nmstatesports.com "Add To Calendar"), with fictional events.
+const SIDEARM = `BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//SIDEARM Sports//NONSGML SIDEARM//EN
+BEGIN:VEVENT
+UID:vcal_90001-nmstatesports.com
+DTSTART:20261002T000000Z
+LOCATION:Las Cruces\\, N.M., Aggie Memorial Stadium
+SUMMARY:[W] New Mexico State University  Football vs Sample State - Pink Game
+DESCRIPTION:[W] New Mexico State University  Football vs Sample State - Pink Game\\nW 34-13\\nTV: CBS Sports Network\\nRadio: 99.5 FM KXPZ \\nStreaming Audio: https://audio.example.test/live\\nTickets: https://tickets.example.test/x\\n
+URL:https://nmstatesports.com/calendar.aspx?game_id=90001&amp;sport_id=4
+END:VEVENT
+BEGIN:VEVENT
+UID:vcal_90002-nmstatesports.com
+DTSTART:20260930T220000Z
+LOCATION:Las Cruces\\, N.M., NM State Swimming and Diving Complex
+SUMMARY:[N] New Mexico State University  Women's Swimming and Diving vs Crimson & White
+DESCRIPTION:[N] New Mexico State University  Women's Swimming and Diving vs Crimson & White\\n Completed\\n
+URL:https://nmstatesports.com/calendar.aspx?game_id=90002&amp;sport_id=20
+END:VEVENT
+BEGIN:VEVENT
+UID:vcal_90003-nmstatesports.com
+DTSTART:20261111T020000Z
+LOCATION:El Paso\\, TX, Don Haskins Center
+SUMMARY:New Mexico State University  Women's Basketball at Texas A&M-Corpus Christi
+DESCRIPTION:New Mexico State University  Women's Basketball at Texas A&M-Corpus Christi\\nStreaming Video: https://video.example.test/watch\\n
+URL:https://nmstatesports.com/calendar.aspx?game_id=90003&amp;sport_id=25
+END:VEVENT
+END:VCALENDAR`;
+
+describe('official SIDEARM feed format', () => {
+  const [fb, swim, wbb] = parseIcs(SIDEARM).map((e) => toGame(e, 'auto'));
+  it('reads results, TV, radio and streams', () => {
+    expect(fb).toMatchObject({ sport: 'fb', opponent: 'Sample State', home_away: 'home', status: 'final', result: 'W', nmsu_score: 34, opp_score: 13, tv: 'CBS Sports Network', radio: '99.5 FM KXPZ', audio_url: 'https://audio.example.test/live' });
+    expect(fb.official_url).toBe('https://nmstatesports.com/calendar.aspx?game_id=90001&sport_id=4');
+  });
+  it('treats "Completed" without a score as finished', () => {
+    expect(swim).toMatchObject({ sport: 'swim', status: 'final', result: null });
+  });
+  it('keeps hyphenated opponent names and finds video streams', () => {
+    expect(wbb).toMatchObject({ sport: 'wbb', opponent: 'Texas A&M-Corpus Christi', home_away: 'away', video_url: 'https://video.example.test/watch' });
+  });
+});

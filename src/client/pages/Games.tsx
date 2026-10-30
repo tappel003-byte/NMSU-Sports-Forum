@@ -89,6 +89,8 @@ export function GamePage() {
           <div style={{ marginTop: 8 }}><Score game={g} /></div>
           <div className="row">
             <Link to={`/chat/${data.chat.room}`} className="btn on-crimson small">{g.live ? 'Join live chat' : 'Game chat'}</Link>
+            {g.audio_url && <a href={g.audio_url} target="_blank" rel="noopener noreferrer" className="btn on-crimson outline small">🎧 Listen live ↗</a>}
+            {g.video_url && <a href={g.video_url} target="_blank" rel="noopener noreferrer" className="btn on-crimson outline small">📺 Watch ↗</a>}
             <a href={g.official_url} target="_blank" rel="noopener noreferrer" className="btn on-crimson outline small">{g.live ? 'Official live stats ↗' : 'Official game info ↗'}</a>
             <a href={g.schedule_url} target="_blank" rel="noopener noreferrer" className="btn on-crimson outline small">Full schedule ↗</a>
           </div>
