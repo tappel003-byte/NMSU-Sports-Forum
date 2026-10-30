@@ -46,7 +46,16 @@ Updated October 29, 2026.
 - **Sign-up mode is an admin switch:** *invite-only* or *open sign-up*. Plan: launch invite-only for 2–4 weeks with the core group, then switch to open.
 - **Public reading, sign up to post** (also a switch). Discussions, games, recruiting and the Time Machine are readable without an account; posting, reacting, chat, private messages, the member directory, map and calendar require an account. Private messages stay strictly private.
 - **Open sign-up protections:** Cloudflare Turnstile human check, email confirmation (requires an email service), first-post approval for newcomers, sign-up rate limits.
-- **Troll flag:** established members can flag a post as trolling. When enough different members flag it (admin setting, default 3), the post is hidden immediately, the poster's next posts go to approval, and admins are notified. Admins restore or remove. An admin's flag hides at once.
+- **Troll flagging and moderator review (refined Oct 30, 2026; supersedes the first troll-flag design):**
+  1. Three different registered members flagging a post as trolling temporarily hides it **pending moderator review**. This is a precaution, not a finding that the author is a troll: no automatic penalty for the author, and **flags never reduce Aggie Reputation**. A moderator's flag counts as one flag.
+  2. Hidden posts show "temporarily hidden while moderators review it."
+  3. All moderators are notified.
+  4. A moderator restores the post, removes it, or issues a warning (with or without removing). Every decision needs a reason.
+  5. One moderator may impose **temporary suspensions only** (up to 90 days). A **permanent ban needs approval from at least three moderators**.
+  6. Every decision and reason goes into the internal audit history.
+  7. Members can appeal a removal, warning, suspension or ban. Appeals are decided by a **different moderator** than the one who acted. Suspended or banned members can appeal from the sign-in page.
+  - Safeguards: one flag per member per post; flag history per member (flags upheld vs. dismissed, repeated flags against the same person) is visible to moderators, who can switch off an abuser's flagging privilege.
+  - "Moderators" are the forum's 4–5 community administrators.
 - **Old Aggie Alert posts cannot be imported** (Rivals' terms, no export). Members bring their moniker and post count, and can re-post favorite memories in Aggie History.
 
 ## Decisions pending
