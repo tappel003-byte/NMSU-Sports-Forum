@@ -1,8 +1,9 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { BADGES } from '../../shared/sports';
 import { TAGS } from '../../shared/forum';
 import { useApp } from '../state';
+import { api } from '../api';
 import { Score, dateParts, gameTime, matchup, sportIcon, sportName, timeAgo } from '../format';
 
 export interface MemberLite {
@@ -195,6 +196,42 @@ export function JoinCta({ text = 'Join free to post, react and chat.' }: { text?
     <div className="note-box small spread">
       <span>{site.signupMode === 'open' ? text : 'Members can post, react and chat. Membership is by invitation right now.'}</span>
       <span className="row">{site.signupMode === 'open' && <Link className="btn small" to="/join">Join free</Link>}<Link className="btn secondary small" to="/login">Sign in</Link></span>
+    </div>
+  );
+}
+
+interface LiveScoreData { live: { state: 'pre' | 'in' | 'post'; detail: string; nmsu_score: number | null; opp_score: number | null; espn_url: string } | null; espn_url: string | null; active: boolean }
+
+/** In-game score from ESPN (football and men's basketball), refreshed every 30 seconds while the game is on, plus the ESPN Gamecast link. */
+export function LiveScore({ game, compact = false }: { game: GameItem; compact?: boolean }) {
+  const [data, setData] = useState<LiveScoreData | null>(null);
+  useEffect(() => {
+    let stop = false;
+    let timer: number | undefined;
+    const load = async () => {
+      try {
+        const r = await api<LiveScoreData>(`/games/${game.id}/live`);
+        if (stop) return;
+        setData(r);
+        if (r.active && r.live?.state !== 'post') timer = window.setTimeout(load, 30_000);
+      } catch { /* the score bar simply stays hidden */ }
+    };
+    load();
+    return () => { stop = true; window.clearTimeout(timer); };
+  }, [game.id]);
+  if (!data?.espn_url) return null;
+  const l = data.live;
+  const showScore = l && l.state !== 'pre' && l.nmsu_score !== null;
+  return (
+    <div className={`live-score ${compact ? 'compact' : ''} ${l?.state === 'in' ? 'on' : ''}`}>
+      {showScore && (
+        <span className="live-line" aria-live="polite">
+          {l.state === 'in' && <span className="live-dot" aria-hidden="true" />}
+          <strong>NM State {l.nmsu_score}</strong> · {game.opponent} {l.opp_score}
+          <span className="live-detail">{l.detail}</span>
+        </span>
+      )}
+      <a href={data.espn_url} target="_blank" rel="noopener noreferrer" className={compact ? 'btn ghost small' : 'btn on-crimson outline small'}>{l ? 'ESPN Gamecast ↗' : 'NM State on ESPN ↗'}</a>
     </div>
   );
 }

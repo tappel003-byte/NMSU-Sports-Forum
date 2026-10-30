@@ -4,7 +4,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../api';
 import { useApi, useApp } from '../state';
 import { Score, fullTime, gameTime, matchup, sportIcon, sportName } from '../format';
-import { ErrorState, GameRow, JoinCta, Loading, ThreadList, type GameItem, type ThreadItem } from '../components/ui';
+import { ErrorState, GameRow, JoinCta, Loading, ThreadList, type GameItem, type ThreadItem, LiveScore } from '../components/ui';
 import { SPORTS, SPORT_BY_KEY } from '../../shared/sports';
 
 export function Games() {
@@ -98,6 +98,7 @@ export function GamePage() {
           <div className="hero-meta">{gameTime(g.starts_at, g.time_tba)}{g.venue ? ` · ${g.venue}` : ''}</div>
           <div className="hero-meta">{[g.tv && `TV/Stream: ${g.tv}`, g.radio && `Radio: ${g.radio}`].filter(Boolean).join(' · ')}</div>
           <div style={{ marginTop: 8 }}><Score game={g} /></div>
+          <LiveScore game={g} />
           <div className="row">
             {FEATURED_SPORTS.includes(g.sport) && <Link to={`/chat/${data.chat.room}`} className="btn on-crimson small">{g.live ? 'Join live chat' : 'Game chat'}</Link>}
             {g.audio_url && <a href={g.audio_url} target="_blank" rel="noopener noreferrer" className="btn on-crimson outline small">🎧 Listen live ↗</a>}

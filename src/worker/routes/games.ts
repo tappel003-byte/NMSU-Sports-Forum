@@ -7,6 +7,7 @@ import { FEATURED_SQL, officialRosterUrl, officialScheduleUrl, parseHubLinks, SP
 import { memberSummaries } from '../lib/members';
 import { THREAD_SELECT, presentThreads, type ThreadRow } from '../lib/threads';
 import { seasonOf, seasonRange, type GameRow } from '../lib/sports';
+import { espnTeamUrl, getLiveScore, inLiveWindow } from '../lib/livescore';
 
 export const games = new Hono<AppEnv>();
 
@@ -71,6 +72,17 @@ games.get('/games/pickable', async (c) => {
             (SELECT id FROM threads WHERE id = g.postgame_thread_id AND deleted = 0) AS postgame_thread_id
        FROM games g WHERE g.removed = 0 AND g.status != 'canceled' AND g.starts_at BETWEEN ? AND ? ORDER BY g.starts_at`, t - 3 * 86_400_000, t + 10 * 86_400_000);
   return c.json({ games: rows.map(presentGame) });
+});
+
+// Live score (football and men's basketball): ESPN's scoreboard during the game window; otherwise just the ESPN link.
+games.get('/games/:id/live', async (c) => {
+  const g = await first<GameRow>(c.env, 'SELECT * FROM games WHERE id = ? AND removed = 0', Number(c.req.param('id')));
+  if (!g) throw new HttpError(404, 'Game not found.');
+  const teamUrl = espnTeamUrl(g.sport);
+  if (!teamUrl) return c.json({ live: null, espn_url: null, active: false });
+  const active = inLiveWindow(g.starts_at) && g.status !== 'canceled' && g.status !== 'postponed';
+  const live = active ? await getLiveScore(c.env, g) : null;
+  return c.json({ live, espn_url: live?.espn_url ?? teamUrl, active });
 });
 
 games.get('/games/:id', async (c) => {

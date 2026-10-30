@@ -288,6 +288,14 @@ try {
   const lounge = await api(reg, '/chat/lounge/history');
   check('Chat rooms: the Aggie Lounge plus football and men\'s basketball games only', rooms[0].room === 'lounge' && rooms.slice(1).every((r) => ['fb', 'mbb'].includes(r.game.sport)) && minorChat.status === 404 && lounge.status === 200);
 
+  // ---------- ESPN link and live score bar ----------
+  const fbGame = season.find((g) => g.sport === 'fb');
+  const fbLive = fbGame ? (await api(reg, `/games/${fbGame.id}/live`)).body : null;
+  const minorLive = minor ? (await api(reg, `/games/${minor.id}/live`)).body : null;
+  await reg.goto(BASE + `/games/${fbGame.id}`);
+  const espnBtn = await reg.waitForSelector('a:has-text("on ESPN"), a:has-text("ESPN Gamecast")', { timeout: 8000 }).then(() => true, () => false);
+  check('Football and men\'s basketball games link to ESPN (live score bar during the game); other sports don\'t', espnBtn && fbLive?.espn_url?.startsWith('https://www.espn.com/college-football/') && minorLive?.espn_url === null);
+
   // ---------- Posting without gatekeeping ----------
   await reg.goto(BASE + '/new');
   await reg.fill('#title', 'Tailgate spot this Saturday?');

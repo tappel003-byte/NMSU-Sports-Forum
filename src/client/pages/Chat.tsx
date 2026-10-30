@@ -4,7 +4,7 @@ import { Flag, Save, Send, Trash2 } from 'lucide-react';
 import { api } from '../api';
 import { useApi, useApp } from '../state';
 import { PostBody, fullTime, gameTime, timeAgo } from '../format';
-import { ErrorState, Loading, Modal, type GameItem } from '../components/ui';
+import { ErrorState, Loading, Modal, type GameItem, LiveScore } from '../components/ui';
 import { ReportModal } from './Thread';
 
 interface Msg { id: number; user_id: number; username: string; display_name: string | null; body: string; created_at: number }
@@ -136,6 +136,7 @@ export function ChatRoomPage() {
           <button className="btn secondary small" onClick={() => { setSelecting(!selecting); setSelected([]); }}>{selecting ? 'Cancel' : 'Save to thread'}</button>
         </div>
       </div>
+      {game && <LiveScore game={game} compact />}
       {selecting && (
         <div className="note-box small" style={{ margin: 8 }}>
           Tap messages to select them, then save them as a permanent discussion thread.
