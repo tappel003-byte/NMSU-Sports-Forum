@@ -11,8 +11,8 @@
   --black: #000000;
 
   --crimson-deep: color-mix(in srgb, var(--crimson) 82%, var(--black));
-  --crimson-tint: color-mix(in srgb, var(--crimson) 8%, var(--white));
-  --crimson-tint-2: color-mix(in srgb, var(--crimson) 14%, var(--white));
+  --crimson-tint: color-mix(in srgb, var(--sand) 32%, var(--white));
+  --crimson-tint-2: color-mix(in srgb, var(--sand) 60%, var(--white));
   --page: color-mix(in srgb, var(--sand) 22%, var(--white));
   --surface: var(--white);
   --text: color-mix(in srgb, var(--black) 88%, var(--white));
@@ -339,8 +339,8 @@ table.simple th { font-size: .72rem; text-transform: uppercase; letter-spacing: 
   --muted: color-mix(in srgb, var(--organ) 85%, var(--white));
   --line: #2E2A2F;
   --line-strong: #403A41;
-  --crimson-tint: color-mix(in srgb, var(--crimson) 22%, #1C1A1D);
-  --crimson-tint-2: color-mix(in srgb, var(--crimson) 38%, #1C1A1D);
+  --crimson-tint: #2A262B;
+  --crimson-tint-2: #3A3439;
   --shadow: 0 1px 2px rgb(0 0 0 / .4);
 }
 :root[data-theme='dark'] a, :root[data-theme='dark'] .eyebrow, :root[data-theme='dark'] .thread-forum,
@@ -348,16 +348,24 @@ table.simple th { font-size: .72rem; text-transform: uppercase; letter-spacing: 
 :root[data-theme='dark'] .stat b, :root[data-theme='dark'] .rep b, :root[data-theme='dark'] .chip,
 :root[data-theme='dark'] .side-nav a.active, :root[data-theme='dark'] .bottom-nav a.active, :root[data-theme='dark'] .btn.ghost,
 :root[data-theme='dark'] .btn.secondary, :root[data-theme='dark'] .chat-msg .who, :root[data-theme='dark'] .quote-embed .who,
-:root[data-theme='dark'] .post-actions .react.on { color: color-mix(in srgb, var(--crimson) 45%, var(--white)); }
-:root[data-theme='dark'] .tab.active { border-bottom-color: color-mix(in srgb, var(--crimson) 45%, var(--white)); }
-:root[data-theme='dark'] .btn.secondary { background: var(--surface); border-color: color-mix(in srgb, var(--crimson) 45%, var(--white)); }
+:root[data-theme='dark'] .post-actions .react.on { color: var(--white); }
+:root[data-theme='dark'] .tab.active { border-bottom-color: var(--white); }
+:root[data-theme='dark'] .btn.secondary { background: var(--surface); border-color: var(--organ); }
+:root[data-theme='dark'] .chip { background: #2A262B; border-color: var(--line-strong); }
+:root[data-theme='dark'] .chip.live, :root[data-theme='dark'] .badge.founding { background: var(--crimson); border-color: var(--crimson); }
+:root[data-theme='dark'] .side-nav a.active, :root[data-theme='dark'] .bottom-nav a.active { font-weight: 800; }
+:root[data-theme='dark'] .bottom-nav a { color: var(--muted); }
+:root[data-theme='dark'] .bottom-nav a.active { color: var(--white); }
 :root[data-theme='dark'] .input, :root[data-theme='dark'] .textarea, :root[data-theme='dark'] .select,
 :root[data-theme='dark'] .poll-option, :root[data-theme='dark'] .chat-msg .bubble, :root[data-theme='dark'] .chat-input,
 :root[data-theme='dark'] .bottom-nav, :root[data-theme='dark'] .menu, :root[data-theme='dark'] .modal, :root[data-theme='dark'] .auth-card,
 :root[data-theme='dark'] .composer { background: var(--surface); color: var(--text); }
 :root[data-theme='dark'] .post-body blockquote, :root[data-theme='dark'] .quote-embed, :root[data-theme='dark'] .badge { background: #2A262B; color: var(--text); border-color: var(--line-strong); }
 :root[data-theme='dark'] .note-box, :root[data-theme='dark'] .notice, :root[data-theme='dark'] .error-box { background: #241F25; color: var(--text); }
-:root[data-theme='dark'] .chip.gray, :root[data-theme='dark'] .spoiler-text { background: #2A262B; color: var(--text); }
+:root[data-theme='dark'] .chip.gray { background: #2A262B; color: var(--text); }
+:root[data-theme='dark'] .spoiler-text { background: #4A4349; color: transparent; }
+:root[data-theme='dark'] .spoiler-text.shown { background: #2A262B; color: var(--text); }
+:root[data-theme='dark'] .avatar:not(.system) { background: #3A3439; color: var(--white); border-color: var(--line-strong); }
 :root[data-theme='dark'] .chip.live, :root[data-theme='dark'] .badge.founding { color: var(--white); }
 :root[data-theme='dark'] .game-date { border-color: var(--line-strong); }
 :root[data-theme='dark'] .auth-page { background: linear-gradient(180deg, var(--crimson) 0, var(--crimson) 220px, var(--page) 220px); }
@@ -420,3 +428,7 @@ table.simple th { font-size: .72rem; text-transform: uppercase; letter-spacing: 
 .site-header .avatar { background: var(--white); color: var(--crimson); border-color: rgb(255 255 255 / .6); }
 :root[data-theme='dark'] .hero .eyebrow { color: rgb(255 255 255 / .85); }
 :root[data-theme='dark'] .thread-title, :root[data-theme='dark'] .post-author, :root[data-theme='dark'] .player-card strong { color: var(--text); }
+
+/* Dark mode links inside posts and details stay recognizable without color. */
+:root[data-theme='dark'] .post-body a, :root[data-theme='dark'] .kv a, :root[data-theme='dark'] nav.small a { text-decoration: underline; text-decoration-color: rgb(255 255 255 / .4); text-underline-offset: 3px; }
+:root[data-theme='dark'] .site-header .avatar { background: var(--white); color: var(--crimson); }
