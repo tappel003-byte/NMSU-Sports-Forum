@@ -9,9 +9,9 @@ Independent, invitation-only fan forum for New Mexico State Aggies. **Mobile-fir
 ## Start here — Claude Code
 1. Read **[CLAUDE.md](CLAUDE.md)** for coding rules, screenshots and Cloudflare workflow.
 2. Read **[VISION.md](VISION.md)** for the complete concept.
-3. Read **[DECISIONS.md](DECISIONS.md)** for approved vs unresolved decisions.
-4. Read **[MILESTONE.md](MILESTONE.md)** for the **currently authorized** build stage.
-5. Read **[AGGIE_RING_OF_HONOR.md](AGGIE_RING_OF_HONOR.md)** for the future-only moniker list.
+3. Read **[BRAND_COLORS.md](BRAND_COLORS.md)** for exact official NMSU color values.\n4. Read **[DECISIONS.md](DECISIONS.md)** for approved vs unresolved decisions.
+5. Read **[MILESTONE.md](MILESTONE.md)** for the **currently authorized** build stage.
+6. Read **[AGGIE_RING_OF_HONOR.md](AGGIE_RING_OF_HONOR.md)** for the future-only moniker list.
 
 ## Current status
 Planning documents are committed. The owner plans to supply the approved **cowboy crest, website header and mobile/desktop PNG mockups directly to Claude Code**. These reference images are not assumed to be in this repository. The app itself has not been developed or deployed from this repository.
@@ -22,7 +22,7 @@ Claude Code takes the first controlled build. Cursor may help with screenshot-le
 **First milestone:** a realistic, responsive visual shell and a reliable Cloudflare deployment to the real review domain, after validating DNS/hosting and protecting any existing live site. Use mock content until authentication and security are ready. No unapproved full-app build.
 
 ## Brand and navigation
-NMSU Sports Forum is the name; **not** Aggie Clubhouse. The selected cowboy crest and its crimson/black/white palette are the design reference. Sports are organized around The Pan Am, Aggie Memorial, Presley Askew Field, Softball Complex, The Pitch and Track & Field with clear sport names.
+NMSU Sports Forum is the name; **not** Aggie Clubhouse. The cowboy crest is the approved image; the exact website palette is defined by NMSU's published specifications in [BRAND_COLORS.md](BRAND_COLORS.md), led by #8C0B42 crimson and #FFFFFF white. Sports are organized around The Pan Am, Aggie Memorial, Presley Askew Field, Softball Complex, The Pitch and Track & Field with clear sport names.
 
 The future **Aggie Ring of Honor** is a simple list of Aggie Alert monikers, starting with Rojo, and is hidden until the community is ready to show it.
 
