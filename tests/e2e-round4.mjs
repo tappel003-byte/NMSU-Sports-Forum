@@ -594,6 +594,24 @@ try {
   check('Admin → Members: an existing admin can be made a moderator from Actions', crimsonOptions.includes('Make moderator') && crimsonOptions.includes('Make regular member') && !crimsonOptions.includes('Make admin') && crimsonRole === 'moderator', JSON.stringify({ crimsonOptions, crimsonRole }));
   await api(admin, `/admin/members/${ids.crimson}`, { method: 'PATCH', body: { role: 'admin', reason: 'Back to admin' } });
 
+  // ---------- The site owner (first admin) can't be overridden by other admins ----------
+  const ownerId = (await api(admin, '/admin/members')).body.members.find((m) => m.username === 'AggieAdmin').id;
+  const tries = {
+    demote: (await api(crimson, `/admin/members/${ownerId}`, { method: 'PATCH', body: { role: 'moderator', reason: 'coup' } })).status,
+    suspend: (await api(crimson, `/admin/members/${ownerId}`, { method: 'PATCH', body: { status: 'suspended', days: 3, reason: 'coup attempt' } })).status,
+    warn: (await api(crimson, `/admin/members/${ownerId}/warn`, { body: { reason: 'coup attempt' } })).status,
+    ban: (await api(crimson, '/admin/bans', { body: { user_id: ownerId, reason: 'Trying to ban the owner as a test.' } })).status,
+    reset: (await api(crimson, `/admin/members/${ownerId}/reset-link`, { body: {} })).status,
+    selfDemote: (await api(admin, `/admin/members/${ownerId}`, { method: 'PATCH', body: { role: 'member', reason: 'oops' } })).status,
+  };
+  await crimson.goto(BASE + '/admin/members');
+  const ownerRow = crimson.locator('select[aria-label="Actions for AggieAdmin"]');
+  await ownerRow.waitFor();
+  const ownerOpts = await ownerRow.locator('option').allTextContents();
+  const ownerChip = await crimson.locator('.list-row, li, div').filter({ has: ownerRow }).last().textContent();
+  check('Other admins cannot demote, suspend, warn, ban or reset the site owner; the owner shows as Owner',
+    Object.values(tries).every((s) => s === 403) && !ownerOpts.some((o) => /Make|Suspend|Warn|ban|reset/i.test(o)) && /Owner/.test(ownerChip ?? ''), JSON.stringify({ tries, ownerOpts }));
+
   // ---------- Share a Facebook post ----------
   const phone = crimson;
   await phone.setViewportSize({ width: 390, height: 844 });

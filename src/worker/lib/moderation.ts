@@ -27,6 +27,7 @@ export async function tellMember(env: Env, userId: number, text: string, link: s
 }
 
 export async function issueWarning(env: Env, moderatorId: number, userId: number, reason: string, postId: number | null): Promise<number> {
+  await assertNotOwner(env, userId, moderatorId, 'warned');
   const r = await run(env, 'INSERT INTO warnings (user_id, post_id, reason, issued_by, created_at) VALUES (?, ?, ?, ?, ?)', userId, postId, reason, moderatorId, now());
   await logMod(env, moderatorId, 'warn', 'warning', r.meta.last_row_id, reason, userId);
   await tellMember(env, userId, `A moderator sent you a warning: ${reason} You can appeal from Settings → Moderation history.`, '/settings#moderation');
@@ -46,6 +47,7 @@ export async function removePost(env: Env, moderatorId: number, postId: number, 
 }
 
 export async function suspend(env: Env, moderatorId: number, userId: number, days: number, reason: string): Promise<void> {
+  await assertNotOwner(env, userId, moderatorId, 'suspended');
   if (!Number.isInteger(days) || days < 1 || days > MAX_SUSPENSION_DAYS) throw new HttpError(400, `Suspensions are 1 to ${MAX_SUSPENSION_DAYS} days. Permanent bans need three moderators.`);
   await assertNotLastModerator(env, userId);
   const until = now() + days * DAY;
@@ -53,6 +55,13 @@ export async function suspend(env: Env, moderatorId: number, userId: number, day
   await run(env, 'DELETE FROM sessions WHERE user_id = ?', userId);
   await logMod(env, moderatorId, 'suspend', 'user', userId, `${days} day(s): ${reason}`, userId);
   await tellMember(env, userId, `Your account is suspended for ${days} day${days === 1 ? '' : 's'}: ${reason}`, '/login', 'Your NMSU Sports Forum account is suspended');
+}
+
+/** The site owner can't be demoted, suspended, warned, banned or reset by anyone else (and can't demote themselves). */
+export async function assertNotOwner(env: Env, targetId: number, actorId: number, what: string, evenSelf = false): Promise<void> {
+  if (targetId === actorId && !evenSelf) return;
+  const u = await first<{ owner: number }>(env, 'SELECT owner FROM users WHERE id = ?', targetId);
+  if (u?.owner) throw new HttpError(403, `The site owner can't be ${what}.`);
 }
 
 export async function assertNotLastModerator(env: Env, userId: number): Promise<void> {

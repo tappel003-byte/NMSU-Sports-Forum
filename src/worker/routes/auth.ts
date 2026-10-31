@@ -26,7 +26,7 @@ auth.get('/me', async (c) => {
   });
 });
 
-// First administrator. Only works while the database has no users and requires the
+// First administrator, who becomes the site owner. Only works while the database has no users and requires the
 // BOOTSTRAP_TOKEN secret set by the technical owner (docs/DEPLOYMENT.md).
 auth.post('/setup', async (c) => {
   await rateLimit(c.env, `setup:${clientIp(c)}`, 10, 900_000);
@@ -34,7 +34,7 @@ auth.post('/setup', async (c) => {
   if (!c.env.BOOTSTRAP_TOKEN) throw new HttpError(403, 'Setup is not enabled. Set the BOOTSTRAP_TOKEN secret first.');
   if (body.token !== c.env.BOOTSTRAP_TOKEN) throw new HttpError(403, 'Setup token is incorrect.');
   if (await first(c.env, 'SELECT id FROM users LIMIT 1')) throw new HttpError(409, 'Setup has already been completed.');
-  const r = await run(c.env, "INSERT INTO users (username, email, password_hash, role, trusted, created_at) VALUES (?, ?, ?, 'admin', 1, ?)",
+  const r = await run(c.env, "INSERT INTO users (username, email, password_hash, role, trusted, owner, created_at) VALUES (?, ?, ?, 'admin', 1, 1, ?)",
     body.username, body.email, await hashPassword(body.password), now());
   const id = r.meta.last_row_id;
   await logMod(c.env, id, 'setup_first_admin', 'user', id);

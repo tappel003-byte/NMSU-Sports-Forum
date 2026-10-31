@@ -116,7 +116,7 @@ function Invites() {
 function Members() {
   const { me, toast } = useApp();
   const meIsAdmin = me?.role === 'admin';
-  const { data, reload } = useApi<{ members: { id: number; username: string; email: string; display_name: string | null; role: string; status: string; suspended_until: number | null; created_at: number; last_seen_at: number | null; posts: number }[] }>('/admin/members');
+  const { data, reload } = useApi<{ members: { id: number; username: string; email: string; display_name: string | null; role: string; owner?: number; status: string; suspended_until: number | null; created_at: number; last_seen_at: number | null; posts: number }[] }>('/admin/members');
   const [link, setLink] = useState<string | null>(null);
   const [badgeFor, setBadgeFor] = useState<{ id: number; username: string } | null>(null);
   const patch = async (id: number, body: Record<string, unknown>, msg: string) => {
@@ -133,6 +133,8 @@ function Members() {
       <ul className="member-admin-list">
         {data.members.map((m) => {
           const self = m.id === me?.id;
+          // Nobody else can demote, suspend, warn, ban or reset the site owner.
+          const locked = Boolean(m.owner) && !self;
           // One compact menu instead of a row of buttons; each choice runs once, then the menu resets.
           const act = (choice: string) => {
             if (choice === 'admin') { if (confirm(`Make ${m.username} an admin? Admins can change settings and roles.`)) patch(m.id, { role: 'admin' }, 'Now an admin'); }
@@ -154,19 +156,19 @@ function Members() {
           return (
             <li key={m.id}>
               <div className="grow">
-                <Link to={`/members/${m.id}`}><strong>{m.username}</strong></Link>{m.role === 'moderator' && <span className="chip" style={{ marginLeft: 6 }}>Moderator</span>}{m.role === 'admin' && <span className="chip" style={{ marginLeft: 6 }}>Admin</span>}{m.status !== 'active' && <span className="chip gray" style={{ marginLeft: 6 }}>{m.status}</span>}
+                <Link to={`/members/${m.id}`}><strong>{m.username}</strong></Link>{m.role === 'moderator' && <span className="chip" style={{ marginLeft: 6 }}>Moderator</span>}{m.role === 'admin' && <span className="chip" style={{ marginLeft: 6 }}>{m.owner ? 'Owner' : 'Admin'}</span>}{m.status !== 'active' && <span className="chip gray" style={{ marginLeft: 6 }}>{m.status}</span>}
                 {m.email && <div className="tiny muted">{m.email}</div>}
                 <div className="tiny muted">{m.posts} {m.posts === 1 ? 'post' : 'posts'} · joined {timeAgo(m.created_at)} · {m.last_seen_at ? `seen ${timeAgo(m.last_seen_at)}` : 'never seen'}{m.suspended_until ? ` · suspended until ${fullTime(m.suspended_until)}` : ''}</div>
               </div>
               <select className="select small-select" aria-label={`Actions for ${m.username}`} value="" onChange={(e) => { act(e.target.value); e.target.value = ''; }}>
                 <option value="">Actions…</option>
-                {!self && meIsAdmin && m.role !== 'admin' && <option value="admin">Make admin</option>}
-                {!self && meIsAdmin && m.role !== 'moderator' && <option value="moderator">Make moderator</option>}
-                {!self && meIsAdmin && m.role !== 'member' && <option value="unadmin">Make regular member</option>}
-                {!self && (m.status === 'active' ? <option value="suspend">Suspend</option> : <option value="reinstate">Reinstate</option>)}
-                {!self && <option value="warn">Warn</option>}
-                {!self && m.status === 'active' && <option value="ban">Propose ban</option>}
-                {meIsAdmin && <option value="reset">Password reset link</option>}
+                {!self && !locked && meIsAdmin && m.role !== 'admin' && <option value="admin">Make admin</option>}
+                {!self && !locked && meIsAdmin && m.role !== 'moderator' && <option value="moderator">Make moderator</option>}
+                {!self && !locked && meIsAdmin && m.role !== 'member' && <option value="unadmin">Make regular member</option>}
+                {!self && !locked && (m.status === 'active' ? <option value="suspend">Suspend</option> : <option value="reinstate">Reinstate</option>)}
+                {!self && !locked && <option value="warn">Warn</option>}
+                {!self && !locked && m.status === 'active' && <option value="ban">Propose ban</option>}
+                {meIsAdmin && !locked && <option value="reset">Password reset link</option>}
                 {meIsAdmin && <option value="recognize">Recognize</option>}
               </select>
             </li>

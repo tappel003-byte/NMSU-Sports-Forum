@@ -11,7 +11,7 @@ import { createInvite } from '../lib/invites';
 import { runNewsDesk, runStarter } from '../lib/topics';
 import { createResetToken } from './auth';
 import { publishPost, broadcastThread } from '../lib/threads';
-import { BAN_APPROVALS_REQUIRED, MAX_SUSPENSION_DAYS, assertNotLastModerator, issueWarning, moderatorIds, notifyModerators, overturn, removePost, suspend, tellMember, voteBan } from '../lib/moderation';
+import { BAN_APPROVALS_REQUIRED, MAX_SUSPENSION_DAYS, assertNotLastModerator, assertNotOwner, issueWarning, moderatorIds, notifyModerators, overturn, removePost, suspend, tellMember, voteBan } from '../lib/moderation';
 import type { SessionUser } from '../env';
 import { runGameLifecycle, syncAllFeeds, type GameRow } from '../lib/sports';
 import { presentGame } from './games';
@@ -76,7 +76,7 @@ admin.delete('/invites/:id', requireAdmin, async (c) => {
 
 admin.get('/members', async (c) => {
   const rows = await all(c.env,
-    `SELECT id, username, email, display_name, CASE WHEN role = 'admin' THEN 'admin' WHEN moderator = 1 THEN 'moderator' ELSE 'member' END AS role,
+    `SELECT id, username, email, display_name, CASE WHEN role = 'admin' THEN 'admin' WHEN moderator = 1 THEN 'moderator' ELSE 'member' END AS role, owner,
        status, suspended_until, created_at, last_seen_at,
        (SELECT COUNT(*) FROM posts p WHERE p.user_id = users.id AND p.deleted = 0) AS posts
      FROM users WHERE deleted_at IS NULL ORDER BY username COLLATE NOCASE`);
@@ -100,6 +100,7 @@ admin.patch('/members/:id', async (c) => {
   if (body.role) {
     // Only admins change roles. The site always keeps at least one admin and one moderator.
     if (actor.role !== 'admin') throw new HttpError(403, 'Only admins can change roles.');
+    if (body.role !== 'admin') await assertNotOwner(c.env, id, actor.id, 'removed as admin', true);
     if (target.role === 'admin' && body.role !== 'admin') {
       const admins = await first<{ n: number }>(c.env, "SELECT COUNT(*) AS n FROM users WHERE role = 'admin' AND status = 'active'");
       if ((admins?.n ?? 0) <= 1) throw new HttpError(400, 'The forum must always have at least one admin.');
@@ -133,6 +134,7 @@ admin.post('/members/:id/warn', async (c) => {
 admin.post('/members/:id/flagging', async (c) => {
   const { enabled, reason } = parse(z.object({ enabled: z.boolean(), reason: z.string().trim().min(3).max(500) }), await c.req.json());
   const id = num(c.req.param('id'));
+  if (!enabled) await assertNotOwner(c.env, id, c.get('user').id, 'restricted');
   await run(c.env, 'UPDATE users SET can_flag = ? WHERE id = ?', enabled ? 1 : 0, id);
   await logMod(c.env, c.get('user').id, enabled ? 'restore_flagging' : 'revoke_flagging', 'user', id, reason, id);
   if (!enabled) await notify(c.env, id, 'moderation', `A moderator turned off troll flagging for your account: ${reason}`, '/settings#moderation');
@@ -166,6 +168,7 @@ admin.post('/bans', async (c) => {
   if (user_id === actor.id) throw new HttpError(400, "You can't propose banning yourself.");
   const target = await first<{ username: string; banned_at: number | null }>(c.env, 'SELECT username, banned_at FROM users WHERE id = ?', user_id);
   if (!target) throw new HttpError(404, 'Member not found.');
+  await assertNotOwner(c.env, user_id, actor.id, 'banned');
   if (target.banned_at) throw new HttpError(400, 'This member is already banned.');
   if (await first(c.env, "SELECT id FROM ban_proposals WHERE user_id = ? AND status = 'open'", user_id)) throw new HttpError(409, 'There is already an open ban proposal for this member.');
   const r = await run(c.env, 'INSERT INTO ban_proposals (user_id, proposed_by, reason, created_at) VALUES (?, ?, ?, ?)', user_id, actor.id, reason, now());
@@ -213,6 +216,8 @@ admin.post('/members/:id/reset-link', requireAdmin, async (c) => {
   const id = num(c.req.param('id'));
   const u = await first<{ id: number; email: string; username: string }>(c.env, 'SELECT id, email, username FROM users WHERE id = ?', id);
   if (!u) throw new HttpError(404, 'Member not found.');
+  // Only the owner can make a reset link for the owner's own account (protects against account takeover).
+  await assertNotOwner(c.env, id, c.get('user').id, 'sent a password reset link by another admin');
   const token = await createResetToken(c.env, u.id, c.get('user').id);
   const link = `${new URL(c.req.url).origin}/reset/${token}`;
   let emailed = false;
