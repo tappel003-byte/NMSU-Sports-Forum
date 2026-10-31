@@ -307,6 +307,16 @@ try {
   await admin.click('button:has-text("Close")');
   await admin.setViewportSize({ width: 1440, height: 900 });
 
+  // ---------- Game Center: Football and Men's Hoops are separate ----------
+  await reg.setViewportSize({ width: 390, height: 844 });
+  await reg.goto(BASE + '/games?range=season');
+  await reg.waitForSelector('section.card .game-row');
+  const fbOnly = await reg.$$eval('section.card .game-row .tiny', (els) => els.map((e) => e.textContent || ''));
+  await reg.click('button:has-text("Men\'s Hoops")');
+  await reg.waitForFunction(() => [...document.querySelectorAll('section.card .game-row .tiny')].length > 0 && [...document.querySelectorAll('section.card .game-row .tiny')].every((e) => /MEN'S BASKETBALL/i.test(e.textContent || '')));
+  await reg.screenshot({ path: `${SHOTS}/iphone-games.png` });
+  check('Game Center opens on football, with men\'s basketball as its own button', fbOnly.length > 0 && fbOnly.every((t) => /FOOTBALL/i.test(t)));
+
   // ---------- Posting without gatekeeping ----------
   await reg.goto(BASE + '/new');
   await reg.fill('#title', 'Tailgate spot this Saturday?');

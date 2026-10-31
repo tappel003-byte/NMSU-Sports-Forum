@@ -486,3 +486,5 @@ table.simple th { font-size: .72rem; text-transform: uppercase; letter-spacing: 
 .feed-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .feed-title h2 { margin: 0; }
 .feed-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.filter-row select { flex: none; }
+.small-select.chosen { background-color: var(--crimson); color: var(--white); border-color: var(--crimson); }
