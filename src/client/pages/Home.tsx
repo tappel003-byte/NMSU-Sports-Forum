@@ -20,6 +20,7 @@ interface HomeData {
   announcement: string;
   birthdays: { id: number; username: string }[];
   followed: ThreadItem[];
+  nostradamus: { reason: string; member: MemberLite | null }[];
   called: { user_id: number; game_id: number; exact: boolean; sport: string; opponent: string; home_away: string; result: string | null; nmsu_score: number | null; opp_score: number | null; member: MemberLite | null }[];
 }
 
@@ -178,16 +179,25 @@ export function Home() {
         </Link>
       )}
 
-      {data && data.called.length > 0 && (
+      {data && (data.called.length > 0 || data.nostradamus.length > 0) && (
         <section className="card card-pad">
-          <div className="eyebrow">🎯 Called it!</div>
-          <div className="stack" style={{ gap: 6, marginTop: 6 }}>
-            {data.called.map((c) => (
-              <Link key={`${c.user_id}-${c.game_id}`} to={`/games/${c.game_id}`} style={{ color: 'inherit' }}>
-                <strong>{c.member?.display_name || c.member?.username}</strong> called {sportIcon(c.sport)} NM State {matchup(c)}{me?.prefs?.spoiler_free ? '' : ` · ${c.result ?? ''} ${c.nmsu_score ?? ''}–${c.opp_score ?? ''}`}{c.exact && <> · <strong>exact score!</strong></>}
-              </Link>
-            ))}
-          </div>
+          <div className="eyebrow">🔮 Predictions this week</div>
+          {data.nostradamus.map((n, i) => (
+            <div key={i} className="note-box small" style={{ marginTop: 8 }}>
+              <strong>🏆 Last week's Nostradamus: {n.member ? <Link to={`/members/${n.member.id}`}>{n.member.display_name || n.member.username}</Link> : 'a member'}</strong>
+              <div className="tiny muted">{n.reason.replace(/^Nostradamus of the week of [^:]*: /, '')}</div>
+            </div>
+          ))}
+          {data.called.length > 0 ? (
+            <div className="stack" style={{ gap: 6, marginTop: 8 }}>
+              {data.called.map((c) => (
+                <Link key={`${c.user_id}-${c.game_id}`} to={`/games/${c.game_id}`} style={{ color: 'inherit' }}>
+                  🎯 <strong>{c.member?.display_name || c.member?.username}</strong> called {sportIcon(c.sport)} NM State {matchup(c)}{me?.prefs?.spoiler_free ? '' : ` · ${c.result ?? ''} ${c.nmsu_score ?? ''}–${c.opp_score ?? ''}`}{c.exact && <> · <strong>exact score!</strong></>}
+                </Link>
+              ))}
+            </div>
+          ) : <div className="small muted" style={{ marginTop: 8 }}>No one has called a game yet this week. Make your pick on the next game's page.</div>}
+          <div className="tiny muted" style={{ marginTop: 8 }}>Whoever calls the most this week (Mon–Sun) becomes Nostradamus of the Week, an award that stays on their member card.</div>
         </section>
       )}
 

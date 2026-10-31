@@ -34,12 +34,15 @@ export function MemberName({ member }: { member: MemberLite | null }) {
 }
 
 export function Badges({ member, max = 3 }: { member: MemberLite; max?: number }) {
-  const list = member.badges ?? [];
+  // Repeat awards (Nostradamus of the Week) show as one chip with a count.
+  const counts = new Map<string, number>();
+  for (const b of member.badges ?? []) counts.set(b.badge, (counts.get(b.badge) ?? 0) + 1);
+  const list = [...counts.entries()];
   return (
     <span className="badges">
       {member.role === 'admin' && <span className="badge admin" title="Community administrator">Admin</span>}
-      {list.slice(0, max).map((b, i) => (
-        <span key={i} className={`badge ${b.badge === 'founding' ? 'founding' : ''}`} title={b.reason}>{BADGES[b.badge]?.label ?? b.badge}</span>
+      {list.slice(0, max).map(([badge, n]) => (
+        <span key={badge} className={`badge ${badge === 'founding' ? 'founding' : ''}`} title={BADGES[badge]?.description}>{BADGES[badge]?.label ?? badge}{n > 1 ? ` ×${n}` : ''}</span>
       ))}
     </span>
   );

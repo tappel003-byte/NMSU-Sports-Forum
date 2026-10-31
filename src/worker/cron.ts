@@ -3,7 +3,7 @@ import { all, notify, run, userPrefs } from './db';
 import { emailEnabled, sendEmail } from './email';
 import { DAY, now } from './util';
 import { deleteObject } from './storage';
-import { runGameLifecycle, syncAllFeeds } from './lib/sports';
+import { awardWeeklyPredictor, runGameLifecycle, syncAllFeeds } from './lib/sports';
 import { syncRecruiting } from './lib/recruiting';
 import { expireBanProposals } from './lib/moderation';
 
@@ -40,6 +40,7 @@ export async function dailyJobs(env: Env): Promise<void> {
   await run(env, 'DELETE FROM notifications WHERE read_at IS NOT NULL AND created_at < ?', t - 90 * DAY);
   await syncRecruiting(env);
   await expireBanProposals(env);
+  await awardWeeklyPredictor(env);
   if (new Date(t).getUTCDay() === 1) await weeklyDigest(env);
 }
 

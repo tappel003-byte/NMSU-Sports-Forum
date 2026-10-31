@@ -2,7 +2,8 @@ import type { Env } from '../env';
 import { all, first, getSetting, notify, run, userPrefs } from '../db';
 import { DAY, now } from '../util';
 import { SPORT_BY_KEY, TIME_ZONE, officialScheduleUrl, sportLabel } from '../../shared/sports';
-import { parseIcs, toGame, type ParsedGame } from './ics';
+import { parseIcs, toGame, zonedToUtc, type ParsedGame } from './ics';
+import { awardBadge } from './members';
 
 export interface GameRow {
   id: number;
@@ -192,3 +193,42 @@ export function seasonRange(season: string): [number, number] {
   const y = Number(season.slice(0, 4));
   return [Date.UTC(y, 6, 1), Date.UTC(y + 1, 6, 1)];
 }
+
+/** Start of the prediction week (Monday 00:00 Mountain Time) containing t. */
+export function weekStartMT(t: number): number {
+  const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: TIME_ZONE, year: 'numeric', month: 'numeric', day: 'numeric', weekday: 'short' })
+    .formatToParts(new Date(t)).map((x) => [x.type, x.value]));
+  const back = (['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].indexOf(p.weekday) + 7) % 7;
+  const monday = new Date(Date.UTC(Number(p.year), Number(p.month) - 1, Number(p.day) - back));
+  return zonedToUtc(monday.getUTCFullYear(), monday.getUTCMonth() + 1, monday.getUTCDate(), 0, 0, 0, TIME_ZONE);
+}
+
+function weekLabel(start: number): string {
+  const f = (t: number) => new Intl.DateTimeFormat('en-US', { timeZone: TIME_ZONE, month: 'short', day: 'numeric' }).format(new Date(t));
+  return `${f(start)}–${f(start + 6 * DAY)}`;
+}
+
+/** Most points wins; ties share the award; nobody wins a week with no correct picks. */
+export function weeklyWinners<T extends { pts: number }>(rows: T[]): T[] {
+  const top = Math.max(0, ...rows.map((r) => r.pts));
+  return top > 0 ? rows.filter((r) => r.pts === top) : [];
+}
+
+/**
+ * Nostradamus of the Week: once a week ends (Monday–Sunday, Mountain Time), whoever earned the most prediction
+ * points that week gets a permanent award on their member card (ties share it). Runs daily; each week is awarded once.
+ */
+export async function awardWeeklyPredictor(env: Env, t = now()): Promise<void> {
+  const end = weekStartMT(t);
+  const start = weekStartMT(end - DAY);
+  const label = weekLabel(start);
+  // Award each week once; until then, re-check daily so a final that arrives late still counts.
+  if (await first(env, "SELECT id FROM badges WHERE badge = 'nostradamus' AND reason LIKE ?", `Nostradamus of the week of ${label}:%`)) return;
+  const rows = await all<{ user_id: number; pts: number; called: number }>(env,
+    `SELECT p.user_id, SUM(p.points) AS pts, COUNT(*) AS called FROM predictions p JOIN games g ON g.id = p.game_id
+      WHERE p.points > 0 AND g.starts_at >= ? AND g.starts_at < ? GROUP BY p.user_id ORDER BY pts DESC`, start, end);
+  for (const r of weeklyWinners(rows)) {
+    await awardBadge(env, r.user_id, 'nostradamus', `Nostradamus of the week of ${label}: called ${r.called} ${r.called === 1 ? 'game' : 'games'} (${r.pts} ${r.pts === 1 ? 'point' : 'points'}).`, null);
+  }
+}
+
