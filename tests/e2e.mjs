@@ -178,9 +178,9 @@ try {
   await api(admin, `/posts/${(await api(admin, `/threads/${threadId}`)).body.posts[0].id}/react`, { body: { value: 1 } });
   const pulse = (await api(member, '/pulse')).body;
   check('Member sees the reply as unread and gets notified', pulse.unread_threads >= 1 && pulse.notifications >= 1, `unread ${pulse.unread_threads}, notifications ${pulse.notifications} (before: ${adminBaselinePulse.unread_threads})`);
-  await member.goto(BASE + '/?tab=unread');
+  await member.goto(BASE + '/feed');
   await member.waitForSelector(`a[href^="/t/${threadId}"]`);
-  check('Unread tab lists the discussion', await member.isVisible(`.thread-title.unread`));
+  check('The Board marks the discussion as unread', await member.isVisible(`.thread-title.unread`));
   await member.click(`a[href^="/t/${threadId}"]`);
   await member.waitForSelector('article.post >> nth=1');
   await member.waitForTimeout(500);

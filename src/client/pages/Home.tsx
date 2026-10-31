@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { List, Plus, Rows3 } from 'lucide-react';
 import { ShareModal } from '../components/Share';
-import { TAGS } from '../../shared/forum';
 import { FEATURED_SPORTS } from '../../shared/sports';
 import { api } from '../api';
 import { useApi, useApp } from '../state';
@@ -22,10 +21,6 @@ interface HomeData {
   birthdays: { id: number; username: string }[];
   followed: ThreadItem[];
 }
-
-const TABS = [
-  ['latest', 'Latest'], ['unread', 'Unread'], ['following', 'Following'], ['popular', 'Popular'],
-] as const;
 
 function greeting() {
   const h = Number(new Intl.DateTimeFormat('en-US', { timeZone: 'America/Denver', hour: 'numeric', hourCycle: 'h23' }).format(new Date()));
@@ -54,7 +49,7 @@ function Scoreboard() {
 }
 
 export function Feed({ initialTab = 'latest', compact = false }: { initialTab?: string; compact?: boolean }) {
-  const [params, setParams] = useSearchParams();
+  const [params] = useSearchParams();
   const tab = params.get('tab') ?? initialTab;
   const tag = params.get('tag') ?? '';
   const [page, setPage] = useState(1);
@@ -88,17 +83,6 @@ export function Feed({ initialTab = 'latest', compact = false }: { initialTab?: 
         )}
       </div>
       {!compact && <Scoreboard />}
-      <div className="tabs" role="tablist">
-        {TABS.filter(([k]) => me || k === 'latest' || k === 'popular').map(([k, label]) => (
-          <button key={k} role="tab" aria-selected={tab === k} className={`tab ${tab === k ? 'active' : ''}`} onClick={() => { setPage(1); setParams((p) => { p.set('tab', k); return p; }, { replace: true }); }}>{label}</button>
-        ))}
-      </div>
-      <div className="filter-row" aria-label="Filter by tag">
-        <button className={`btn small ${tag ? 'secondary' : ''}`} onClick={() => { setPage(1); setParams((p) => { p.delete('tag'); return p; }, { replace: true }); }}>All topics</button>
-        {Object.entries(TAGS).map(([k, v]) => (
-          <button key={k} className={`btn small ${tag === k ? '' : 'secondary'}`} onClick={() => { setPage(1); setParams((p) => { p.set('tag', k); return p; }, { replace: true }); }}>{v}</button>
-        ))}
-      </div>
       {share && <ShareModal onClose={() => setShare(false)} />}
       {me && <Link to="/new" className="fab" aria-label="Start a new discussion"><Plus size={26} /></Link>}
       {loading && !data ? <Loading /> : error ? <ErrorState error={error} retry={reload} /> : data?.needsSports ? (
