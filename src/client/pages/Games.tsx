@@ -111,7 +111,7 @@ export function GamePage() {
       {g.overridden && <div className="notice small">An administrator corrected some details for this game while the official feed was out of date.</div>}
 
       <section className="card card-pad">
-        <h2>🔮 Predictions</h2>
+        <h2>🎯 Predictions</h2>
         {!me && !p.locked ? <JoinCta text="Join free to make your pick and climb the season standings." /> : !p.locked ? (
           <>
             <p className="small muted" style={{ marginTop: 0 }}>Pick the winner (1 point). Nail the exact score for 2 bonus points. Picks lock at game time and are scored automatically when the final arrives. {p.count} member{p.count === 1 ? '' : 's'} picked so far.</p>
@@ -220,7 +220,7 @@ export function TimeMachine() {
           </select>
         </div>
         {data.games.length ? data.games.map((g) => (
-          <GameRow key={g.id} game={g} extra={<div className="tiny muted">💬 {g.posts} posts · 🗨️ {g.chats} chat messages · 🔮 {g.predictions} picks</div>} />
+          <GameRow key={g.id} game={g} extra={<div className="tiny muted">💬 {g.posts} posts · 🗨️ {g.chats} chat messages · 🎯 {g.predictions} picks</div>} />
         )) : <div className="empty">No past games recorded for this season yet. The archive grows automatically as games are played.</div>}
       </section>
     </div>

@@ -153,7 +153,7 @@ export function YearInReview() {
       <section className="card"><div className="section-head"><h2>Biggest discussions</h2></div><ThreadList threads={data.top_threads} /></section>
       <section className="card card-pad"><h2>Most active members</h2>
         {data.active_members.length ? <div className="chip-row">{data.active_members.map((m) => <Link key={m.id} to={`/members/${m.id}`} className="chip gray">{m.display_name || m.username} · {m.posts}</Link>)}</div> : <div className="small muted">—</div>}
-        {data.prediction_champion && <p className="small" style={{ marginBottom: 0 }}>🔮 Prediction champion: <strong>{data.prediction_champion.display_name || data.prediction_champion.username}</strong> ({data.prediction_champion.points} pts)</p>}
+        {data.prediction_champion && <p className="small" style={{ marginBottom: 0 }}>🏆 Prediction champion: <strong>{data.prediction_champion.display_name || data.prediction_champion.username}</strong> ({data.prediction_champion.points} pts)</p>}
       </section>
       {data.chattiest_games.length > 0 && <section className="card"><div className="section-head"><h2>Games we couldn't stop talking about</h2></div>{data.chattiest_games.map((g) => <GameRow key={g.id} game={g} extra={<div className="tiny muted">🗨️ {g.chats} chat messages</div>} />)}</section>}
       {data.recognitions.length > 0 && <section className="card card-pad"><h2>People who built the forum</h2>{data.recognitions.map((r, i) => <div key={i} className="small" style={{ padding: '4px 0' }}><span className="badge">{BADGES[r.badge]?.label}</span> <Link to={`/members/${r.user_id}`}>{r.username}</Link> — {r.reason}</div>)}</section>}

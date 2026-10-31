@@ -65,7 +65,7 @@ export function Recruiting() {
               <span className="small muted" style={{ display: 'block' }}>
                 {sportName(p.sport)} · {KIND_LABELS[p.kind]}{p.class_year ? ` · ${p.class_year}` : ''}{p.school ? ` · ${p.school}` : ''}{p.hometown ? ` · ${p.hometown}` : ''}
               </span>
-              <span className="tiny muted">{p.news ? `📰 ${p.news} news · ` : ''}{p.predictions ? `🔮 ${Math.round(((p.yes ?? 0) / p.predictions) * 100)}% say yes · ` : ''}updated {timeAgo(p.updated_at)}</span>
+              <span className="tiny muted">{p.news ? `📰 ${p.news} news · ` : ''}{p.predictions ? `🎯 ${Math.round(((p.yes ?? 0) / p.predictions) * 100)}% say yes · ` : ''}updated {timeAgo(p.updated_at)}</span>
             </span>
             <span className={`chip ${p.status === 'committed' || p.status === 'signed' || p.status === 'enrolled' ? '' : 'gray'}`}>{STATUS_LABELS[p.status] ?? p.status}</span>
           </Link>
@@ -159,7 +159,7 @@ export function PlayerPage() {
         )}
       </section>
       <section className="card card-pad">
-        <h2>🔮 {question}</h2>
+        <h2>🎯 {question}</h2>
         <div className="row">
           {me && <button className={`btn ${data.predictions.mine === 'yes' ? '' : 'secondary'}`} onClick={() => predict('yes')}>Yes</button>}
           {me && <button className={`btn ${data.predictions.mine === 'no' ? '' : 'secondary'}`} onClick={() => predict('no')}>No</button>}
