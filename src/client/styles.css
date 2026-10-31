@@ -513,3 +513,11 @@ table.simple th { font-size: .72rem; text-transform: uppercase; letter-spacing: 
 .thread-sport { font-weight: 600; }
 :root[data-theme='dark'] .thread-title { color: var(--white); }
 :root[data-theme='dark'] .thread-item.read .thread-title { color: var(--muted); }
+
+/* Profile photo cropper */
+.crop-stage { position: relative; margin: 0 auto; overflow: hidden; border-radius: var(--radius); background: #111; touch-action: none; cursor: grab; user-select: none; }
+.crop-stage:active { cursor: grabbing; }
+.crop-stage img { position: absolute; max-width: none; pointer-events: none; }
+.crop-ring { position: absolute; inset: 0; border-radius: 50%; box-shadow: 0 0 0 999px rgb(0 0 0 / .55); border: 2px solid var(--white); pointer-events: none; }
+.crop-zoom { display: flex; align-items: center; gap: 10px; max-width: 300px; margin: 12px auto 0; font-weight: 700; }
+.crop-zoom input { flex: 1; accent-color: var(--crimson); }

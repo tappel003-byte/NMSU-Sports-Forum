@@ -531,6 +531,28 @@ try {
   await reg.waitForSelector('.thread-stats');
   await reg.screenshot({ path: `${SHOTS}/iphone-board-aa.png`, fullPage: true });
 
+  // ---------- Profile photo cropper ----------
+  await reg.setViewportSize({ width: 390, height: 844 });
+  await reg.goto(BASE + '/settings');
+  await reg.waitForSelector('button:has-text("Change photo")');
+  // A wide test photo (crimson left half, white right half) so cropping is meaningful.
+  const pngB64 = await reg.evaluate(() => { const c = document.createElement('canvas'); c.width = 800; c.height = 400; const g = c.getContext('2d'); g.fillStyle = '#8C0B42'; g.fillRect(0, 0, 400, 400); g.fillStyle = '#FFFFFF'; g.fillRect(400, 0, 400, 400); return c.toDataURL('image/png').split(',')[1]; });
+  const beforeKey = (await api(reg, '/auth/me')).body.user.avatar_key;
+  await reg.setInputFiles('input[type="file"][accept="image/*"]', { name: 'wide.png', mimeType: 'image/png', buffer: Buffer.from(pngB64, 'base64') });
+  await reg.waitForSelector('text=Position your photo');
+  const stage = await reg.$('.crop-stage');
+  const box = await stage.boundingBox();
+  await reg.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await reg.mouse.down();
+  await reg.mouse.move(box.x + box.width / 2 + 60, box.y + box.height / 2, { steps: 5 });
+  await reg.mouse.up();
+  await reg.fill('input[aria-label="Zoom"]', '1.5');
+  await reg.screenshot({ path: `${SHOTS}/iphone-avatar-crop.png` });
+  await reg.click('button:has-text("Save photo")');
+  await reg.waitForSelector('text=Position your photo', { state: 'detached', timeout: 10000 });
+  const afterKey = (await api(reg, '/auth/me')).body.user.avatar_key;
+  check('Choosing a profile photo opens a cropper (drag and zoom inside a circle) and saves the cropped photo', Boolean(afterKey) && afterKey !== beforeKey);
+
   // ---------- Audit history ----------
   const log = (await api(admin, '/admin/log')).body.log;
   const actions = new Set(log.map((l) => l.action));
