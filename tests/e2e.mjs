@@ -236,7 +236,7 @@ try {
   const resync = await api(admin, '/admin/feeds/sync', { method: 'POST' });
   const gamesList = (await api(member, '/games?range=season')).body.games;
   check('Re-syncing is idempotent (no duplicates)', resync.status === 200 && gamesList.length === 3, `${gamesList.length} games after second sync`);
-  await member.goto(BASE + '/games');
+  await member.goto(BASE + '/games?sport=all');
   await member.waitForSelector('.game-row');
   const gc = await member.textContent('main');
   check('Game Center lists upcoming games with opponent and TV', gc.includes('Sample State') && gc.includes('ESPN+') && gc.includes('Example Tech'));

@@ -9,13 +9,13 @@ import { SPORTS, SPORT_BY_KEY } from '../../shared/sports';
 
 export function Games() {
   const [params, setParams] = useSearchParams();
-  // Football and men's basketball by default; "all" or a single sport on request.
-  const sport = params.get('sport') ?? 'featured';
+  // Football by default, men's basketball one tap away; "all" or any other single sport on request.
+  const sport = params.get('sport') ?? 'fb';
   const range = params.get('range') ?? 'upcoming';
   const { data, error, loading, reload } = useApi<{ games: GameItem[]; feedsConfigured: boolean; feedsSynced: boolean }>(`/games?range=${range}${sport !== 'all' ? `&sport=${sport}` : ''}`);
   const [shown, setShown] = useState(15);
   const set = (k: string, v: string) => { setShown(15); setParams((p) => { if (v) p.set(k, v); else p.delete(k); return p; }, { replace: true }); };
-  const single = sport !== 'featured' && sport !== 'all' ? sport : '';
+  const single = !['fb', 'mbb', 'all', 'featured'].includes(sport) ? sport : '';
   return (
     <div className="stack">
       <div className="page-head">
@@ -30,11 +30,12 @@ export function Games() {
           ))}
         </div>
         <div className="filter-row">
-          <button className={`btn small ${sport === 'featured' ? '' : 'secondary'}`} onClick={() => set('sport', '')}>🏈 Football &amp; 🏀 Men's Hoops</button>
+          <button className={`btn small ${sport === 'fb' ? '' : 'secondary'}`} onClick={() => set('sport', '')}>🏈 Football</button>
+          <button className={`btn small ${sport === 'mbb' ? '' : 'secondary'}`} onClick={() => set('sport', 'mbb')}>🏀 Men's Hoops</button>
           <button className={`btn small ${sport === 'all' ? '' : 'secondary'}`} onClick={() => set('sport', 'all')}>All sports</button>
-          <select className="select small-select" aria-label="Another sport" value={single} onChange={(e) => set('sport', e.target.value || '')}>
+          <select className={`select small-select ${single ? 'chosen' : ''}`} aria-label="Another sport" value={single} onChange={(e) => set('sport', e.target.value || '')}>
             <option value="">Another sport…</option>
-            {SPORTS.map((s) => <option key={s.key} value={s.key}>{s.icon} {s.label}</option>)}
+            {SPORTS.filter((s) => !FEATURED_SPORTS.includes(s.key)).map((s) => <option key={s.key} value={s.key}>{s.icon} {s.label}</option>)}
           </select>
         </div>
         {loading && !data ? <Loading /> : error ? <ErrorState error={error} retry={reload} /> : data && data.games.length ? (
