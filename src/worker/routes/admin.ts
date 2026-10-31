@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import type { AppEnv } from '../env';
-import { requireAdmin } from '../auth';
+import { requireAdmin, requireModerator } from '../auth';
 import { all, first, getSetting, logMod, notify, run, setSetting } from '../db';
 import { emailEnabled, sendEmail } from '../email';
 import { DAY, HttpError, now, parse, randomToken, sha256 } from '../util';
@@ -17,7 +17,8 @@ import { runGameLifecycle, syncAllFeeds, type GameRow } from '../lib/sports';
 import { presentGame } from './games';
 
 export const admin = new Hono<AppEnv>();
-admin.use('*', requireAdmin);
+// Moderators can use the moderation tools; routes marked requireAdmin run the site and stay admin-only.
+admin.use('*', requireModerator);
 
 const num = (v: string | undefined) => {
   const n = Number(v);
@@ -40,7 +41,7 @@ admin.get('/overview', async (c) => {
 
 // ---------- Invitations ----------
 
-admin.get('/invites', async (c) => {
+admin.get('/invites', requireAdmin, async (c) => {
   const rows = await all(c.env,
     `SELECT i.id, i.email, i.note, i.max_uses, i.uses, i.expires_at, i.revoked, i.created_at, u.username AS created_by,
        (SELECT group_concat(nu.username, ', ') FROM invite_uses iu JOIN users nu ON nu.id = iu.user_id WHERE iu.invite_id = i.id) AS used_by
@@ -48,7 +49,7 @@ admin.get('/invites', async (c) => {
   return c.json({ invites: rows });
 });
 
-admin.post('/invites', async (c) => {
+admin.post('/invites', requireAdmin, async (c) => {
   const user = c.get('user');
   const body = parse(z.object({
     email: z.string().trim().email().max(200).optional().or(z.literal('')),
@@ -65,7 +66,7 @@ admin.post('/invites', async (c) => {
   return c.json({ link: r.link, emailed: r.emailed, emailEnabled: r.emailEnabled, days: r.days });
 });
 
-admin.delete('/invites/:id', async (c) => {
+admin.delete('/invites/:id', requireAdmin, async (c) => {
   await run(c.env, 'UPDATE invites SET revoked = 1 WHERE id = ?', num(c.req.param('id')));
   await logMod(c.env, c.get('user').id, 'revoke_invite', 'invite', num(c.req.param('id')));
   return c.json({ ok: true });
@@ -75,27 +76,36 @@ admin.delete('/invites/:id', async (c) => {
 
 admin.get('/members', async (c) => {
   const rows = await all(c.env,
-    `SELECT id, username, email, display_name, role, status, suspended_until, created_at, last_seen_at,
+    `SELECT id, username, email, display_name, CASE WHEN role = 'admin' THEN 'admin' WHEN moderator = 1 THEN 'moderator' ELSE 'member' END AS role,
+       status, suspended_until, created_at, last_seen_at,
        (SELECT COUNT(*) FROM posts p WHERE p.user_id = users.id AND p.deleted = 0) AS posts
      FROM users WHERE deleted_at IS NULL ORDER BY username COLLATE NOCASE`);
-  return c.json({ members: rows });
+  // Email addresses are for account recovery, which only admins handle.
+  const isAdmin = c.get('user').role === 'admin';
+  return c.json({ members: isAdmin ? rows : rows.map((r) => ({ ...(r as Record<string, unknown>), email: null })) });
 });
 
 admin.patch('/members/:id', async (c) => {
   const actor = c.get('user');
   const id = num(c.req.param('id'));
   const body = parse(z.object({
-    role: z.enum(['member', 'admin']).optional(),
+    role: z.enum(['member', 'moderator', 'admin']).optional(),
     status: z.enum(['active', 'suspended']).optional(),
     days: z.number().int().min(1).max(MAX_SUSPENSION_DAYS).optional(),
     reason: z.string().trim().max(500).optional(),
   }), await c.req.json());
-  const target = await first<{ id: number; role: string; status: string; username: string; banned_at: number | null }>(c.env, 'SELECT id, role, status, username, banned_at FROM users WHERE id = ?', id);
+  const target = await first<{ id: number; role: string; moderator: number; status: string; username: string; banned_at: number | null }>(c.env, 'SELECT id, role, moderator, status, username, banned_at FROM users WHERE id = ?', id);
   if (!target) throw new HttpError(404, 'Member not found.');
   if (id === actor.id && body.status === 'suspended') throw new HttpError(400, "You can't suspend yourself.");
   if (body.role) {
+    // Only admins change roles. The site always keeps at least one admin and one moderator.
+    if (actor.role !== 'admin') throw new HttpError(403, 'Only admins can change roles.');
+    if (target.role === 'admin' && body.role !== 'admin') {
+      const admins = await first<{ n: number }>(c.env, "SELECT COUNT(*) AS n FROM users WHERE role = 'admin' AND status = 'active'");
+      if ((admins?.n ?? 0) <= 1) throw new HttpError(400, 'The forum must always have at least one admin.');
+    }
     if (body.role === 'member') await assertNotLastModerator(c.env, id);
-    await run(c.env, 'UPDATE users SET role = ? WHERE id = ?', body.role, id);
+    await run(c.env, 'UPDATE users SET role = ?, moderator = ? WHERE id = ?', body.role === 'admin' ? 'admin' : 'member', body.role === 'moderator' ? 1 : 0, id);
     await logMod(c.env, actor.id, `set_role_${body.role}`, 'user', id, body.reason || target.username, id);
   }
   if (body.status === 'suspended') {
@@ -199,7 +209,7 @@ admin.post('/appeals/:id', async (c) => {
   return c.json({ ok: true });
 });
 
-admin.post('/members/:id/reset-link', async (c) => {
+admin.post('/members/:id/reset-link', requireAdmin, async (c) => {
   const id = num(c.req.param('id'));
   const u = await first<{ id: number; email: string; username: string }>(c.env, 'SELECT id, email, username FROM users WHERE id = ?', id);
   if (!u) throw new HttpError(404, 'Member not found.');
@@ -365,7 +375,7 @@ admin.patch('/reports/:id', async (c) => {
 
 // ---------- Recognition ----------
 
-admin.post('/badges', async (c) => {
+admin.post('/badges', requireAdmin, async (c) => {
   const body = parse(z.object({ user_id: z.number().int(), badge: z.string(), reason: z.string().trim().min(3).max(300) }), await c.req.json());
   if (!(body.badge in BADGES) || body.badge === 'founding') throw new HttpError(400, 'Unknown recognition.');
   if (!(await first(c.env, 'SELECT id FROM users WHERE id = ?', body.user_id))) throw new HttpError(404, 'Member not found.');
@@ -374,7 +384,7 @@ admin.post('/badges', async (c) => {
   return c.json({ ok: true });
 });
 
-admin.delete('/badges/:id', async (c) => {
+admin.delete('/badges/:id', requireAdmin, async (c) => {
   await run(c.env, 'UPDATE badges SET revoked = 1 WHERE id = ?', num(c.req.param('id')));
   await logMod(c.env, c.get('user').id, 'revoke_badge', 'badge', num(c.req.param('id')));
   return c.json({ ok: true });
@@ -384,13 +394,13 @@ admin.delete('/badges/:id', async (c) => {
 
 const SETTING_KEYS = ['founding_until', 'founding_limit', 'honorary_threshold', 'chat_window', 'announcement', 'approve_first_post', 'signup_mode', 'public_read', 'troll_threshold', 'hub_links', 'member_invites', 'auto_game_threads', 'news_desk', 'news_feeds', 'news_per_day', 'starters', 'starter_prompts', 'recurring_topics'] as const;
 
-admin.get('/settings', async (c) => {
+admin.get('/settings', requireAdmin, async (c) => {
   const out: Record<string, string> = {};
   for (const k of SETTING_KEYS) out[k] = await getSetting(c.env, k);
   return c.json({ settings: out });
 });
 
-admin.put('/settings', async (c) => {
+admin.put('/settings', requireAdmin, async (c) => {
   const body = parse(z.object({
     founding_until: z.string().regex(/^(\d{4}-\d{2}-\d{2})?$/, 'use YYYY-MM-DD').optional(),
     founding_limit: z.string().regex(/^(\d{1,4})?$/, 'use a number').optional(),
@@ -418,13 +428,13 @@ admin.put('/settings', async (c) => {
 
 // ---------- Automatic topics ----------
 
-admin.post('/topics/starter', async (c) => {
+admin.post('/topics/starter', requireAdmin, async (c) => {
   const threadId = await runStarter(c.env, Date.now(), true);
   await logMod(c.env, c.get('user').id, 'post_topic_of_day', 'thread', threadId, '');
   return c.json({ thread_id: threadId });
 });
 
-admin.post('/news/run', async (c) => {
+admin.post('/news/run', requireAdmin, async (c) => {
   const r = await runNewsDesk(c.env, true);
   await logMod(c.env, c.get('user').id, 'run_news_desk', 'settings', null, `posted ${r.posted}, checked ${r.checked}${r.errors.length ? `, errors: ${r.errors.join('; ').slice(0, 300)}` : ''}`);
   return c.json(r);
@@ -432,7 +442,7 @@ admin.post('/news/run', async (c) => {
 
 // ---------- Sports data feeds ----------
 
-admin.post('/feeds', async (c) => {
+admin.post('/feeds', requireAdmin, async (c) => {
   const raw = (await c.req.json()) as { sport?: unknown; url?: unknown };
   // Calendar "subscribe" buttons often hand out webcal:// links; they are the same feed over https.
   if (typeof raw.url === 'string') raw.url = raw.url.trim().replace(/^webcals?:\/\//i, 'https://');
@@ -446,19 +456,19 @@ admin.post('/feeds', async (c) => {
   return c.json({ ok: true });
 });
 
-admin.patch('/feeds/:id', async (c) => {
+admin.patch('/feeds/:id', requireAdmin, async (c) => {
   const body = parse(z.object({ enabled: z.boolean() }), await c.req.json());
   await run(c.env, 'UPDATE data_feeds SET enabled = ? WHERE id = ?', body.enabled ? 1 : 0, num(c.req.param('id')));
   return c.json({ ok: true });
 });
 
-admin.delete('/feeds/:id', async (c) => {
+admin.delete('/feeds/:id', requireAdmin, async (c) => {
   await run(c.env, 'DELETE FROM data_feeds WHERE id = ?', num(c.req.param('id')));
   await logMod(c.env, c.get('user').id, 'remove_feed', 'feed', num(c.req.param('id')));
   return c.json({ ok: true });
 });
 
-admin.post('/feeds/sync', async (c) => {
+admin.post('/feeds/sync', requireAdmin, async (c) => {
   const results = await syncAllFeeds(c.env);
   await runGameLifecycle(c.env);
   return c.json({ results });
@@ -466,7 +476,7 @@ admin.post('/feeds/sync', async (c) => {
 
 // Emergency override only: corrects a field while a feed is wrong. Overridden fields
 // are flagged and protected from the next sync until cleared.
-admin.patch('/games/:id', async (c) => {
+admin.patch('/games/:id', requireAdmin, async (c) => {
   const id = num(c.req.param('id'));
   const g = await first<GameRow>(c.env, 'SELECT * FROM games WHERE id = ?', id);
   if (!g) throw new HttpError(404, 'Game not found.');

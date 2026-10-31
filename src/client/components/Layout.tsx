@@ -96,7 +96,7 @@ function Header() {
                 <Link to="/bookmarks">Bookmarks &amp; reminders</Link>
                 <Link to="/recruiting">Recruiting &amp; portal</Link>
                 <Link to="/drafts">Drafts</Link>
-                {me.role === 'admin' && <Link to="/admin">Admin{pulse.open_reports ? ` (${pulse.open_reports} reports)` : ''}</Link>}
+                {(me.role === 'admin' || me.role === 'moderator') && <Link to="/admin">{me.role === 'admin' ? 'Admin' : 'Moderation'}{pulse.open_reports ? ` (${pulse.open_reports} reports)` : ''}</Link>}
                 <hr />
                 <button onClick={logout}><LogOut size={14} style={{ verticalAlign: '-2px' }} /> Sign out</button>
               </div>
@@ -128,7 +128,7 @@ function LeftRail() {
           <NavLink to="/rosters"><ClipboardList size={17} /> Rosters &amp; links</NavLink>
           <NavLink to="/recruiting"><UserPlus size={17} /> Recruiting</NavLink>
           <NavLink to="/time-machine"><History size={17} /> Time Machine</NavLink>
-          {me?.role === 'admin' && <NavLink to="/admin"><Shield size={17} /> Admin{pulse.open_reports > 0 && <span className="count hot">{pulse.open_reports}</span>}</NavLink>}
+          {(me?.role === 'admin' || me?.role === 'moderator') && <NavLink to="/admin"><Shield size={17} /> {me.role === 'admin' ? 'Admin' : 'Moderation'}{pulse.open_reports > 0 && <span className="count hot">{pulse.open_reports}</span>}</NavLink>}
         </nav>
       </div>
       <div className="rail-card">

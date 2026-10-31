@@ -1,4 +1,5 @@
 import { DurableObject } from 'cloudflare:workers';
+import { isModerator } from './auth';
 import type { Env } from './env';
 
 interface Member { id: number; username: string; display_name: string | null; role: string }
@@ -52,7 +53,7 @@ export class ChatRoom extends DurableObject<Env> {
       this.broadcast(JSON.stringify({ type: 'message', message: { id: r.meta.last_row_id, user_id: member.id, username: member.username, display_name: member.display_name, body, created_at: t } }));
       return;
     }
-    if (msg.type === 'delete' && msg.id && member.role === 'admin') {
+    if (msg.type === 'delete' && msg.id && (member.role === 'admin' || member.role === 'moderator')) {
       await this.env.DB.prepare('UPDATE chat_messages SET deleted = 1, deleted_by = ? WHERE id = ? AND room = ?').bind(member.id, msg.id, room).run();
       await this.env.DB.prepare('INSERT INTO mod_log (actor_id, action, target_type, target_id, created_at) VALUES (?, ?, ?, ?, ?)').bind(member.id, 'remove_chat', 'chat_message', msg.id, Date.now()).run();
       this.broadcast(JSON.stringify({ type: 'deleted', id: msg.id }));

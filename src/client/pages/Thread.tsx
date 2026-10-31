@@ -122,7 +122,8 @@ export function ThreadPage() {
   if (error) return <ErrorState error={error} retry={reload} />;
   if (!data) return <Loading />;
   const t = data.thread;
-  const isAdmin = me?.role === 'admin';
+  // Admins and moderators can moderate discussions.
+  const isAdmin = me?.role === 'admin' || me?.role === 'moderator';
 
   const patchPost = (pid: number, patch: Partial<Post>) => setData({ ...data, posts: data.posts.map((p) => (p.id === pid ? { ...p, ...patch } : p)) });
 

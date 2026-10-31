@@ -78,3 +78,4 @@ Audit, October 30, 2026 (after first live review): 65 rows. 59 Verified, 5 Built
 | 69 | Topic of the day on quiet days + 🎲 Random topic button | DECISIONS (content engine) | Verified — e2e: admin "post now" (no repeats) and the 🎲 button; the quiet-day trigger runs on the 30-minute job |
 | 70 | Weekly recurring topics | DECISIONS (content engine) | Verified — e2e posts once at its day and time; unit-tested time parsing |
 | 71 | Profile photo crop: drag and zoom inside a circle before saving, to center faces or the subject | Owner request (Oct 31, 2026) | Verified — e2e chooses a photo, drags, zooms and saves a 512×512 crop; pinch zoom for phones |
+| 72 | Moderator role: moderates discussions without admin settings, invitations or member emails | Owner request (Oct 31, 2026) | Verified — e2e promotes a member to moderator, checks Reports access, blocked settings/invites/role changes, hidden emails, and demotion removing access |

@@ -12,7 +12,7 @@ import { putObject, getObject, deleteObject } from '../storage';
 import { getPreview } from '../lib/previews';
 import { pushEnabled } from '../lib/push';
 import { notifyModerators } from '../lib/moderation';
-import { destroySession, rateLimit } from '../auth';
+import { destroySession, rateLimit, isModerator } from '../auth';
 import { createInvite, memberInvitesOn } from '../lib/invites';
 import { hashPassword, randomToken, verifyPassword } from '../util';
 
@@ -117,7 +117,7 @@ community.get('/members/:id', async (c) => {
   const u = await first<Record<string, unknown> & { id: number; email: string; show_email: number; featured_post_id: number | null; birthday_md: string | null; show_birthday: number; status: string }>(c.env,
     `SELECT id, email, bio, grad_year, city, state, interests, legacy_moniker, legacy_join_year, legacy_post_count, legacy_upvotes, show_email, show_on_map,
             featured_post_id, birthday_md, show_birthday, created_at, last_seen_at, status FROM users WHERE id = ?`, id);
-  if (!u || (u.status !== 'active' && me.role !== 'admin')) throw new HttpError(404, 'Member not found.');
+  if (!u || (u.status !== 'active' && !isModerator(me))) throw new HttpError(404, 'Member not found.');
   const summary = (await memberSummaries(c.env, [id])).get(id);
   const postSelect = `SELECT p.id, p.thread_id, p.body, p.created_at, t.title,
       (SELECT COUNT(*) FROM reactions r WHERE r.post_id = p.id AND r.value = 1) AS up
@@ -417,7 +417,7 @@ community.delete('/events/:id', async (c) => {
   const user = c.get('user');
   const e = await first<{ user_id: number }>(c.env, 'SELECT user_id FROM events WHERE id = ?', num(c.req.param('id')));
   if (!e) throw new HttpError(404, 'Event not found.');
-  if (e.user_id !== user.id && user.role !== 'admin') throw new HttpError(403, 'Only the host or an admin can cancel this event.');
+  if (e.user_id !== user.id && !isModerator(user)) throw new HttpError(403, 'Only the host or a moderator can cancel this event.');
   await run(c.env, 'UPDATE events SET deleted = 1 WHERE id = ?', num(c.req.param('id')));
   return c.json({ ok: true });
 });

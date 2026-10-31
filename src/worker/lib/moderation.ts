@@ -10,7 +10,7 @@ export const MAX_SUSPENSION_DAYS = 90;
 export const APPEALABLE = ['remove_post', 'warn', 'suspend', 'ban'] as const;
 
 export async function moderatorIds(env: Env): Promise<number[]> {
-  return (await all<{ id: number }>(env, "SELECT id FROM users WHERE role = 'admin' AND status = 'active'")).map((r) => r.id);
+  return (await all<{ id: number }>(env, "SELECT id FROM users WHERE (role = 'admin' OR moderator = 1) AND status = 'active'")).map((r) => r.id);
 }
 
 export async function notifyModerators(env: Env, text: string, link: string, exceptId: number | null = null): Promise<void> {
@@ -56,8 +56,8 @@ export async function suspend(env: Env, moderatorId: number, userId: number, day
 }
 
 export async function assertNotLastModerator(env: Env, userId: number): Promise<void> {
-  const u = await first<{ role: string }>(env, 'SELECT role FROM users WHERE id = ?', userId);
-  if (u?.role === 'admin' && (await moderatorIds(env)).length <= 1) throw new HttpError(400, 'The forum must always have at least one active moderator.');
+  const u = await first<{ role: string; moderator: number }>(env, 'SELECT role, moderator FROM users WHERE id = ?', userId);
+  if ((u?.role === 'admin' || u?.moderator) && (await moderatorIds(env)).length <= 1) throw new HttpError(400, 'The forum must always have at least one active moderator.');
 }
 
 /** Records a vote; three approvals from different moderators make the ban take effect. */

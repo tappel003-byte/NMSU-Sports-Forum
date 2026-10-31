@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { isModerator } from '../auth';
 import { z } from 'zod';
 import type { AppEnv } from '../env';
 import { all, first, getSetting, logMod, notify, run, stmt, userPrefs } from '../db';
@@ -183,7 +184,7 @@ async function createPoll(env: AppEnv['Bindings'], threadId: number, poll: z.inf
 forum.post('/threads/:id/poll', async (c) => {
   const user = c.get('user');
   const t = await loadThread(c.env, user, idParam(c.req.param('id')));
-  if (t.user_id !== user.id && user.role !== 'admin') throw new HttpError(403, 'Only the thread starter can add a poll.');
+  if (t.user_id !== user.id && !isModerator(user)) throw new HttpError(403, 'Only the thread starter can add a poll.');
   if (await first(c.env, 'SELECT id FROM polls WHERE thread_id = ?', t.id)) throw new HttpError(409, 'This thread already has a poll.');
   await createPoll(c.env, t.id, parse(pollSchema, await c.req.json()));
   return c.json({ ok: true });
@@ -206,7 +207,7 @@ forum.get('/threads/:id', async (c) => {
   const user = c.get('user');
   const t = await loadThread(c.env, user, idParam(c.req.param('id')));
   const muted = await mutedSets(c.env, user.id);
-  const visibleSql = user.role === 'admin' ? '1 = 1' : `(pending = 0 OR user_id = ${Number(user.id)})`;
+  const visibleSql = isModerator(user) ? '1 = 1' : `(pending = 0 OR user_id = ${Number(user.id)})`;
   const firstUnread = isUnread(t, user)
     ? (await first<{ id: number }>(c.env, `SELECT id FROM posts WHERE thread_id = ? AND id > ? AND ${visibleSql} ORDER BY id LIMIT 1`, t.id, t.last_read_post_id ?? 0))?.id ?? null
     : null;
@@ -247,7 +248,7 @@ forum.get('/threads/:id', async (c) => {
   const bmMap = new Map(bookmarks.map((b) => [b.post_id, b]));
   const qMap = new Map(quotes.map((q) => [q.id, q]));
   const archived = isArchived(t);
-  const canReply = user.role === 'admin' || (user.role !== 'guest' && !t.locked && !archived && !t.deleted);
+  const canReply = isModerator(user) || (user.role !== 'guest' && !t.locked && !archived && !t.deleted);
   // Mark read up to the last post shown.
   if (posts.length && user.role !== 'guest') {
     const lastShown = posts[posts.length - 1].id;
@@ -272,7 +273,7 @@ forum.get('/threads/:id', async (c) => {
         id: p.id,
         author: author ?? null,
         // Posts hidden by troll flags stay visible to admins and their author only.
-        body: p.deleted || (p.hidden && user.role !== 'admin' && p.user_id !== user.id) ? '' : p.body,
+        body: p.deleted || (p.hidden && !isModerator(user) && p.user_id !== user.id) ? '' : p.body,
         hidden: Boolean(p.hidden),
         deleted: Boolean(p.deleted),
         pending: Boolean(p.pending),
@@ -286,10 +287,10 @@ forum.get('/threads/:id', async (c) => {
         muted: Boolean(p.user_id && muted.users.has(p.user_id)),
         reply_to: p.reply_to_post_id && qMap.get(p.reply_to_post_id) ? { id: p.reply_to_post_id, username: (() => { const r = qMap.get(p.reply_to_post_id!)!; return r.user_id ? members.get(r.user_id)?.username ?? 'member' : 'NMSU Sports Forum'; })() } : null,
         quote: q ? { id: q.id, thread_id: q.thread_id, username: q.user_id ? members.get(q.user_id)?.username ?? 'member' : 'member', body: q.deleted ? '' : q.body.slice(0, 600), deleted: Boolean(q.deleted) } : null,
-        attachments: p.hidden && user.role !== 'admin' && p.user_id !== user.id ? [] : attachments.filter((a) => a.post_id === p.id && !a.deleted).map((a) => ({ id: a.id, content_type: a.content_type, expires_at: a.expires_at })),
+        attachments: p.hidden && !isModerator(user) && p.user_id !== user.id ? [] : attachments.filter((a) => a.post_id === p.id && !a.deleted).map((a) => ({ id: a.id, content_type: a.content_type, expires_at: a.expires_at })),
         expired_attachments: attachments.filter((a) => a.post_id === p.id && a.deleted).length,
-        can_edit: !p.deleted && (user.role === 'admin' || (p.user_id === user.id && canReply)),
-        can_flag: user.role === 'admin' || (user.role !== 'guest' && (Boolean(user.trusted) || !user.joined_open) && p.user_id !== user.id && !p.hidden),
+        can_edit: !p.deleted && (isModerator(user) || (p.user_id === user.id && canReply)),
+        can_flag: isModerator(user) || (user.role !== 'guest' && (Boolean(user.trusted) || !user.joined_open) && p.user_id !== user.id && !p.hidden),
       };
     }),
   });
@@ -307,7 +308,7 @@ async function pollFor(env: AppEnv['Bindings'], threadId: number, userId: number
 forum.patch('/threads/:id', async (c) => {
   const user = c.get('user');
   const t = await loadThread(c.env, user, idParam(c.req.param('id')));
-  if (t.user_id !== user.id && user.role !== 'admin') throw new HttpError(403, 'You can only edit your own discussions.');
+  if (t.user_id !== user.id && !isModerator(user)) throw new HttpError(403, 'You can only edit your own discussions.');
   assertWritable(t, user);
   const body = parse(z.object({ title: z.string().trim().min(4).max(140), description: z.string().trim().max(240).optional().default(''), tags: z.array(z.string()).max(3).optional() }), await c.req.json());
   await run(c.env, 'UPDATE threads SET title = ?, description = ?, tags = COALESCE(?, tags) WHERE id = ?', body.title, body.description, body.tags ? cleanTags(body.tags) : null, t.id);
@@ -372,7 +373,7 @@ forum.patch('/posts/:id', async (c) => {
   const user = c.get('user');
   const p = await loadPost(c.env, idParam(c.req.param('id')));
   if (p.deleted) throw new HttpError(400, 'This post was removed.');
-  if (p.user_id !== user.id && user.role !== 'admin') throw new HttpError(403, 'You can only edit your own posts.');
+  if (p.user_id !== user.id && !isModerator(user)) throw new HttpError(403, 'You can only edit your own posts.');
   assertWritable(await loadThread(c.env, user, p.thread_id), user);
   const { body } = parse(z.object({ body: z.string().trim().min(1).max(20000) }), await c.req.json());
   if (body === p.body) return c.json({ ok: true });
@@ -395,8 +396,8 @@ forum.get('/posts/:id/history', async (c) => {
 forum.delete('/posts/:id', async (c) => {
   const user = c.get('user');
   const p = await loadPost(c.env, idParam(c.req.param('id')));
-  if (p.user_id !== user.id && user.role !== 'admin') throw new HttpError(403, 'You can only remove your own posts.');
-  if (user.role === 'admin' && p.user_id !== user.id) {
+  if (p.user_id !== user.id && !isModerator(user)) throw new HttpError(403, 'You can only remove your own posts.');
+  if (isModerator(user) && p.user_id !== user.id) {
     // Moderator removals carry a reason, are recorded, and can be appealed.
     const { reason } = parse(z.object({ reason: z.string().trim().min(3, 'give a short reason (the member sees it)').max(500) }), await c.req.json().catch(() => ({})));
     await removePost(c.env, user.id, p.id, reason);
@@ -439,7 +440,7 @@ forum.post('/posts/:id/troll', async (c) => {
   if (p.deleted) throw new HttpError(400, 'This post was removed.');
   if (p.user_id === user.id) throw new HttpError(400, "You can't flag your own post.");
   // Invited members are vouched for; open sign-ups can flag once their first post is approved.
-  if (user.role !== 'admin' && !user.trusted && user.joined_open) throw new HttpError(403, 'Flagging opens up once your first post has been approved.');
+  if (!isModerator(user) && !user.trusted && user.joined_open) throw new HttpError(403, 'Flagging opens up once your first post has been approved.');
   const me = await first<{ can_flag: number }>(c.env, 'SELECT can_flag FROM users WHERE id = ?', user.id);
   if (!me?.can_flag) throw new HttpError(403, 'A moderator has turned off flagging for your account. You can still report posts.');
   const ins = await run(c.env, `INSERT OR IGNORE INTO reports (reporter_id, post_id, snapshot, reason, kind, created_at) VALUES (?, ?, ?, 'Flagged as trolling', 'troll', ?)`, user.id, p.id, p.body.slice(0, 2000), now());
@@ -616,7 +617,7 @@ forum.get('/pulse', async (c) => {
       `SELECT COUNT(*) AS n FROM threads t LEFT JOIN thread_reads tr ON tr.thread_id = t.id AND tr.user_id = ?
         WHERE t.deleted = 0 AND t.pending = 0 AND t.last_post_at > ? AND (tr.last_read_post_id IS NULL OR tr.last_read_post_id < t.last_post_id)
           AND t.forum_id NOT IN (SELECT target_id FROM mutes WHERE user_id = ? AND target_type = 'forum')`, user.id, unreadBaseline(user), user.id),
-    user.role === 'admin' ? first<{ n: number }>(c.env, "SELECT (SELECT COUNT(*) FROM reports WHERE status = 'open' AND kind = 'report') + (SELECT COUNT(*) FROM posts WHERE pending = 1 AND deleted = 0) + (SELECT COUNT(*) FROM posts WHERE hidden = 1 AND deleted = 0) + (SELECT COUNT(*) FROM appeals WHERE status = 'open') + (SELECT COUNT(*) FROM ban_proposals WHERE status = 'open') AS n") : Promise.resolve({ n: 0 }),
+    isModerator(user) ? first<{ n: number }>(c.env, "SELECT (SELECT COUNT(*) FROM reports WHERE status = 'open' AND kind = 'report') + (SELECT COUNT(*) FROM posts WHERE pending = 1 AND deleted = 0) + (SELECT COUNT(*) FROM posts WHERE hidden = 1 AND deleted = 0) + (SELECT COUNT(*) FROM appeals WHERE status = 'open') + (SELECT COUNT(*) FROM ban_proposals WHERE status = 'open') AS n") : Promise.resolve({ n: 0 }),
   ]);
   return c.json({ notifications: n?.n ?? 0, messages: dm?.n ?? 0, unread_threads: unread?.n ?? 0, open_reports: reports?.n ?? 0 });
 });
