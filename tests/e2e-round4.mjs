@@ -489,8 +489,9 @@ try {
 
   // ---------- Aggie News Desk (local fictional feed) ----------
   const rss = `<rss><channel><title>Local test news</title>
-<item><title>New Mexico State lands fictional transfer guard</title><link>http://www.bing.com/news/apiclick.aspx?url=https%3a%2f%2fnews.example.test%2fguard&amp;c=1</link><pubDate>${new Date().toUTCString()}</pubDate><News:Source>Example News</News:Source></item>
-<item><title>New Mexico State lands fictional transfer guard</title><link>https://other.example.test/guard-copy</link><pubDate>${new Date().toUTCString()}</pubDate></item>
+<item><title>New Mexico State basketball lands fictional transfer guard</title><link>http://www.bing.com/news/apiclick.aspx?url=https%3a%2f%2fnews.example.test%2fguard&amp;c=1</link><pubDate>${new Date().toUTCString()}</pubDate><News:Source>Example News</News:Source></item>
+<item><title>New Mexico State basketball lands fictional transfer guard</title><link>https://other.example.test/guard-copy</link><pubDate>${new Date().toUTCString()}</pubDate></item>
+<item><title>New Mexico State volleyball sweeps fictional opponent</title><link>https://news.example.test/vb</link><pubDate>${new Date().toUTCString()}</pubDate></item>
 <item><title>Some other college wins a game</title><link>https://news.example.test/other</link><pubDate>${new Date().toUTCString()}</pubDate></item>
 </channel></rss>`;
   const newsSrv = http.createServer((req, res) => { res.writeHead(200, { 'content-type': 'application/rss+xml' }); res.end(rss); }).listen(8795);
@@ -499,8 +500,8 @@ try {
   const run2 = (await api(admin, '/admin/news/run', { method: 'POST' })).body;
   const newsThreads = (await api(admin, '/feed?tab=latest&games=1')).body.threads.filter((x) => x.title.startsWith('📰'));
   const newsPost = newsThreads[0] ? (await api(admin, `/threads/${newsThreads[0].id}`)).body.posts[0].body : '';
-  check('Aggie News posts NM State stories once (headline + real article link), skips other teams and duplicates',
-    run1.posted === 1 && run2.posted === 0 && newsThreads.length === 1 && newsThreads[0].title === '📰 New Mexico State lands fictional transfer guard' && newsPost.startsWith('https://news.example.test/guard'),
+  check('Aggie News posts NM State football/basketball/baseball stories once (headline + real article link), skips other sports, other teams and duplicates',
+    run1.posted === 1 && run2.posted === 0 && newsThreads.length === 1 && newsThreads[0].title === '📰 New Mexico State basketball lands fictional transfer guard' && newsPost.startsWith('https://news.example.test/guard'),
     JSON.stringify({ run1, run2, titles: newsThreads.map((x) => x.title) }));
   newsSrv.close();
   await api(admin, '/admin/settings', { method: 'PUT', body: { news_desk: '0', news_feeds: '' } });
