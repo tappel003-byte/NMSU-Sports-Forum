@@ -17,7 +17,8 @@ function Overview() {
   const { data, error, reload } = useApi<{ members: { total: number; admins: number; suspended: number }; open_reports: number; pending_posts: number; open_invites: number; feeds: Feed[]; log: { id: number; actor: string | null; action: string; target_type: string; detail: string | null; created_at: number }[]; emailEnabled: boolean }>('/admin/overview');
   if (error) return <ErrorState error={error} retry={reload} />;
   if (!data) return <Loading />;
-  const failing = data.feeds.filter((f) => f.failing > 0);
+  // One missed check is normal (the official site sometimes refuses a request); warn after three in a row (~90 minutes).
+  const failing = data.feeds.filter((f) => f.enabled && f.failing >= 3);
   return (
     <div className="stack">
       <div className="stat-grid">
@@ -405,7 +406,7 @@ function SportsData() {
                 <td>{x.sport === 'auto' ? 'All sports (detect)' : sportName(x.sport)}</td>
                 <td className="tiny" style={{ wordBreak: 'break-all' }}>{x.url}</td>
                 <td className="tiny">
-                  {!x.enabled ? 'Paused' : x.failing ? <span style={{ color: 'var(--crimson)' }}>Failing ({x.failing}×): {x.last_error}</span> : x.last_ok_at ? <>OK · {timeAgo(x.last_ok_at)}{x.last_counts && <><br />{(() => { const c = JSON.parse(x.last_counts); return `${c.total} events, ${c.added} new, ${c.updated} updated`; })()}</>}</> : 'Not synced yet'}
+                  {!x.enabled ? 'Paused' : x.failing >= 3 ? <span style={{ color: 'var(--crimson)' }}>Failing ({x.failing}× in a row): {x.last_error}</span> : x.failing ? <>Last check missed ({x.last_error}); retrying every 30 minutes{x.last_ok_at ? ` · last good ${timeAgo(x.last_ok_at)}` : ''}</> : x.last_ok_at ? <>OK · {timeAgo(x.last_ok_at)}{x.last_counts && <><br />{(() => { const c = JSON.parse(x.last_counts); return `${c.total} events, ${c.added} new, ${c.updated} updated`; })()}</>}</> : 'Not synced yet'}
                 </td>
                 <td>
                   <button className="btn ghost small" onClick={() => api(`/admin/feeds/${x.id}`, { method: 'PATCH', body: { enabled: !x.enabled } }).then(reload)}>{x.enabled ? 'Pause' : 'Resume'}</button>
