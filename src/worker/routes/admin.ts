@@ -381,7 +381,7 @@ admin.delete('/badges/:id', async (c) => {
 
 // ---------- Settings ----------
 
-const SETTING_KEYS = ['launch_date', 'honorary_threshold', 'chat_window', 'announcement', 'approve_first_post', 'signup_mode', 'public_read', 'troll_threshold', 'hub_links', 'member_invites', 'auto_game_threads'] as const;
+const SETTING_KEYS = ['founding_until', 'founding_limit', 'honorary_threshold', 'chat_window', 'announcement', 'approve_first_post', 'signup_mode', 'public_read', 'troll_threshold', 'hub_links', 'member_invites', 'auto_game_threads'] as const;
 
 admin.get('/settings', async (c) => {
   const out: Record<string, string> = {};
@@ -391,7 +391,8 @@ admin.get('/settings', async (c) => {
 
 admin.put('/settings', async (c) => {
   const body = parse(z.object({
-    launch_date: z.string().regex(/^(\d{4}-\d{2}-\d{2})?$/, 'use YYYY-MM-DD').optional(),
+    founding_until: z.string().regex(/^(\d{4}-\d{2}-\d{2})?$/, 'use YYYY-MM-DD').optional(),
+    founding_limit: z.string().regex(/^(\d{1,4})?$/, 'use a number').optional(),
     honorary_threshold: z.string().regex(/^\d{0,4}$/).optional(),
     chat_window: z.string().regex(/^\d{2,3}$/).optional(),
     announcement: z.string().max(500).optional(),

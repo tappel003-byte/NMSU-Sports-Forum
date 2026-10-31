@@ -473,7 +473,10 @@ function SettingsTab() {
     <section className="card card-pad">
       <h2>Community settings</h2>
       <form onSubmit={save}>
-        <div className="field"><label htmlFor="ld">Official launch date</label><input id="ld" type="date" className="input" value={cur.launch_date} onChange={set('launch_date')} /><span className="hint">Members who join within 30 days of this date are Founding Members. Leave blank until launch — everyone who joins before launch is a founder.</span></div>
+        <div className="grid-2">
+          <div className="field"><label htmlFor="ld">Founding Members join by</label><input id="ld" type="date" className="input" value={cur.founding_until || '2026-11-26'} onChange={set('founding_until')} /><span className="hint">Thanksgiving unless you change it.</span></div>
+          <div className="field"><label htmlFor="fl">How many Founding Members</label><input id="fl" type="number" min={1} max={9999} className="input" value={cur.founding_limit || '30'} onChange={set('founding_limit')} /><span className="hint">The first people to join, up to this number, get the Founding Member badge.</span></div>
+        </div>
         <div className="field"><label htmlFor="ht">Honorary Founding Member threshold</label><input id="ht" type="number" min={0} className="input" value={cur.honorary_threshold} onChange={set('honorary_threshold')} /><span className="hint">Thumbs-up from this many <em>different</em> members earns a later member Honorary Founding Member automatically. 0 = off (admins can still award it by hand).</span></div>
         <div className="field"><label htmlFor="cw">Live chat window (messages)</label><input id="cw" type="number" min={10} max={500} className="input" value={cur.chat_window} onChange={set('chat_window')} /><span className="hint">How many recent messages show in a live room. Everything is archived permanently regardless.</span></div>
         <h3>Who can join and read</h3>
