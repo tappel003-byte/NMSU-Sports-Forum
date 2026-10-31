@@ -349,11 +349,12 @@ try {
   await reg.setViewportSize({ width: 390, height: 844 });
   await reg.goto(BASE + '/settings');
   await reg.fill('#legacy_moniker', 'RioRanchoAggie');
-  await reg.fill('#legacy_join_year', '2010');
+  await reg.fill('#legacy_join_year', '08/24/2010');
   await reg.fill('#legacy_post_count', '3,901');
   await reg.fill('#legacy_upvotes', '1,368');
   await reg.click('button:has-text("Save profile")');
-  await reg.waitForTimeout(800);
+  const savedMsg = await reg.waitForSelector('text=✓ Profile saved', { timeout: 8000 }).then(() => true, () => false);
+  check('Saving shows a message that stays on screen, and a full date works for the join year', savedMsg);
   const rickId = (await api(admin, '/admin/members')).body.members.find((m) => m.username === 'RickFromTailgate').id;
   await reg.goto(BASE + `/members/${rickId}`);
   await reg.waitForSelector('text=up votes received');

@@ -165,12 +165,20 @@ interface MeData {
   };
 }
 
+/** Turns server validation messages ("legacy_join_year: Expected number…") into plain words. */
+function friendlyError(msg: string): string {
+  const names: Record<string, string> = { legacy_join_year: 'Year you joined Aggie Alert', legacy_post_count: 'Aggie Alert post count', legacy_upvotes: 'Aggie Alert up votes', grad_year: 'NMSU class year', birthday_md: 'Birthday (use MM-DD, like 07-07)', city: 'City', state: 'State' };
+  const key = Object.keys(names).find((k) => msg.includes(k));
+  return key ? `check "${names[key]}". ${msg.replace(/^[^:]*:\s*/, '')}` : msg;
+}
+
 export function Settings() {
   const { refresh, toast } = useApp();
   const [params] = useSearchParams();
   const { data, reload } = useApi<MeData>('/me');
   const { data: mutes, reload: reloadMutes } = useApi<{ users: { id: number; username: string }[]; forums: { id: number; name: string }[] }>('/mutes');
   const [p, setP] = useState<Record<string, string | boolean>>({});
+  const [saveMsg, setSaveMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [prefs, setPrefs] = useState<Prefs>({});
   const [pw, setPw] = useState({ current: '', password: '' });
   const avatarInput = useRef<HTMLInputElement>(null);
@@ -188,23 +196,27 @@ export function Settings() {
 
   if (!data) return <Loading />;
   const str = (k: string) => (p[k] as string) ?? '';
-  const intOrNull = (k: string) => (str(k).trim() ? Number(str(k).replace(/[,\s]/g, '')) : null);
+  // Forgiving number boxes: "3,901" → 3901, and a year box takes "08/24/2010" or "2010" alike.
+  const intOrNull = (k: string) => { const d = str(k).replace(/\D/g, ''); return d ? Number(d) : null; };
+  const yearOrNull = (k: string) => { const m = str(k).match(/(19|20)\d{2}/); return m ? Number(m[0]) : null; };
 
   const saveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSaveMsg(null);
     try {
       const r = await api<{ mapNote: string | null }>('/me/profile', {
         method: 'PATCH',
         body: {
-          display_name: str('display_name'), bio: str('bio'), grad_year: intOrNull('grad_year'), city: str('city'), state: str('state'), interests: str('interests'),
-          legacy_moniker: str('legacy_moniker'), legacy_join_year: intOrNull('legacy_join_year'), legacy_post_count: intOrNull('legacy_post_count'), legacy_upvotes: intOrNull('legacy_upvotes'),
+          display_name: str('display_name'), bio: str('bio'), grad_year: yearOrNull('grad_year'), city: str('city'), state: str('state'), interests: str('interests'),
+          legacy_moniker: str('legacy_moniker'), legacy_join_year: yearOrNull('legacy_join_year'), legacy_post_count: intOrNull('legacy_post_count'), legacy_upvotes: intOrNull('legacy_upvotes'),
           show_email: Boolean(p.show_email), show_on_map: Boolean(p.show_on_map), birthday_md: str('birthday_md'), show_birthday: Boolean(p.show_birthday),
         },
       });
-      toast(r.mapNote ?? 'Profile saved');
+      // Messages stay next to the Save button so a failed save can't go unnoticed.
+      setSaveMsg(r.mapNote ? { ok: false, text: `Saved, but: ${r.mapNote}` } : { ok: true, text: '✓ Profile saved' });
       refresh();
       reload();
-    } catch (err) { toast((err as Error).message); }
+    } catch (err) { setSaveMsg({ ok: false, text: `Not saved: ${friendlyError((err as Error).message)}` }); }
   };
 
   const savePrefs = async (next: Prefs) => {
@@ -252,7 +264,7 @@ export function Settings() {
         <form onSubmit={saveProfile}>
           <div className="grid-2">
             {field('display_name', 'Display name', { maxLength: 60 })}
-            {field('grad_year', 'NMSU class year (optional)', { inputMode: 'numeric', pattern: '\\d{4}' })}
+            {field('grad_year', 'NMSU class year (optional)', { inputMode: 'numeric' })}
             {field('city', 'City (optional)', { maxLength: 80 })}
             {field('state', 'State (optional)', { maxLength: 40 })}
           </div>
@@ -261,7 +273,7 @@ export function Settings() {
           <h3 style={{ marginTop: 10 }}>Aggie Alert history (optional, self-reported)</h3>
           <div className="grid-2">
             {field('legacy_moniker', 'Aggie Alert moniker', { maxLength: 60 }, 'Helps old friends find you.')}
-            {field('legacy_join_year', 'Year you joined Aggie Alert', { inputMode: 'numeric' })}
+            {field('legacy_join_year', 'Year you joined Aggie Alert', {}, 'The year is enough; a full date like 08/24/2010 works too.')}
             {field('legacy_post_count', 'Aggie Alert post count', { inputMode: 'numeric' }, 'Shown separately from this forum\'s count.')}
             {field('legacy_upvotes', 'Aggie Alert up votes received', { inputMode: 'numeric' }, 'From your Aggie Alert profile. Shown on your profile; it doesn\'t change your reputation here.')}
             {field('birthday_md', 'Birthday (MM-DD, optional)', { placeholder: '04-15', pattern: '(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])' })}
@@ -270,6 +282,7 @@ export function Settings() {
           {check('show_email', 'Show my email on my profile', 'Off by default. Your email is otherwise visible only to you.')}
           {check('show_on_map', 'Show me on the member map', 'Uses your city only, rounded to about 10 km. Never a precise location.')}
           {check('show_birthday', 'Show my birthday on the community calendar')}
+          {saveMsg && <div className={saveMsg.ok ? 'note-box small' : 'error-box'} role="status" style={{ marginTop: 8 }}>{saveMsg.text}</div>}
           <button className="btn" style={{ marginTop: 8 }}>Save profile</button>
         </form>
       </section>
