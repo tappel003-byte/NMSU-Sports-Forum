@@ -32,7 +32,7 @@ Audit, October 30, 2026 (after first live review): 65 rows. 56 Verified, 8 Built
 | 23 | Notifications and preferences | MILESTONE 11 | Verified — in-app notifications and per-member preferences (phone push: see row 43) |
 | 24 | Auto-saved drafts | MILESTONE 13 | Verified — server-side drafts survive reload and cross-device |
 | 25 | Spoiler-free scores mode | MILESTONE 13 | Built |
-| 26 | Personal feed (my sports / following / unread) | MILESTONE 13 | Verified |
+| 26 | Personal feed (my sports / following / unread); tabs removed from the Board at the owner's request, Following still on the home page | MILESTONE 13 | Verified |
 | 27 | Mute a member or a forum | MILESTONE 13 | Verified |
 | 28 | Strictly private 1:1 messages; block; voluntary report of a specific message | MILESTONE 13, DECISIONS | Verified — no admin route exists; block via mute; voluntary single-message report |
 | 29 | Predictions with season standings, auto-scored from results | MILESTONE 13 | Verified — locks at game time, auto-scored, season standings |
@@ -54,7 +54,7 @@ Audit, October 30, 2026 (after first live review): 65 rows. 56 Verified, 8 Built
 | 45 | Spoiler tags inside posts | DECISIONS (Oct 30 research round), MILESTONE | Verified — ||text|| or [spoiler]…[/spoiler]; hidden in notification excerpts |
 | 46 | @mention autocomplete | DECISIONS (Oct 30 research round), MILESTONE | Verified |
 | 47 | Link previews (YouTube, articles) | DECISIONS (Oct 30 research round), MILESTONE | Verified for articles and YouTube. Tweet text comes from X's free embed service, which was blocked in the build environment, so tweet cards were tested only in their "unavailable" state |
-| 48 | Thread tags with filtering | DECISIONS (Oct 30 research round), MILESTONE | Verified |
+| 48 | Thread tags (filter buttons removed from the Board at the owner's request; tags still show on threads) | DECISIONS (Oct 30 research round), MILESTONE | Verified |
 | 49 | Moderation extras: auto-expiring suspensions, thread merge, first-post approval | DECISIONS (Oct 30 research round), MILESTONE | Verified — timed suspensions lift themselves; merge; first-post approval (off by default, toggle in Admin → Settings) |
 | 50 | Member data download and account deletion | DECISIONS (Oct 30 research round), MILESTONE | Verified |
 | 51 | Aggie-themed ranks by post count | DECISIONS (Oct 30 research round), MILESTONE | Verified |
