@@ -36,7 +36,7 @@ export async function memberSummaries(env: Env, ids: (number | null | undefined)
   const ph = unique.map(() => '?').join(',');
   const [users, reps, counts, badges, cutoff] = await Promise.all([
     all<{ id: number; username: string; display_name: string | null; avatar_key: string | null; role: string; created_at: number }>(env,
-      `SELECT id, username, display_name, avatar_key, role, created_at FROM users WHERE id IN (${ph})`, ...unique),
+      `SELECT id, username, display_name, avatar_key, CASE WHEN role = 'admin' THEN 'admin' WHEN moderator = 1 THEN 'moderator' ELSE 'member' END AS role, created_at FROM users WHERE id IN (${ph})`, ...unique),
     all<{ user_id: number; n: number }>(env,
       `SELECT p.user_id, COUNT(*) AS n FROM reactions r JOIN posts p ON p.id = r.post_id
         WHERE r.value = 1 AND p.deleted = 0 AND p.user_id IN (${ph}) GROUP BY p.user_id`, ...unique),

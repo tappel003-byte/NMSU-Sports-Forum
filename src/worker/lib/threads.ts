@@ -1,4 +1,5 @@
 import type { Env, SessionUser } from '../env';
+import { isModerator } from '../auth';
 import { all, first, notify, run, userPrefs } from '../db';
 import { DAY, HttpError, excerpt, extractMentions, now } from '../util';
 import { memberSummaries } from './members';
@@ -101,12 +102,12 @@ export async function presentThreads(env: Env, user: SessionUser, rows: ThreadRo
 
 export async function loadThread(env: Env, user: SessionUser, id: number): Promise<ThreadRow> {
   const t = await first<ThreadRow>(env, `${THREAD_SELECT} WHERE t.id = ?`, user.id, id);
-  if (!t || (t.deleted && user.role !== 'admin') || (t.pending && user.role !== 'admin' && t.user_id !== user.id)) throw new HttpError(404, 'Discussion not found.');
+  if (!t || (t.deleted && !isModerator(user)) || (t.pending && !isModerator(user) && t.user_id !== user.id)) throw new HttpError(404, 'Discussion not found.');
   return t;
 }
 
 export function assertWritable(t: ThreadRow, user: SessionUser): void {
-  if (user.role === 'admin') return;
+  if (isModerator(user)) return;
   if (t.deleted) throw new HttpError(404, 'Discussion not found.');
   if (t.locked) throw new HttpError(403, 'This discussion is locked.');
   if (isArchived(t)) throw new HttpError(403, 'This discussion is archived (no replies for 90 days). An administrator can reopen it.');
@@ -114,7 +115,7 @@ export function assertWritable(t: ThreadRow, user: SessionUser): void {
 
 /** True when this member's posts must be approved by an admin first (setting `approve_first_post`). */
 export async function needsApproval(env: Env, user: SessionUser): Promise<boolean> {
-  if (user.role === 'admin' || user.trusted) return false;
+  if (isModerator(user) || user.trusted) return false;
   // Newcomers from open sign-up always have their first post reviewed.
   if (user.joined_open) return true;
   return (await getSetting(env, 'approve_first_post')) === '1';

@@ -4,7 +4,7 @@ import { api } from './api';
 export interface Me {
   id: number;
   username: string;
-  role: 'member' | 'admin';
+  role: 'member' | 'moderator' | 'admin';
   display_name: string | null;
   avatar_key: string | null;
   prefs: Prefs;

@@ -113,7 +113,7 @@ export function EventPage() {
         <div className="row" style={{ marginTop: 12 }}>
           <button className={`btn ${data.my_rsvp === 'going' ? '' : 'secondary'}`} onClick={() => rsvp(data.my_rsvp === 'going' ? null : 'going')}>Going</button>
           <button className={`btn ${data.my_rsvp === 'maybe' ? '' : 'secondary'}`} onClick={() => rsvp(data.my_rsvp === 'maybe' ? null : 'maybe')}>Maybe</button>
-          {(e.user_id === me?.id || me?.role === 'admin') && <button className="btn ghost" onClick={cancel}>Cancel event</button>}
+          {(e.user_id === me?.id || me?.role === 'admin' || me?.role === 'moderator') && <button className="btn ghost" onClick={cancel}>Cancel event</button>}
         </div>
       </section>
       <section className="card card-pad">

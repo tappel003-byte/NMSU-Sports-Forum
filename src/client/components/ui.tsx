@@ -41,6 +41,7 @@ export function Badges({ member, max = 3 }: { member: MemberLite; max?: number }
   return (
     <span className="badges">
       {member.role === 'admin' && <span className="badge admin" title="Community administrator">Admin</span>}
+      {member.role === 'moderator' && <span className="badge admin" title="Community moderator">Moderator</span>}
       {list.slice(0, max).map(([badge, n]) => (
         <span key={badge} className={`badge ${badge === 'founding' ? 'founding' : ''}`} title={BADGES[badge]?.description}>{BADGES[badge]?.label ?? badge}{n > 1 ? ` ×${n}` : ''}</span>
       ))}

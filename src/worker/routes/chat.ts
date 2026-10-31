@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { isModerator } from '../auth';
 import { z } from 'zod';
 import type { AppEnv, Env } from '../env';
 import { all, first, run } from '../db';
@@ -87,7 +88,7 @@ chat.get('/threads/:id/ws', async (c) => {
 
 chat.delete('/chat/messages/:id', async (c) => {
   const user = c.get('user');
-  if (user.role !== 'admin') throw new HttpError(403, 'Administrators only.');
+  if (!isModerator(user)) throw new HttpError(403, 'Moderators only.');
   const m = await first<{ id: number; room: string }>(c.env, 'SELECT id, room FROM chat_messages WHERE id = ?', Number(c.req.param('id')));
   if (!m) throw new HttpError(404, 'Message not found.');
   await run(c.env, 'UPDATE chat_messages SET deleted = 1, deleted_by = ? WHERE id = ?', user.id, m.id);

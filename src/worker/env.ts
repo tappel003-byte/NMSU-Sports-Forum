@@ -22,7 +22,7 @@ export interface Env {
 export interface SessionUser {
   id: number;
   username: string;
-  role: 'member' | 'admin' | 'guest';
+  role: 'member' | 'moderator' | 'admin' | 'guest';
   status: 'active' | 'suspended';
   display_name: string | null;
   avatar_key: string | null;

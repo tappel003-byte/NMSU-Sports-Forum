@@ -561,6 +561,27 @@ try {
   const editedKey = (await api(reg, '/auth/me')).body.user.avatar_key;
   check('Edit photo reopens the current picture in the cropper to zoom or re-center it', Boolean(editedKey) && editedKey !== afterKey);
 
+  // ---------- Moderators: moderation tools, but not site settings ----------
+  const rickMemberId = (await api(admin, '/admin/members')).body.members.find((m) => m.username === 'RickFromTailgate').id;
+  const promote = await api(admin, `/admin/members/${rickMemberId}`, { method: 'PATCH', body: { role: 'moderator', reason: 'Trusted regular' } });
+  const asMod = {
+    flagged: (await api(reg, '/admin/flagged')).status,
+    members: (await api(reg, '/admin/members')).body,
+    settings: (await api(reg, '/admin/settings')).status,
+    invites: (await api(reg, '/admin/invites')).status,
+    roleChange: (await api(reg, `/admin/members/${rickMemberId}`, { method: 'PATCH', body: { role: 'admin' } })).status,
+  };
+  await reg.goto(BASE + '/admin');
+  await reg.waitForSelector('h1:has-text("Moderation")');
+  const modTabs = await reg.textContent('nav[aria-label="Admin sections"]');
+  await reg.screenshot({ path: `${SHOTS}/iphone-moderation.png` });
+  check('Moderators get the moderation tools (flags, members without emails) but not settings, invitations or role changes',
+    promote.status === 200 && asMod.flagged === 200 && asMod.members.members.every((m) => m.email === null) && asMod.settings === 403 && asMod.invites === 403 && asMod.roleChange === 403
+    && modTabs.includes('Reports') && !modTabs.includes('Settings') && !modTabs.includes('Sports data'), JSON.stringify({ ...asMod, members: undefined, modTabs }));
+  const modBadge = (await api(admin, `/members/${rickMemberId}`)).body.member.role === 'moderator';
+  await api(admin, `/admin/members/${rickMemberId}`, { method: 'PATCH', body: { role: 'member', reason: 'Test over' } });
+  check('Members see a Moderator label, and admins can change a moderator back to a regular member', modBadge && (await api(reg, '/admin/flagged')).status === 403);
+
   // ---------- Audit history ----------
   const log = (await api(admin, '/admin/log')).body.log;
   const actions = new Set(log.map((l) => l.action));

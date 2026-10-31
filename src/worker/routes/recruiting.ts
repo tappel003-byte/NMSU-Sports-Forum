@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { isModerator } from '../auth';
 import { z } from 'zod';
 import type { AppEnv } from '../env';
 import { all, first, logMod, run } from '../db';
@@ -43,7 +44,7 @@ recruiting.get('/players/:id', async (c) => {
     player: { ...p, added_by: p.created_by ? members.get(p.created_by)?.username ?? null : null },
     news: news.map((n) => ({ ...n, username: members.get(n.user_id)?.username ?? 'member' })),
     predictions: { yes: preds.filter((x) => x.pick === 'yes').length, no: preds.filter((x) => x.pick === 'no').length, mine: preds.find((x) => x.user_id === user.id)?.pick ?? null },
-    can_edit: user.role === 'admin' || p.created_by === user.id,
+    can_edit: isModerator(user) || p.created_by === user.id,
   });
 });
 
@@ -78,15 +79,15 @@ recruiting.patch('/players/:id', async (c) => {
   const user = c.get('user');
   const p = await first<{ id: number; created_by: number | null; source: string }>(c.env, 'SELECT id, created_by, source FROM players WHERE id = ? AND removed = 0', Number(c.req.param('id')));
   if (!p) throw new HttpError(404, 'Player not found.');
-  if (user.role !== 'admin' && p.created_by !== user.id) throw new HttpError(403, 'Only the member who added this player or an admin can edit it.');
+  if (!isModerator(user) && p.created_by !== user.id) throw new HttpError(403, 'Only the member who added this player or an admin can edit it.');
   const body = parse(z.object({ status: z.enum(STATUSES).optional(), other_school: z.string().trim().max(120).nullable().optional(), position: z.string().trim().max(20).nullable().optional(), removed: z.boolean().optional() }), await c.req.json());
-  if (body.removed && user.role !== 'admin') throw new HttpError(403, 'Only admins can remove players.');
+  if (body.removed && !isModerator(user)) throw new HttpError(403, 'Only moderators can remove players.');
   const sets: string[] = [];
   const vals: (string | number | null)[] = [];
   for (const [k, v] of Object.entries(body)) { sets.push(`${k} = ?`); vals.push(typeof v === 'boolean' ? (v ? 1 : 0) : (v ?? null)); }
   if (!sets.length) return c.json({ ok: true });
   await run(c.env, `UPDATE players SET ${sets.join(', ')}, updated_at = ? WHERE id = ?`, ...vals, now(), p.id);
-  if (user.role === 'admin') await logMod(c.env, user.id, body.removed ? 'remove_player' : 'edit_player', 'player', p.id, JSON.stringify(body));
+  if (isModerator(user)) await logMod(c.env, user.id, body.removed ? 'remove_player' : 'edit_player', 'player', p.id, JSON.stringify(body));
   return c.json({ ok: true });
 });
 

@@ -114,6 +114,7 @@ function Invites() {
 
 function Members() {
   const { me, toast } = useApp();
+  const meIsAdmin = me?.role === 'admin';
   const { data, reload } = useApi<{ members: { id: number; username: string; email: string; display_name: string | null; role: string; status: string; suspended_until: number | null; created_at: number; last_seen_at: number | null; posts: number }[] }>('/admin/members');
   const [link, setLink] = useState<string | null>(null);
   const [badgeFor, setBadgeFor] = useState<{ id: number; username: string } | null>(null);
@@ -127,14 +128,15 @@ function Members() {
   if (!data) return <Loading />;
   return (
     <section className="card">
-      <div className="section-head"><h2>Members</h2><span className="small muted">Email addresses are visible to admins for account recovery only.</span></div>
+      <div className="section-head"><h2>Members</h2><span className="small muted">{meIsAdmin ? 'Email addresses are visible to admins for account recovery only.' : 'Moderators can warn, suspend and propose bans. Admins change roles.'}</span></div>
       <ul className="member-admin-list">
         {data.members.map((m) => {
           const self = m.id === me?.id;
           // One compact menu instead of a row of buttons; each choice runs once, then the menu resets.
           const act = (choice: string) => {
-            if (choice === 'admin') { if (confirm(`Make ${m.username} an administrator?`)) patch(m.id, { role: 'admin' }, 'Now an administrator'); }
-            else if (choice === 'unadmin') { if (confirm(`Remove ${m.username}'s admin role?`)) patch(m.id, { role: 'member' }, 'Admin role removed'); }
+            if (choice === 'admin') { if (confirm(`Make ${m.username} an admin? Admins can change settings and roles.`)) patch(m.id, { role: 'admin' }, 'Now an admin'); }
+            else if (choice === 'moderator') { if (confirm(`Make ${m.username} a moderator? Moderators handle flagged posts, removals, suspensions and appeals.`)) patch(m.id, { role: 'moderator' }, 'Now a moderator'); }
+            else if (choice === 'unadmin') { if (confirm(`Make ${m.username} a regular member?`)) patch(m.id, { role: 'member' }, 'Now a regular member'); }
             else if (choice === 'suspend') {
               const days = prompt(`Suspend ${m.username} for how many days? (1–90. Permanent bans need three moderators: use "Propose ban".)`, '7');
               if (!days) return;
@@ -151,18 +153,20 @@ function Members() {
           return (
             <li key={m.id}>
               <div className="grow">
-                <Link to={`/members/${m.id}`}><strong>{m.username}</strong></Link>{m.role === 'admin' && <span className="chip" style={{ marginLeft: 6 }}>Admin</span>}{m.status !== 'active' && <span className="chip gray" style={{ marginLeft: 6 }}>{m.status}</span>}
-                <div className="tiny muted">{m.email}</div>
+                <Link to={`/members/${m.id}`}><strong>{m.username}</strong></Link>{m.role === 'moderator' && <span className="chip" style={{ marginLeft: 6 }}>Moderator</span>}{m.role === 'admin' && <span className="chip" style={{ marginLeft: 6 }}>Admin</span>}{m.status !== 'active' && <span className="chip gray" style={{ marginLeft: 6 }}>{m.status}</span>}
+                {m.email && <div className="tiny muted">{m.email}</div>}
                 <div className="tiny muted">{m.posts} {m.posts === 1 ? 'post' : 'posts'} · joined {timeAgo(m.created_at)} · {m.last_seen_at ? `seen ${timeAgo(m.last_seen_at)}` : 'never seen'}{m.suspended_until ? ` · suspended until ${fullTime(m.suspended_until)}` : ''}</div>
               </div>
               <select className="select small-select" aria-label={`Actions for ${m.username}`} value="" onChange={(e) => { act(e.target.value); e.target.value = ''; }}>
                 <option value="">Actions…</option>
-                {!self && (m.role === 'admin' ? <option value="unadmin">Remove admin</option> : <option value="admin">Make admin</option>)}
+                {!self && meIsAdmin && m.role !== 'admin' && <option value="admin">Make admin</option>}
+                {!self && meIsAdmin && m.role !== 'moderator' && <option value="moderator">Make moderator</option>}
+                {!self && meIsAdmin && m.role !== 'member' && <option value="unadmin">Make regular member</option>}
                 {!self && (m.status === 'active' ? <option value="suspend">Suspend</option> : <option value="reinstate">Reinstate</option>)}
                 {!self && <option value="warn">Warn</option>}
                 {!self && m.status === 'active' && <option value="ban">Propose ban</option>}
-                <option value="reset">Password reset link</option>
-                <option value="recognize">Recognize</option>
+                {meIsAdmin && <option value="reset">Password reset link</option>}
+                {meIsAdmin && <option value="recognize">Recognize</option>}
               </select>
             </li>
           );
@@ -537,17 +541,22 @@ function Log() {
 
 export function Admin() {
   const { me, pulse } = useApp();
-  if (me?.role !== 'admin') return <ErrorState error="Administrators only." />;
+  const isAdmin = me?.role === 'admin';
+  if (!isAdmin && me?.role !== 'moderator') return <ErrorState error="Moderators only." />;
+  // Moderators get the moderation tools; running the site (invitations, sports data, settings) stays with admins.
+  const tabs = isAdmin
+    ? [['', 'Overview'], ['invites', 'Invitations'], ['members', 'Members'], ['reports', 'Reports'], ['approvals', 'Approvals'], ['bans', 'Bans & appeals'], ['data', 'Sports data'], ['settings', 'Settings'], ['log', 'Log']]
+    : [['', 'Reports'], ['members', 'Members'], ['approvals', 'Approvals'], ['bans', 'Bans & appeals'], ['log', 'Log']];
   return (
     <div className="stack">
-      <div className="page-head"><div className="eyebrow">Community administration</div><h1>Admin</h1><p className="small muted" style={{ margin: 0 }}>Community administration is separate from technical ownership of hosting, the domain and GitHub.</p></div>
+      <div className="page-head"><div className="eyebrow">Community {isAdmin ? 'administration' : 'moderation'}</div><h1>{isAdmin ? 'Admin' : 'Moderation'}</h1><p className="small muted" style={{ margin: 0 }}>{isAdmin ? 'Community administration is separate from technical ownership of hosting, the domain and GitHub.' : 'Keep discussions on track: review flagged posts, approve newcomers, and handle warnings, suspensions and appeals.'}</p></div>
       <nav className="card tabs" aria-label="Admin sections">
-        {[['', 'Overview'], ['invites', 'Invitations'], ['members', 'Members'], ['reports', 'Reports'], ['approvals', 'Approvals'], ['bans', 'Bans & appeals'], ['data', 'Sports data'], ['settings', 'Settings'], ['log', 'Log']].map(([p, l]) => (
+        {tabs.map(([p, l]) => (
           <NavLink key={p} to={`/admin${p ? `/${p}` : ''}`} end className={({ isActive }) => `tab ${isActive ? 'active' : ''}`}>{l}</NavLink>
         ))}
       </nav>
       <Routes>
-        <Route index element={<Overview />} />
+        <Route index element={isAdmin ? <Overview /> : <Reports />} />
         <Route path="invites" element={<Invites />} />
         <Route path="members" element={<Members />} />
         <Route path="reports" element={<Reports />} />

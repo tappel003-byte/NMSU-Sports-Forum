@@ -39,7 +39,7 @@ export async function userFromCookieHeader(env: Env, cookieHeader: string | null
 
 async function lookupSession(env: Env, sessionId: string): Promise<(SessionUser & { last_used_at: number }) | null> {
   const row = await first<SessionUser & { expires_at: number; last_used_at: number }>(env,
-    `SELECT u.id, u.username, u.role, u.status, u.display_name, u.avatar_key, u.prefs, u.marked_read_at, u.created_at, u.trusted, u.email_verified, u.joined_open,
+    `SELECT u.id, u.username, CASE WHEN u.role = 'admin' THEN 'admin' WHEN u.moderator = 1 THEN 'moderator' ELSE 'member' END AS role, u.status, u.display_name, u.avatar_key, u.prefs, u.marked_read_at, u.created_at, u.trusted, u.email_verified, u.joined_open,
             s.expires_at, s.last_used_at
        FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.id = ?`, sessionId);
   if (!row || row.expires_at < now() || row.status !== 'active') return null;
@@ -104,6 +104,16 @@ export const requireMemberOrPublicRead: MiddlewareHandler<AppEnv> = async (c, ne
     const path = new URL(c.req.url).pathname;
     if (!path.startsWith('/api/me') && !path.startsWith('/api/push') && !path.startsWith('/api/drafts')) throw new HttpError(403, 'Please confirm your email address first. Check your inbox for the link.');
   }
+  await next();
+};
+
+/** Admins and moderators: everyone who can moderate discussions. */
+export function isModerator(user: { role: string } | undefined | null): boolean {
+  return user?.role === 'admin' || user?.role === 'moderator';
+}
+
+export const requireModerator: MiddlewareHandler<AppEnv> = async (c, next) => {
+  if (!isModerator(c.get('user'))) throw new HttpError(403, 'Moderators only.');
   await next();
 };
 

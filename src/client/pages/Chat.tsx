@@ -162,7 +162,7 @@ export function ChatRoomPage() {
                   <button className="btn ghost small chat-act" onClick={() => { setCtx({ mode: 'reply', username: m.username, body: m.body }); document.getElementById('chat-text')?.focus(); }}><Reply size={12} /> Reply</button>
                   <button className="btn ghost small chat-act" onClick={() => { setCtx({ mode: 'quote', username: m.username, body: m.body }); document.getElementById('chat-text')?.focus(); }}><Quote size={12} /> Quote</button>
                   {m.user_id !== me?.id && <button className="btn ghost small" style={{ minHeight: 24, padding: '0 6px' }} aria-label="Report message" onClick={() => setReport(m.id)}><Flag size={12} /></button>}
-                  {me?.role === 'admin' && <button className="btn ghost small" style={{ minHeight: 24, padding: '0 6px' }} aria-label="Remove message" onClick={() => del(m.id)}><Trash2 size={12} /></button>}
+                  {(me?.role === 'admin' || me?.role === 'moderator') && <button className="btn ghost small" style={{ minHeight: 24, padding: '0 6px' }} aria-label="Remove message" onClick={() => del(m.id)}><Trash2 size={12} /></button>}
                 </div>
               )}
             </div>
