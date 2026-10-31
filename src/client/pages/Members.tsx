@@ -52,7 +52,7 @@ export function UserRedirect() {
 }
 
 interface Profile {
-  member: MemberRow & { bio: string | null; grad_year: number | null; interests: string | null; legacy_join_year: number | null; legacy_post_count: number | null; legacy_upvotes: number | null; email: string | null; birthday: string | null; last_seen_at: number | null; games_called: number; status: string; badges: { badge: string; reason: string; awarded_at: number }[] };
+  member: MemberRow & { bio: string | null; grad_year: number | null; interests: string | null; legacy_join_year: number | null; legacy_post_count: number | null; legacy_upvotes: number | null; email: string | null; birthday: string | null; last_seen_at: number | null; games_called: number; games_picked: number; status: string; badges: { badge: string; reason: string; awarded_at: number }[] };
   most_appreciated: { id: number; thread_id: number; body: string; up: number; title: string } | null;
   featured: { id: number; thread_id: number; body: string; up: number; title: string } | null;
   recent_threads: ThreadItem[];
@@ -103,7 +103,7 @@ export function MemberPage() {
         <div className="rep" style={{ marginTop: 16 }}>
           <div><b>{m.reputation}</b><span>Aggie Reputation</span></div>
           <div><b>{m.post_count}</b><span>Forum posts</span></div>
-          <div><b>{m.games_called}</b><span>Games called</span></div>
+          <div><b>{m.games_called}{m.games_picked > 0 && <small style={{ fontSize: '.6em', fontWeight: 600 }}> of {m.games_picked}</small>}</b><span>Games called{(() => { const n = m.badges.filter((b) => b.badge === 'nostradamus').length; return n ? ` · 🔮×${n}` : ''; })()}</span></div>
         </div>
       </section>
 

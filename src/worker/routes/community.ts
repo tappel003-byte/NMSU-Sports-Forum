@@ -7,7 +7,7 @@ import { FEATURED_SQL, SPORT_BY_KEY } from '../../shared/sports';
 import { memberSummaries } from '../lib/members';
 import { THREAD_SELECT, presentThreads, unreadBaseline, type ThreadRow } from '../lib/threads';
 import { presentGame } from './games';
-import type { GameRow } from '../lib/sports';
+import { weekStartMT, type GameRow } from '../lib/sports';
 import { putObject, getObject, deleteObject } from '../storage';
 import { getPreview } from '../lib/previews';
 import { pushEnabled } from '../lib/push';
@@ -54,12 +54,15 @@ community.get('/home', async (c) => {
       WHERE t.deleted = 0 AND t.pending = 0 AND t.last_post_at > ? AND (tr.last_read_post_id IS NULL OR tr.last_read_post_id < t.last_post_id)`, user.id, unreadBaseline(user));
   const followed = await all<ThreadRow>(c.env,
     `${THREAD_SELECT} WHERE t.deleted = 0 AND t.id IN (SELECT thread_id FROM follows WHERE user_id = ?) ORDER BY t.last_post_at DESC LIMIT 5`, user.id, user.id);
-  // "Called it!": members who picked a game right in the last week (exact scores first). Replaces a standings page.
+  // This week's predictions (Monday–Sunday, Mountain Time): who called a game right, exact scores first.
   const called = await all<{ user_id: number; game_id: number; points: number; sport: string; opponent: string; home_away: string; result: string | null; nmsu_score: number | null; opp_score: number | null }>(c.env,
     `SELECT p.user_id, p.game_id, p.points, g.sport, g.opponent, g.home_away, g.result, g.nmsu_score, g.opp_score
        FROM predictions p JOIN games g ON g.id = p.game_id
-      WHERE p.points > 0 AND g.status = 'final' AND g.starts_at > ? ORDER BY p.points DESC, g.starts_at DESC LIMIT 6`, weekAgo);
-  const members = await memberSummaries(c.env, [...(weekly ? [weekly.user_id] : []), ...called.map((x) => x.user_id)]);
+      WHERE p.points > 0 AND g.status = 'final' AND g.starts_at >= ? ORDER BY p.points DESC, g.starts_at DESC LIMIT 6`, weekStartMT(t));
+  // Last week's Nostradamus, announced for the week after it's awarded.
+  const champs = await all<{ user_id: number; reason: string }>(c.env,
+    "SELECT user_id, reason FROM badges WHERE badge = 'nostradamus' AND revoked = 0 AND awarded_at >= ? ORDER BY awarded_at DESC LIMIT 3", weekStartMT(t));
+  const members = await memberSummaries(c.env, [...(weekly ? [weekly.user_id] : []), ...called.map((x) => x.user_id), ...champs.map((x) => x.user_id)]);
   const feeds = await first<{ n: number }>(c.env, 'SELECT COUNT(*) AS n FROM data_feeds WHERE enabled = 1');
   const guest = user.role === 'guest';
   return c.json({
@@ -71,6 +74,7 @@ community.get('/home', async (c) => {
     stats: { unread: unread?.n ?? 0, replies: replies?.n ?? 0, chatting: chatting?.n ?? 0 },
     weekly: weekly ? { ...weekly, body: excerpt(weekly.body, 180), author: members.get(weekly.user_id) ?? null } : null,
     called: called.map((x) => ({ ...x, exact: x.points >= 3, member: members.get(x.user_id) ?? null })),
+    nostradamus: champs.map((x) => ({ reason: x.reason, member: members.get(x.user_id) ?? null })),
     online: guest ? [] : online,
     events: guest ? [] : events,
     announcement,
@@ -123,7 +127,7 @@ community.get('/members/:id', async (c) => {
     u.featured_post_id ? first<{ id: number; body: string }>(c.env, `${postSelect} AND p.id = ? AND p.user_id = ?`, u.featured_post_id, id) : Promise.resolve(null),
     all<ThreadRow>(c.env, `${THREAD_SELECT} WHERE t.deleted = 0 AND t.user_id = ? ORDER BY t.created_at DESC LIMIT 8`, me.id, id),
     first(c.env, "SELECT 1 AS m FROM mutes WHERE user_id = ? AND target_type = 'user' AND target_id = ?", me.id, id),
-    first<{ called: number }>(c.env, 'SELECT COUNT(*) AS called FROM predictions WHERE user_id = ? AND points > 0', id),
+    first<{ called: number; scored: number }>(c.env, 'SELECT SUM(points > 0) AS called, COUNT(*) AS scored FROM predictions WHERE user_id = ? AND points IS NOT NULL', id),
   ]);
   const trim = <T extends { body: string } | null>(p: T) => (p ? { ...p, body: excerpt(p.body, 240) } : null);
   return c.json({
@@ -135,6 +139,7 @@ community.get('/members/:id', async (c) => {
       birthday: u.show_birthday || id === me.id ? u.birthday_md : null,
       joined: u.created_at, last_seen_at: u.last_seen_at, status: u.status,
       games_called: prediction?.called ?? 0,
+      games_picked: prediction?.scored ?? 0,
     },
     most_appreciated: mostAppreciated && mostAppreciated.up > 0 ? trim(mostAppreciated) : null,
     featured: trim(featured),

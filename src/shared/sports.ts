@@ -69,4 +69,5 @@ export const BADGES: Record<string, { label: string; description: string }> = {
   developer: { label: 'Forum Developer', description: 'Contributed code or fixes.' },
   idea: { label: 'Idea Contributor', description: 'Suggested an idea that was implemented.' },
   builder: { label: 'Community Builder', description: 'Helped grow and strengthen the community.' },
+  nostradamus: { label: '🔮 Nostradamus', description: 'Called the most games in a week.' },
 };

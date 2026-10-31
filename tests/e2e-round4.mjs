@@ -401,6 +401,20 @@ try {
   check('The Board opens with the latest score', sb.recent.length > 0 && (await reg.textContent('.scoreboard')).includes('–'));
   await reg.screenshot({ path: `${SHOTS}/iphone-board-scores.png` });
 
+  // ---------- Nostradamus of the Week ----------
+  // Move a game with a correct pick (CrimsonFan's exact score in the first suite) into last week, then run the daily job.
+  const scoredGame = (await api(admin, '/games?range=season')).body.games.find((g) => g.status === 'final' && g.sport === 'fb');
+  await api(admin, `/admin/games/${scoredGame.id}`, { method: 'PATCH', body: { starts_at: Date.now() - 8 * 86_400_000 } });
+  await fetch(`${BASE}/__scheduled?cron=17+9+*+*+*`);
+  await new Promise((r) => setTimeout(r, 1500));
+  await fetch(`${BASE}/__scheduled?cron=17+9+*+*+*`);
+  await new Promise((r) => setTimeout(r, 1500));
+  const crimsonId = (await api(admin, '/admin/members')).body.members.find((m) => m.username === 'CrimsonFan').id;
+  const crimsonBadges = (await api(admin, `/members/${crimsonId}`)).body.member.badges.filter((b) => b.badge === 'nostradamus');
+  const champsHome = (await api(admin, '/home')).body.nostradamus;
+  check('When the week ends, the top predictor becomes Nostradamus of the Week once: award on the member card, announced on Home',
+    crimsonBadges.length === 1 && champsHome.some((n) => n.member?.username === 'CrimsonFan'));
+
   // ---------- Audit history ----------
   const log = (await api(admin, '/admin/log')).body.log;
   const actions = new Set(log.map((l) => l.action));
