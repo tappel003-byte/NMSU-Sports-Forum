@@ -103,8 +103,8 @@ export function GamePage() {
             {FEATURED_SPORTS.includes(g.sport) && <Link to={`/chat/${data.chat.room}`} className="btn on-crimson small">{g.live ? 'Join live chat' : 'Game chat'}</Link>}
             {g.audio_url && <a href={g.audio_url} target="_blank" rel="noopener noreferrer" className="btn on-crimson outline small">🎧 Listen live ↗</a>}
             {g.video_url && <a href={g.video_url} target="_blank" rel="noopener noreferrer" className="btn on-crimson outline small">📺 Watch ↗</a>}
-            <a href={g.official_url} target="_blank" rel="noopener noreferrer" className="btn on-crimson outline small">{g.live ? 'Official live stats ↗' : 'Official game info ↗'}</a>
-            <a href={g.schedule_url} target="_blank" rel="noopener noreferrer" className="btn on-crimson outline small">Full schedule ↗</a>
+            {/* Live stats and box scores come from the ESPN button (football, men's basketball); NM State's bare calendar entry was confusing. */}
+            <a href={g.schedule_url} target="_blank" rel="noopener noreferrer" className="btn on-crimson outline small">NM State schedule ↗</a>
           </div>
         </div>
       </section>
