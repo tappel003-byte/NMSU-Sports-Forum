@@ -480,3 +480,9 @@ table.simple th { font-size: .72rem; text-transform: uppercase; letter-spacing: 
 .member-admin-list li:first-child { border-top: 0; }
 .member-admin-list .grow { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .member-admin-list select { flex: none; width: 118px; }
+
+/* Board header: title on top, actions in one row underneath */
+.feed-head { padding: 14px 16px 12px; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 10px; }
+.feed-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.feed-title h2 { margin: 0; }
+.feed-actions { display: flex; gap: 8px; flex-wrap: wrap; }
