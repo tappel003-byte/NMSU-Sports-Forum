@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { BellOff, Plus } from 'lucide-react';
 import { api } from '../api';
 import { useApi, useApp } from '../state';
@@ -8,41 +8,19 @@ import { ErrorState, GameRow, Loading, SUGGESTION_LABELS, ThreadList, type GameI
 import { ComposerTools, MentionTextarea, PhotoPicker, PhotoThumbs, useDraft } from '../components/Composer';
 import { TagPicker } from './Thread';
 import { TAGS } from '../../shared/forum';
-import { FEATURED_SPORTS } from '../../shared/sports';
+import { FEATURED_SPORTS, isVenueForum } from '../../shared/sports';
 import { timeAgo } from '../format';
 
 interface ForumInfo { id: number; slug: string; name: string; sport_label: string; description: string; icon: string; sports: string[]; kind: string; muted: boolean; threads?: number; unread?: number; last_post_at?: number | null }
 
-export function Forums() {
-  const { data, error, reload } = useApi<{ forums: ForumInfo[] }>('/forums');
-  if (error) return <ErrorState error={error} retry={reload} />;
-  if (!data) return <Loading />;
-  const venues = data.forums.filter((f) => f.kind === 'sport');
-  const other = data.forums.filter((f) => f.kind !== 'sport');
-  const card = (f: ForumInfo) => (
-    <Link key={f.slug} to={`/f/${f.slug}`} className="venue-card">
-      <span className="venue-emoji" aria-hidden="true">{f.icon}</span>
-      <span className="grow">
-        <span className="venue-name">{f.name}</span><br />
-        <span className="venue-sport">{f.sport_label}</span>
-        <span className="small muted" style={{ display: 'block' }}>{f.threads} discussions{f.last_post_at ? ` · active ${timeAgo(f.last_post_at)}` : ''}{f.muted ? ' · muted' : ''}</span>
-      </span>
-      {Boolean(f.unread) && <span className="chip">{f.unread} new</span>}
-    </Link>
-  );
-  return (
-    <div className="stack">
-      <div className="page-head"><div className="eyebrow">Sports forums</div><h1>Explore the Aggie sports communities</h1><p className="muted small" style={{ margin: 0 }}>Each venue has its own discussions, schedule and game-day threads.</p></div>
-      <Link to="/recruiting" className="venue-card"><span className="venue-emoji" aria-hidden="true">📋</span><span className="grow"><span className="venue-name">Recruiting &amp; Transfer Portal</span><br /><span className="venue-sport">Player cards · news · predictions</span></span></Link>
-      <div className="venue-grid">{venues.map(card)}</div>
-      <h2 style={{ marginTop: 24 }}>Community</h2>
-      <div className="venue-grid">{other.map(card)}</div>
-    </div>
-  );
-}
-
 export function ForumPage() {
   const { slug = '' } = useParams();
+  // Venue forums are retired: old links land on the Board. Aggie History and Suggestions keep their pages.
+  if (isVenueForum(slug)) return <Navigate to="/feed" replace />;
+  return <ForumView slug={slug} />;
+}
+
+function ForumView({ slug }: { slug: string }) {
   const [params, setParams] = useSearchParams();
   const sport = params.get('sport') ?? '';
   const status = params.get('status') ?? '';

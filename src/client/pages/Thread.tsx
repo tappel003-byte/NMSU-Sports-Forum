@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { isVenueForum } from '../../shared/sports';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Bookmark, BookmarkCheck, Flag, History, MoreHorizontal, Pencil, Quote, ShieldAlert, ThumbsDown, ThumbsUp, Trash2, Star, VolumeX } from 'lucide-react';
 import { api } from '../api';
@@ -171,7 +172,7 @@ export function ThreadPage() {
       await api(`/admin/threads/${t.id}`, { method: 'PATCH', body });
       toast(msg);
       setAdminOpen(false);
-      if (body.deleted) nav(`/f/${t.forum.slug}`);
+      if (body.deleted) nav(isVenueForum(t.forum.slug) ? '/feed' : `/f/${t.forum.slug}`);
       else reload();
     } catch (e) { toast((e as Error).message); }
   };
@@ -207,7 +208,7 @@ export function ThreadPage() {
       )}
       {share && <ShareModal target={{ kind: 'thread', id: t.id, title: t.title }} onClose={() => setShare(false)} />}
       <nav className="small" aria-label="Breadcrumb">
-        <Link to="/feed">Board</Link>{t.forum.slug !== 'general' && <> › <Link to={`/f/${t.forum.slug}`}>{t.forum.name}</Link></>}{t.sport && <> · <span className="muted">{sportName(t.sport)}</span></>}
+        <Link to="/feed">Board</Link>{t.forum.slug !== 'general' && !isVenueForum(t.forum.slug) && <> › <Link to={`/f/${t.forum.slug}`}>{t.forum.name}</Link></>}{t.sport && <> · <span className="muted">{sportName(t.sport)}</span></>}
       </nav>
       <section className="card">
         <div className="card-pad" style={{ borderBottom: '1px solid var(--line)' }}>

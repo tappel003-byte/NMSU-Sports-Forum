@@ -5,7 +5,7 @@ import { api, uploadImage } from '../api';
 import { useApi, useApp, type Prefs } from '../state';
 import { PostBody, fullTime, timeAgo } from '../format';
 import { Avatar, Badges, ErrorState, Loading, ThreadList, type MemberLite, type ThreadItem } from '../components/ui';
-import { BADGES, SPORTS } from '../../shared/sports';
+import { BADGES, SPORTS, isVenueForum } from '../../shared/sports';
 import { rankFor } from '../../shared/forum';
 import { ReportModal } from './Thread';
 
@@ -468,7 +468,7 @@ export function SearchPage() {
   const [params, setParams] = useSearchParams();
   const [q, setQ] = useState(params.get('q') ?? '');
   const query = params.get('q') ?? '';
-  const { data, loading } = useApi<{ threads: ThreadItem[]; posts: { id: number; thread_id: number; body: string; created_at: number; username: string; title: string; forum_name: string }[]; members: MemberLite[] }>(query.length >= 2 ? `/search?q=${encodeURIComponent(query)}` : null);
+  const { data, loading } = useApi<{ threads: ThreadItem[]; posts: { id: number; thread_id: number; body: string; created_at: number; username: string; title: string; forum_name: string; forum_slug: string }[]; members: MemberLite[] }>(query.length >= 2 ? `/search?q=${encodeURIComponent(query)}` : null);
   return (
     <div className="stack">
       <form onSubmit={(e) => { e.preventDefault(); setParams({ q }); }} className="row">
@@ -486,7 +486,7 @@ export function SearchPage() {
           <section className="card"><div className="section-head"><h2>Discussions</h2></div><ThreadList threads={data.threads} empty="No matching discussion titles." /></section>
           <section className="card"><div className="section-head"><h2>Posts</h2></div>
             {data.posts.length ? data.posts.map((p) => (
-              <Link key={p.id} to={`/t/${p.thread_id}?post=${p.id}`} className="list-row"><div className="grow"><div className="tiny muted">{p.forum_name} · {p.title}</div><div className="small">{p.body.slice(0, 220)}</div><div className="tiny muted">{p.username} · {timeAgo(p.created_at)}</div></div></Link>
+              <Link key={p.id} to={`/t/${p.thread_id}?post=${p.id}`} className="list-row"><div className="grow"><div className="tiny muted">{isVenueForum(p.forum_slug) ? '' : `${p.forum_name} · `}{p.title}</div><div className="small">{p.body.slice(0, 220)}</div><div className="tiny muted">{p.username} · {timeAgo(p.created_at)}</div></div></Link>
             )) : <div className="empty">No matching posts.</div>}
           </section>
         </>

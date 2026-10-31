@@ -34,6 +34,11 @@ export const FEATURED_SQL = `(${FEATURED_SPORTS.map((s) => `'${s}'`).join(', ')}
 
 export const SPORT_BY_KEY: Record<string, Sport> = Object.fromEntries(SPORTS.map((s) => [s.key, s]));
 
+/** Old venue forums (The Pan Am, Aggie Memorial…). They still store game threads, but the site no longer shows them as places. */
+export function isVenueForum(slug: string): boolean {
+  return slug === 'other-sports' || SPORTS.some((s) => s.forum === slug);
+}
+
 export function sportLabel(key: string | null | undefined): string {
   return (key && SPORT_BY_KEY[key]?.label) || 'Other';
 }

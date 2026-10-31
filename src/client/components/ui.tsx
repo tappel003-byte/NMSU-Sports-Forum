@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { BADGES } from '../../shared/sports';
+import { BADGES, isVenueForum } from '../../shared/sports';
 import { TAGS } from '../../shared/forum';
 import { useApp } from '../state';
 import { api } from '../api';
@@ -115,7 +115,7 @@ export function ThreadList({ threads, showForum = true, empty, compact }: { thre
         <li key={t.id} className="thread-item">
           <span className="thread-icon" aria-hidden="true">{t.sport ? sportIcon(t.sport) : t.forum.icon}</span>
           <div className="thread-main">
-            {showForum && t.forum.slug !== 'general' && <div className="thread-forum">{t.sport ? sportName(t.sport) : t.forum.name}</div>}
+            {showForum && t.forum.slug !== 'general' && (t.sport || !isVenueForum(t.forum.slug)) && <div className="thread-forum">{t.sport ? sportName(t.sport) : t.forum.name}</div>}
             <Link to={`/t/${t.id}${t.unread ? '?unread=1' : ''}`} className={`thread-title ${t.unread ? 'unread' : ''}`}>
               {t.pinned && '📌 '}{t.locked && '🔒 '}{t.title}
             </Link>
