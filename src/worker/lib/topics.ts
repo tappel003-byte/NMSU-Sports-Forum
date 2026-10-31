@@ -6,7 +6,7 @@ import { all, first, getSetting, run, setSetting } from '../db';
 import { DAY, now, sha256 } from '../util';
 import { DEFAULT_PROMPTS } from '../../shared/prompts';
 import { TIME_ZONE } from '../../shared/sports';
-import { zonedToUtc } from './ics';
+import { detectSport, zonedToUtc } from './ics';
 import { weekStartMT } from './sports';
 
 export const DEFAULT_NEWS_FEEDS = [
@@ -14,6 +14,10 @@ export const DEFAULT_NEWS_FEEDS = [
   'https://www.bing.com/news/search?q=%22NM+State%22+OR+%22New+Mexico+State%22+Aggies&format=rss',
 ];
 const NEWS_EVERY_MS = 2 * 3_600_000;
+/** Sports whose news gets topics: the ones Aggie fans actually discuss (owner decision). */
+export const NEWS_SPORTS = ['fb', 'mbb', 'base'];
+/** Automatic topics nobody replied to are cleared from the Board after this long. */
+const UNANSWERED_MS = 2 * DAY;
 const NMSU_RE = /\b(NM State|New Mexico State|NMSU)\b/i;
 
 export interface NewsItem { title: string; url: string; source: string; published: number | null; summary: string }
@@ -56,10 +60,34 @@ export function parseRss(xml: string): NewsItem[] {
   return items;
 }
 
-/** Whether a story belongs on the Board: anything from the official athletics site, or clearly about NM State elsewhere. */
+/**
+ * Which sport a story is about, from its title, summary and link (official links name the sport,
+ * e.g. /news/2026/10/30/volleyball-aggies-fall…). Plain "basketball" or "hoops" counts as men's basketball.
+ */
+export function newsSport(item: NewsItem): string | null {
+  let slug = '';
+  try { slug = new URL(item.url).pathname.replace(/[-_/]+/g, ' '); } catch { /* not a URL */ }
+  const text = `${item.title} ${item.summary} ${slug}`;
+  const sport = detectSport(text);
+  if (sport) return sport;
+  if (/\bwom[ae]n'?s?\b|\blady\b/i.test(text)) return null;
+  if (/\bbasketball\b|\bhoops\b/i.test(text)) return 'mbb';
+  return null;
+}
+
+/** Whether a story belongs on the Board: about NM State (always true for the official site) and about football, men's basketball or baseball. */
 export function isRelevant(item: NewsItem, feedUrl: string): boolean {
-  if (/nmstatesports\.com/i.test(feedUrl)) return true;
-  return NMSU_RE.test(`${item.title} ${item.summary}`);
+  if (!/nmstatesports\.com/i.test(feedUrl) && !NMSU_RE.test(`${item.title} ${item.summary}`)) return false;
+  const sport = newsSport(item);
+  return sport !== null && NEWS_SPORTS.includes(sport);
+}
+
+/** Clears automatic topics (news, topic of the day, weekly) that nobody answered within two days. Game threads stay. */
+export async function clearUnansweredAutoTopics(env: Env, t = now()): Promise<number> {
+  const r = await run(env,
+    `UPDATE threads SET deleted = 1 WHERE deleted = 0 AND user_id IS NULL AND reply_count = 0 AND created_at < ?
+       AND id IN (SELECT thread_id FROM news_items WHERE thread_id IS NOT NULL UNION SELECT thread_id FROM auto_topics WHERE thread_id IS NOT NULL)`, t - UNANSWERED_MS);
+  return r.meta.changes ?? 0;
 }
 
 async function generalForumId(env: Env): Promise<number> {
@@ -201,7 +229,7 @@ export async function runRecurring(env: Env, t = now()): Promise<number> {
 
 /** Runs all automatic topic sources; a failure in one never blocks the others. */
 export async function runAutoTopics(env: Env): Promise<void> {
-  for (const job of [() => runNewsDesk(env), () => runRecurring(env), () => runStarter(env)]) {
+  for (const job of [() => clearUnansweredAutoTopics(env), () => runNewsDesk(env), () => runRecurring(env), () => runStarter(env)]) {
     try { await job(); } catch (e) { console.error('auto topic job failed', e); }
   }
 }
