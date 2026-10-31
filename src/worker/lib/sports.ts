@@ -45,7 +45,13 @@ function dateLabel(t: number, tba: number): string {
 
 /** Imports one feed. Idempotent: games are matched by the feed's UID and updated in place; admin overrides are respected. */
 export async function syncFeed(env: Env, feed: { id: number; sport: string; url: string }): Promise<{ added: number; updated: number; total: number }> {
-  const res = await fetch(feed.url, { headers: { 'User-Agent': 'NMSUSportsForum/1.0 (+https://nmsusportsforum.com)', Accept: 'text/calendar, */*' }, signal: AbortSignal.timeout(20_000) });
+  const get = () => fetch(feed.url, { headers: { 'User-Agent': 'NMSUSportsForum/1.0 (+https://nmsusportsforum.com)', Accept: 'text/calendar, */*' }, signal: AbortSignal.timeout(20_000) });
+  let res = await get();
+  // The official site occasionally refuses a single request (403/429/5xx); one retry a few seconds later usually works.
+  if ([403, 429, 500, 502, 503, 504].includes(res.status)) {
+    await new Promise((r) => setTimeout(r, 4000));
+    res = await get();
+  }
   if (!res.ok) throw new Error(`Feed responded ${res.status}`);
   const text = await res.text();
   if (!text.includes('BEGIN:VCALENDAR')) throw new Error('Response is not an iCalendar feed (format may have changed).');
