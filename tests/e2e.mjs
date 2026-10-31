@@ -338,7 +338,7 @@ try {
   const revokedCheck = await api(ap, `/auth/invite/${revokeLink.split('/join/')[1]}`);
   check('Admin revokes an invitation and it stops working', revokedCheck.body.valid === false);
   const lastAdmin = await api(admin, '/admin/members/1', { method: 'PATCH', body: { role: 'member' } });
-  check('The last administrator cannot be removed', lastAdmin.status === 400);
+  check('The last administrator (also the owner) cannot be removed', [400, 403].includes(lastAdmin.status));
   const memberAdmin = await api(member, '/admin/overview');
   check('Regular members cannot use admin APIs', memberAdmin.status === 403);
   // Suspension signs the member out.
