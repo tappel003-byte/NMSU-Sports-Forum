@@ -412,6 +412,10 @@ try {
   const crimsonId = (await api(admin, '/admin/members')).body.members.find((m) => m.username === 'CrimsonFan').id;
   const crimsonBadges = (await api(admin, `/members/${crimsonId}`)).body.member.badges.filter((b) => b.badge === 'nostradamus');
   const champsHome = (await api(admin, '/home')).body.nostradamus;
+  await admin.goto(BASE + `/members/${crimsonId}`);
+  await admin.waitForSelector('text=Nostradamus wins');
+  const winsShown = await admin.$eval('.stat-row, .stats', (el) => el.textContent || '').catch(async () => admin.textContent('main'));
+  check('The member page shows how many Nostradamus awards they have won', /1\s*🔮 Nostradamus wins/.test(winsShown.replace(/\s+/g, ' ')) || /1🔮 Nostradamus wins/.test(winsShown));
   check('When the week ends, the top predictor becomes Nostradamus of the Week once: award on the member card, announced on Home',
     crimsonBadges.length === 1 && champsHome.some((n) => n.member?.username === 'CrimsonFan'));
 
