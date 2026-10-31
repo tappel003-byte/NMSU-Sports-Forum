@@ -171,22 +171,24 @@ export function GamePage() {
 
 export function Predictions() {
   const [season, setSeason] = useState('');
-  const { data, error, reload } = useApi<{ season: string; standings: { user_id: number; username: string; display_name: string | null; points: number; picks: number; correct: number }[] }>(`/predictions/standings${season ? `?season=${season}` : ''}`);
+  const { data, error, reload } = useApi<{ season: string; current: string; seasons: string[]; standings: { user_id: number; username: string; display_name: string | null; points: number; picks: number; correct: number }[] }>(`/predictions/standings${season ? `?season=${season}` : ''}`);
   if (error) return <ErrorState error={error} retry={reload} />;
   if (!data) return <Loading />;
-  const y = Number(data.season.slice(0, 4));
+  const isCurrent = data.season === data.current;
+  // Other seasons appear only once they have scored picks; no empty past or future seasons.
+  const others = [...new Set([data.current, ...data.seasons])].filter((s) => s !== data.season);
   return (
     <div className="stack">
       <div className="page-head spread">
-        <div><div className="eyebrow">Friendly contest</div><h1>Prediction standings · {data.season}</h1><p className="muted small" style={{ margin: 0 }}>1 point for the right winner, 2 bonus for the exact score. Make picks on any upcoming game page.</p></div>
-        <div className="row"><button className="btn secondary small" onClick={() => setSeason(`${y - 1}-${String(y % 100).padStart(2, '0')}`)}>‹ {y - 1}</button><button className="btn secondary small" onClick={() => setSeason(`${y + 1}-${String((y + 2) % 100).padStart(2, '0')}`)}>{y + 1} ›</button></div>
+        <div><div className="eyebrow">Friendly contest</div><h1>Prediction standings · {isCurrent ? 'this season' : `${data.season} season`}</h1><p className="muted small" style={{ margin: 0 }}>Pick the winner of any upcoming game on its game page: 1 point for the right winner, 2 bonus points for the exact score. It counts from the first game members pick, so it's fine to start mid-season.</p></div>
+        {others.length > 0 && <div className="row">{others.map((s) => <button key={s} className="btn secondary small" onClick={() => setSeason(s === data.current ? '' : s)}>{s === data.current ? 'This season' : `${s} season`}</button>)}</div>}
       </div>
       <section className="card">
         {data.standings.length ? (
           <div className="table-scroll"><table className="simple"><thead><tr><th>#</th><th>Member</th><th>Points</th><th>Correct</th><th>Scored picks</th></tr></thead><tbody>
             {data.standings.map((s, i) => <tr key={s.user_id}><td>{i + 1}</td><td><Link to={`/members/${s.user_id}`}>{s.display_name || s.username}</Link></td><td><strong>{s.points}</strong></td><td>{s.correct}</td><td>{s.picks}</td></tr>)}
           </tbody></table></div>
-        ) : <div className="empty">No scored predictions yet this season. Picks are scored automatically when final results arrive.</div>}
+        ) : <div className="empty">No picks scored yet. Make a pick on the next game's page (Games → open a game → Predictions); points are added automatically when the final score comes in.</div>}
       </section>
     </div>
   );

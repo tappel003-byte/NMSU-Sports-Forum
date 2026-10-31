@@ -151,7 +151,13 @@ games.get('/predictions/standings', async (c) => {
        FROM predictions p JOIN games g ON g.id = p.game_id
       WHERE g.starts_at >= ? AND g.starts_at < ? AND p.points IS NOT NULL GROUP BY p.user_id ORDER BY points DESC, correct DESC LIMIT 100`, a, b);
   const members = await memberSummaries(c.env, rows.map((r) => r.user_id));
-  return c.json({ season, standings: rows.map((r) => ({ ...r, username: members.get(r.user_id)?.username, display_name: members.get(r.user_id)?.display_name })) });
+  // Only seasons that actually have scored picks are offered as other seasons to browse.
+  const years = await all<{ y: number }>(c.env,
+    `SELECT DISTINCT CAST(strftime('%Y', g.starts_at / 1000, 'unixepoch') AS INTEGER)
+              - (CASE WHEN CAST(strftime('%m', g.starts_at / 1000, 'unixepoch') AS INTEGER) < 7 THEN 1 ELSE 0 END) AS y
+       FROM predictions p JOIN games g ON g.id = p.game_id WHERE p.points IS NOT NULL ORDER BY y DESC`);
+  const seasons = years.map((r) => `${r.y}-${String((r.y + 1) % 100).padStart(2, '0')}`);
+  return c.json({ season, current: seasonOf(now()), seasons, standings: rows.map((r) => ({ ...r, username: members.get(r.user_id)?.username, display_name: members.get(r.user_id)?.display_name })) });
 });
 
 // Aggie Time Machine: past games and everything the community said about them.
