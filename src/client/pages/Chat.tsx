@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { Flag, Save, Send, Trash2 } from 'lucide-react';
+import { Flag, Quote, Reply, Save, Send, Trash2 } from 'lucide-react';
 import { api } from '../api';
 import { useApi, useApp } from '../state';
 import { PostBody, fullTime, gameTime, timeAgo } from '../format';
@@ -39,6 +39,8 @@ export function ChatRoomPage() {
   const [presence, setPresence] = useState<{ id: number; username: string }[]>([]);
   const [status, setStatus] = useState<'connecting' | 'open' | 'closed'>('connecting');
   const [text, setText] = useState('');
+  // Reply puts @name in front of the message; Quote adds a quoted line above it (shown as a quote by PostBody).
+  const [ctx, setCtx] = useState<{ mode: 'reply' | 'quote'; username: string; body: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<number[]>([]);
@@ -108,10 +110,15 @@ export function ChatRoomPage() {
   }, [messages]);
 
   const send = () => {
-    const body = text.trim();
+    let body = text.trim();
     if (!body || ws.current?.readyState !== 1) return;
-    ws.current.send(JSON.stringify({ type: 'send', body }));
+    if (ctx?.mode === 'quote') {
+      const said = ctx.body.split('\n').filter((l) => !l.startsWith('>')).join(' ').trim();
+      body = `> ${ctx.username}: ${said.length > 140 ? `${said.slice(0, 140)}…` : said}\n${body}`;
+    } else if (ctx?.mode === 'reply' && !body.includes(`@${ctx.username}`)) body = `@${ctx.username} ${body}`;
+    ws.current.send(JSON.stringify({ type: 'send', body: body.slice(0, 1000) }));
     setText('');
+    setCtx(null);
     stuckToBottom.current = true;
   };
 
@@ -152,6 +159,8 @@ export function ChatRoomPage() {
               <PostBody text={m.body} />
               {!selecting && (
                 <div className="row" style={{ gap: 2 }}>
+                  <button className="btn ghost small chat-act" onClick={() => { setCtx({ mode: 'reply', username: m.username, body: m.body }); document.getElementById('chat-text')?.focus(); }}><Reply size={12} /> Reply</button>
+                  <button className="btn ghost small chat-act" onClick={() => { setCtx({ mode: 'quote', username: m.username, body: m.body }); document.getElementById('chat-text')?.focus(); }}><Quote size={12} /> Quote</button>
                   {m.user_id !== me?.id && <button className="btn ghost small" style={{ minHeight: 24, padding: '0 6px' }} aria-label="Report message" onClick={() => setReport(m.id)}><Flag size={12} /></button>}
                   {me?.role === 'admin' && <button className="btn ghost small" style={{ minHeight: 24, padding: '0 6px' }} aria-label="Remove message" onClick={() => del(m.id)}><Trash2 size={12} /></button>}
                 </div>
@@ -160,6 +169,12 @@ export function ChatRoomPage() {
           </div>
         ))}
       </div>
+      {ctx && (
+        <div className="chat-ctx">
+          <span className="grow">{ctx.mode === 'reply' ? <>Replying to <strong>{ctx.username}</strong></> : <>Quoting <strong>{ctx.username}</strong>: “{ctx.body.split('\n').filter((l) => !l.startsWith('>')).join(' ').slice(0, 80)}”</>}</span>
+          <button type="button" className="btn ghost small" aria-label="Cancel reply" onClick={() => setCtx(null)}>✕</button>
+        </div>
+      )}
       <form className="chat-input" onSubmit={(e) => { e.preventDefault(); send(); }}>
         <label htmlFor="chat-text" className="sr-only">Message</label>
         <input id="chat-text" className="input grow" placeholder={status === 'open' ? 'Message' : 'Reconnecting…'} value={text} onChange={(e) => setText(e.target.value)} maxLength={1000} autoComplete="off" />

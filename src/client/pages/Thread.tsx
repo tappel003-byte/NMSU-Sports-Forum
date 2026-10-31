@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { isVenueForum } from '../../shared/sports';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { Bookmark, BookmarkCheck, Flag, History, MoreHorizontal, Pencil, Quote, ShieldAlert, ThumbsDown, ThumbsUp, Trash2, Star, VolumeX } from 'lucide-react';
+import { Bookmark, BookmarkCheck, Flag, History, MoreHorizontal, Pencil, Quote, Reply, ShieldAlert, ThumbsDown, ThumbsUp, Trash2, Star, VolumeX } from 'lucide-react';
 import { api } from '../api';
 import { useApi, useApp } from '../state';
 import { PostBody, fullTime, matchup, sportName, timeAgo } from '../format';
@@ -55,6 +55,7 @@ export function ThreadPage() {
   const query = params.get('page') ? `page=${params.get('page')}` : params.get('post') ? `post=${params.get('post')}` : params.get('unread') ? 'unread=1' : '';
   const { data, error, reload, setData } = useApi<ThreadData>(`/threads/${id}?${query}`);
   const [quote, setQuote] = useState<QuoteRef | null>(null);
+  const [replyTo, setReplyTo] = useState<{ username: string; n: number } | null>(null);
   const [editing, setEditing] = useState<{ id: number; body: string } | null>(null);
   const [history, setHistory] = useState<{ current: string; edits: { old_body: string; edited_at: number; editor: string }[] } | null>(null);
   const [report, setReport] = useState<number | null>(null);
@@ -315,6 +316,7 @@ export function ThreadPage() {
                 <div className="post-actions">
                   <button className={`react ${p.my_reaction === 1 ? 'on' : ''}`} aria-pressed={p.my_reaction === 1} aria-label={`Thumbs up, ${p.up}`} disabled={!p.author || p.author.id === me?.id} onClick={() => react(p, 1)}><ThumbsUp size={16} /> {p.up}</button>
                   <button className={`react down ${p.my_reaction === -1 ? 'on' : ''}`} aria-pressed={p.my_reaction === -1} aria-label={`Thumbs down, ${p.down}`} disabled={!p.author || p.author.id === me?.id} onClick={() => react(p, -1)}><ThumbsDown size={16} /> {p.down}</button>
+                  {t.can_reply && p.author && p.author.id !== me?.id && !p.author.username.startsWith('former_member_') && <button onClick={() => setReplyTo({ username: p.author!.username, n: Date.now() })}><Reply size={15} /> Reply</button>}
                   {t.can_reply && <button onClick={() => setQuote({ id: p.id, username: p.author?.username ?? 'NMSU Sports Forum', body: p.body })}><Quote size={15} /> Quote</button>}
                   <button onClick={() => (p.bookmarked ? api(`/posts/${p.id}/bookmark`, { body: { bookmarked: false } }).then(() => { patchPost(p.id, { bookmarked: false }); toast('Bookmark removed'); }) : setBookmark(p))} aria-label={p.bookmarked ? 'Remove bookmark' : 'Bookmark'}>
                     {p.bookmarked ? <BookmarkCheck size={15} /> : <Bookmark size={15} />}
@@ -334,7 +336,7 @@ export function ThreadPage() {
         <Pager page={data.page} pages={data.pages} onPage={goPage} />
 
         {!me ? <div className="composer"><JoinCta text="Join free to reply, react and follow this discussion." /></div> : t.can_reply ? (
-          <ReplyComposer threadId={t.id} quote={quote} clearQuote={() => setQuote(null)} open={replyOpen} setOpen={setReplyOpen}
+          <ReplyComposer threadId={t.id} quote={quote} clearQuote={() => setQuote(null)} open={replyOpen} setOpen={setReplyOpen} replyTo={replyTo} clearReplyTo={() => setReplyTo(null)}
             onPosted={(pid, pending) => { if (pending) toast('Thanks! Your first post will appear once an admin approves it.'); setParams({ post: String(pid) }); reload(); }} />
         ) : (
           <div className="composer small muted">{t.archived ? 'This discussion is archived because it had no replies for 90 days. It stays searchable; an administrator can reopen it.' : 'This discussion is locked.'}</div>

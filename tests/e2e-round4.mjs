@@ -365,6 +365,33 @@ try {
   }
   check('Old venue links land on the Board, and threads no longer show venue names', crumbOk);
 
+  // ---------- Reply and Quote: thread posts and live chat ----------
+  const anyThread = (await api(reg, '/feed?tab=latest&games=1')).body.threads.find((t) => t.author && t.author.username !== 'RickFromTailgate' && !t.locked && !t.archived);
+  let threadReplyOk = false;
+  if (anyThread) {
+    await reg.goto(BASE + `/t/${anyThread.id}`);
+    await reg.waitForSelector('article.post');
+    const replyBtn = reg.locator('.post-actions button:has-text("Reply")').first();
+    if (await replyBtn.count()) {
+      await replyBtn.click();
+      await reg.waitForFunction(() => /^@\w+ /.test(document.querySelector('#reply-box')?.value || ''));
+      threadReplyOk = true;
+    }
+  }
+  check('Thread posts have a Reply button that starts the reply with @name', threadReplyOk);
+  await reg.goto(BASE + '/chat/lounge');
+  await reg.waitForSelector('text=● Connected', { timeout: 10000 });
+  await reg.fill('#chat-text', 'First chat line for quoting');
+  await reg.click('button[aria-label="Send"]');
+  await reg.waitForSelector('.chat-msg >> text=First chat line for quoting');
+  await reg.locator('.chat-msg', { hasText: 'First chat line for quoting' }).last().locator('button:has-text("Quote")').click();
+  await reg.waitForSelector('.chat-ctx >> text=Quoting');
+  await reg.fill('#chat-text', 'Agreed with that');
+  await reg.click('button[aria-label="Send"]');
+  const quotedOk = await reg.waitForFunction(() => [...document.querySelectorAll('.chat-msg')].some((m) => (m.textContent || '').includes('First chat line for quoting') && (m.textContent || '').includes('Agreed with that')), null, { timeout: 8000 }).then(() => true, () => false);
+  await reg.screenshot({ path: `${SHOTS}/iphone-chat-quote.png` });
+  check('Live chat messages have Reply and Quote; a quoted message shows the original above the answer', quotedOk);
+
   // ---------- Posting without gatekeeping ----------
   await reg.goto(BASE + '/new');
   await reg.fill('#title', 'Tailgate spot this Saturday?');

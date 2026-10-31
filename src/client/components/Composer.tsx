@@ -177,7 +177,7 @@ export function ComposerTools({ value, onChange, textareaRef, onError }: { value
   );
 }
 
-export function ReplyComposer({ threadId, quote, clearQuote, onPosted, open, setOpen }: { threadId: number; quote: QuoteRef | null; clearQuote: () => void; onPosted: (postId: number, pending: boolean) => void; open: boolean; setOpen: (v: boolean) => void }) {
+export function ReplyComposer({ threadId, quote, clearQuote, onPosted, open, setOpen, replyTo, clearReplyTo }: { threadId: number; quote: QuoteRef | null; clearQuote: () => void; onPosted: (postId: number, pending: boolean) => void; open: boolean; setOpen: (v: boolean) => void; replyTo?: { username: string; n: number } | null; clearReplyTo?: () => void }) {
   const draftKey = `reply-${threadId}`;
   const draft = useDraft(draftKey);
   const [photos, setPhotos] = useState<{ id: string; url: string }[]>([]);
@@ -186,6 +186,16 @@ export function ReplyComposer({ threadId, quote, clearQuote, onPosted, open, set
   const area = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => { if (quote) { setOpen(true); area.current?.focus(); } }, [quote, setOpen]);
+  // Reply to a specific post: start the reply with @name (they get notified) unless it's already there.
+  useEffect(() => {
+    if (!replyTo) return;
+    const tag = `@${replyTo.username} `;
+    if (!draft.body.includes(`@${replyTo.username}`)) draft.setBody(tag + draft.body);
+    setOpen(true);
+    requestAnimationFrame(() => { const el = area.current; if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); } });
+    clearReplyTo?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [replyTo]);
   useEffect(() => { if (open) requestAnimationFrame(() => area.current?.focus({ preventScroll: true })); }, [open]);
 
   const submit = async () => {

@@ -495,3 +495,7 @@ table.simple th { font-size: .72rem; text-transform: uppercase; letter-spacing: 
 .sticky-save .save-bad { color: var(--crimson); font-size: .9rem; }
 @media (max-width: 899px) { .sticky-save { bottom: calc(var(--bottom-h) + env(safe-area-inset-bottom) + 8px); } }
 :root[data-theme='dark'] .sticky-save .save-ok, :root[data-theme='dark'] .sticky-save .save-bad { color: var(--white); }
+
+/* Live chat: reply / quote */
+.chat-act { min-height: 24px; padding: 0 6px; font-size: .75rem; gap: 3px; }
+.chat-ctx { display: flex; align-items: center; gap: 8px; padding: 6px 12px; font-size: .85rem; background: var(--crimson-tint); border-top: 1px solid var(--line); }
