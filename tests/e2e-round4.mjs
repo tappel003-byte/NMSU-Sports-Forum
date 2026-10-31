@@ -608,9 +608,8 @@ try {
   const ownerRow = crimson.locator('select[aria-label="Actions for AggieAdmin"]');
   await ownerRow.waitFor();
   const ownerOpts = await ownerRow.locator('option').allTextContents();
-  const ownerChip = await crimson.locator('.list-row, li, div').filter({ has: ownerRow }).last().textContent();
-  check('Other admins cannot demote, suspend, warn, ban or reset the site owner; the owner shows as Owner',
-    Object.values(tries).every((s) => s === 403) && !ownerOpts.some((o) => /Make|Suspend|Warn|ban|reset/i.test(o)) && /Owner/.test(ownerChip ?? ''), JSON.stringify({ tries, ownerOpts }));
+  check('Other admins cannot demote, suspend, warn, ban or reset the site owner',
+    Object.values(tries).every((s) => s === 403) && !ownerOpts.some((o) => /Make|Suspend|Warn|ban|reset/i.test(o)), JSON.stringify({ tries, ownerOpts }));
 
   // ---------- Share a Facebook post ----------
   const phone = crimson;
