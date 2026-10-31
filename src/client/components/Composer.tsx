@@ -172,7 +172,7 @@ export function ComposerTools({ value, onChange, textareaRef, onError }: { value
   };
   return (
     <>
-      <button type="button" className="btn secondary small" onClick={paste} title="Paste a tweet or link you copied"><ClipboardPaste size={16} /> Paste link</button>
+      <button type="button" className="btn secondary small" onClick={paste} title="Paste a tweet, Facebook post or link you copied"><ClipboardPaste size={16} /> Paste link</button>
       <button type="button" className="btn secondary small" onClick={() => insert((sel) => `||${sel || 'spoiler'}||`)} title="Hide text until tapped"><EyeOff size={16} /> Spoiler</button>
     </>
   );
@@ -245,7 +245,7 @@ export function ReplyComposer({ threadId, quote, clearQuote, onPosted, open, set
           </div>
         )}
         <label className="sr-only" htmlFor="reply-box">Your reply</label>
-        <MentionTextarea id="reply-box" textareaRef={area} className="textarea" placeholder="Write a reply… @ to mention, paste a tweet link to share it" value={draft.body}
+        <MentionTextarea id="reply-box" textareaRef={area} className="textarea" placeholder="Write a reply… @ to mention, paste a tweet or Facebook link to share it" value={draft.body}
           onChange={draft.setBody} onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submit(); }} />
         <PhotoThumbs photos={photos} setPhotos={setPhotos} />
         {error && <div className="error-box" style={{ marginTop: 8 }}>{error}</div>}

@@ -39,6 +39,25 @@ export function parseTweetUrl(url: string): { canonical: string; id: string; use
   return m ? { canonical: `https://twitter.com/${m[1]}/status/${m[2]}`, id: m[2], user: m[1] } : null;
 }
 
+/** Matches a public Facebook post, photo, video or reel link (including the app's "Copy link" share links). */
+export function parseFacebookUrl(url: string): { canonical: string; video: boolean } | null {
+  let u: URL;
+  try { u = new URL(url); } catch { return null; }
+  const host = u.hostname.toLowerCase().replace(/^(www|m|web|mobile|mbasic)\./, '');
+  if (u.protocol !== 'https:' && u.protocol !== 'http:') return null;
+  if (host === 'fb.watch') return u.pathname.length > 2 ? { canonical: `https://fb.watch${u.pathname}`, video: true } : null;
+  if (host !== 'facebook.com' && host !== 'fb.com') return null;
+  const path = u.pathname;
+  const video = /\/(videos?|reel|watch)\b|\/share\/(v|r)\//i.test(path) || u.searchParams.has('v') && path.startsWith('/watch');
+  const isPost = video || /\/(posts|permalink|photos?|story\.php|permalink\.php|photo\.php)\b|\/share\/p\/|^\/groups\/[^/]+\/(posts|permalink)\//i.test(path);
+  if (!isPost) return null;
+  // Keep only the query keys Facebook needs to find the post.
+  const keep = new URLSearchParams();
+  for (const k of ['story_fbid', 'id', 'fbid', 'v', 'set']) { const v = u.searchParams.get(k); if (v) keep.set(k, v); }
+  const q = keep.toString();
+  return { canonical: `https://www.facebook.com${path}${q ? `?${q}` : ''}`, video };
+}
+
 export function parseYouTubeId(url: string): string | null {
   const m = url.match(/^https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|live\/|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/i);
   return m ? m[1] : null;
