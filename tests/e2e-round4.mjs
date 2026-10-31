@@ -293,7 +293,7 @@ try {
   const fbLive = fbGame ? (await api(reg, `/games/${fbGame.id}/live`)).body : null;
   const minorLive = minor ? (await api(reg, `/games/${minor.id}/live`)).body : null;
   await reg.goto(BASE + `/games/${fbGame.id}`);
-  const espnBtn = await reg.waitForSelector('a:has-text("on ESPN"), a:has-text("ESPN Gamecast")', { timeout: 8000 }).then(() => true, () => false);
+  const espnBtn = await reg.waitForSelector('a:has-text("ESPN")', { timeout: 8000 }).then(() => true, () => false);
   check('Football and men\'s basketball games link to ESPN (live score bar during the game); other sports don\'t', espnBtn && fbLive?.espn_url?.startsWith('https://www.espn.com/college-football/') && minorLive?.espn_url === null);
 
   // ---------- Admin → Members: compact rows with an Actions menu ----------

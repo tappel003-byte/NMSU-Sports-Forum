@@ -98,14 +98,13 @@ export function GamePage() {
           <div className="hero-meta">{gameTime(g.starts_at, g.time_tba)}{g.venue ? ` · ${g.venue}` : ''}</div>
           <div className="hero-meta">{[g.tv && `TV/Stream: ${g.tv}`, g.radio && `Radio: ${g.radio}`].filter(Boolean).join(' · ')}</div>
           <div style={{ marginTop: 8 }}><Score game={g} /></div>
-          <LiveScore game={g} />
-          <div className="row">
+          {/* One wrapping row: chat, listen/watch, schedule, and ESPN (live stats and box score for football and men's basketball). */}
+          <LiveScore game={g}>
             {FEATURED_SPORTS.includes(g.sport) && <Link to={`/chat/${data.chat.room}`} className="btn on-crimson small">{g.live ? 'Join live chat' : 'Game chat'}</Link>}
-            {g.audio_url && <a href={g.audio_url} target="_blank" rel="noopener noreferrer" className="btn on-crimson outline small">🎧 Listen live ↗</a>}
+            {g.audio_url && <a href={g.audio_url} target="_blank" rel="noopener noreferrer" className="btn on-crimson outline small">🎧 Listen ↗</a>}
             {g.video_url && <a href={g.video_url} target="_blank" rel="noopener noreferrer" className="btn on-crimson outline small">📺 Watch ↗</a>}
-            {/* Live stats and box scores come from the ESPN button (football, men's basketball); NM State's bare calendar entry was confusing. */}
-            <a href={g.schedule_url} target="_blank" rel="noopener noreferrer" className="btn on-crimson outline small">NM State schedule ↗</a>
-          </div>
+            <a href={g.schedule_url} target="_blank" rel="noopener noreferrer" className="btn on-crimson outline small">Schedule ↗</a>
+          </LiveScore>
         </div>
       </section>
       {g.overridden && <div className="notice small">An administrator corrected some details for this game while the official feed was out of date.</div>}
