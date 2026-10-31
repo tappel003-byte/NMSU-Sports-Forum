@@ -205,12 +205,13 @@ forum.get('/threads/:id', async (c) => {
     page = Math.floor(before / PAGE_SIZE) + 1;
   }
   page = Math.min(Math.max(page || 1, 1), pages);
-  const posts = await all<{ id: number; user_id: number | null; body: string; quote_post_id: number | null; created_at: number; edited_at: number | null; edit_count: number; deleted: number; pending: number; hidden: number }>(c.env,
-    `SELECT id, user_id, body, quote_post_id, created_at, edited_at, edit_count, deleted, pending, hidden FROM posts WHERE thread_id = ? AND ${visibleSql} ORDER BY id LIMIT ? OFFSET ?`,
+  const posts = await all<{ id: number; user_id: number | null; body: string; quote_post_id: number | null; reply_to_post_id: number | null; created_at: number; edited_at: number | null; edit_count: number; deleted: number; pending: number; hidden: number }>(c.env,
+    `SELECT id, user_id, body, quote_post_id, reply_to_post_id, created_at, edited_at, edit_count, deleted, pending, hidden FROM posts WHERE thread_id = ? AND ${visibleSql} ORDER BY id LIMIT ? OFFSET ?`,
     t.id, PAGE_SIZE, (page - 1) * PAGE_SIZE);
   const postIds = posts.map((p) => p.id);
   const ph = postIds.map(() => '?').join(',') || 'NULL';
-  const quoteIds = posts.map((p) => p.quote_post_id).filter((x): x is number => Boolean(x));
+  // Quoted posts and replied-to posts are looked up together.
+  const quoteIds = [...new Set(posts.flatMap((p) => [p.quote_post_id, p.reply_to_post_id]).filter((x): x is number => Boolean(x)))];
   const [reactions, mine, attachments, bookmarks, quotes, poll, followed, game] = await Promise.all([
     all<{ post_id: number; up: number; down: number }>(c.env,
       `SELECT post_id, SUM(value = 1) AS up, SUM(value = -1) AS down FROM reactions WHERE post_id IN (${ph}) GROUP BY post_id`, ...postIds),
@@ -269,6 +270,7 @@ forum.get('/threads/:id', async (c) => {
         my_reaction: mineMap.get(p.id) ?? 0,
         bookmarked: bmMap.has(p.id),
         muted: Boolean(p.user_id && muted.users.has(p.user_id)),
+        reply_to: p.reply_to_post_id && qMap.get(p.reply_to_post_id) ? { id: p.reply_to_post_id, username: (() => { const r = qMap.get(p.reply_to_post_id!)!; return r.user_id ? members.get(r.user_id)?.username ?? 'member' : 'NMSU Sports Forum'; })() } : null,
         quote: q ? { id: q.id, thread_id: q.thread_id, username: q.user_id ? members.get(q.user_id)?.username ?? 'member' : 'member', body: q.deleted ? '' : q.body.slice(0, 600), deleted: Boolean(q.deleted) } : null,
         attachments: p.hidden && user.role !== 'admin' && p.user_id !== user.id ? [] : attachments.filter((a) => a.post_id === p.id && !a.deleted).map((a) => ({ id: a.id, content_type: a.content_type, expires_at: a.expires_at })),
         expired_attachments: attachments.filter((a) => a.post_id === p.id && a.deleted).length,
@@ -333,12 +335,15 @@ forum.post('/threads/:id/posts', async (c) => {
   const body = parse(z.object({
     body: z.string().trim().min(1, 'cannot be empty').max(20000),
     quote_post_id: z.number().int().optional().nullable(),
+    reply_to_post_id: z.number().int().optional().nullable(),
     attachments: z.array(z.string()).max(6).optional(),
     draft_key: z.string().max(80).optional(),
   }), await c.req.json());
+  // A reply must point at a post in the same discussion.
+  const replyTo = body.reply_to_post_id ? await first<{ id: number }>(c.env, 'SELECT id FROM posts WHERE id = ? AND thread_id = ? AND deleted = 0', body.reply_to_post_id, t.id) : null;
   if (body.quote_post_id && !(await first(c.env, 'SELECT id FROM posts WHERE id = ?', body.quote_post_id))) throw new HttpError(400, 'Quoted post not found.');
   const pending = await needsApproval(c.env, user);
-  const id = await createPost(c.env, user, t, body.body, { quotePostId: body.quote_post_id, attachmentIds: body.attachments, pending });
+  const id = await createPost(c.env, user, t, body.body, { quotePostId: body.quote_post_id, replyToPostId: replyTo?.id ?? null, attachmentIds: body.attachments, pending });
   if (body.draft_key) await run(c.env, 'DELETE FROM drafts WHERE user_id = ? AND key = ?', user.id, body.draft_key);
   return c.json({ id, pending });
 });

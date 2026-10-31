@@ -499,3 +499,8 @@ table.simple th { font-size: .72rem; text-transform: uppercase; letter-spacing: 
 /* Live chat: reply / quote */
 .chat-act { min-height: 24px; padding: 0 6px; font-size: .75rem; gap: 3px; }
 .chat-ctx { display: flex; align-items: center; gap: 8px; padding: 6px 12px; font-size: .85rem; background: var(--crimson-tint); border-top: 1px solid var(--line); }
+
+/* "↩ Replying to …" on replies and in the reply box */
+.reply-ref { padding: 6px 10px; margin-bottom: 8px; border-left: 3px solid var(--crimson); background: var(--crimson-tint); border-radius: var(--radius-sm); font-size: .85rem; }
+.reply-ref-link { display: inline-block; background: none; border: 0; padding: 0; margin: 0 0 6px; color: var(--crimson); font-size: .8rem; font-weight: 600; cursor: pointer; }
+:root[data-theme='dark'] .reply-ref-link { color: var(--white); }
