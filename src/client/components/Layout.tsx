@@ -127,7 +127,6 @@ function LeftRail() {
           {me && (site.memberInvites || me.role === 'admin') && <NavLink to="/invite"><Send size={17} /> Invite friends</NavLink>}
           <NavLink to="/rosters"><ClipboardList size={17} /> Rosters &amp; links</NavLink>
           <NavLink to="/recruiting"><UserPlus size={17} /> Recruiting</NavLink>
-          <NavLink to="/predictions"><Trophy size={17} /> Predictions</NavLink>
           <NavLink to="/time-machine"><History size={17} /> Time Machine</NavLink>
           {me?.role === 'admin' && <NavLink to="/admin"><Shield size={17} /> Admin{pulse.open_reports > 0 && <span className="count hot">{pulse.open_reports}</span>}</NavLink>}
         </nav>

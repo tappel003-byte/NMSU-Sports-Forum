@@ -35,7 +35,7 @@ Audit, October 30, 2026 (after first live review): 65 rows. 59 Verified, 5 Built
 | 26 | Personal feed (my sports / following / unread); tabs removed from the Board at the owner's request, Following still on the home page | MILESTONE 13 | Verified |
 | 27 | Mute a member or a forum | MILESTONE 13 | Verified |
 | 28 | Strictly private 1:1 messages; block; voluntary report of a specific message | MILESTONE 13, DECISIONS | Verified — no admin route exists; block via mute; voluntary single-message report |
-| 29 | Predictions with season standings, auto-scored from results | MILESTONE 13 | Verified — locks at game time, auto-scored, season standings |
+| 29 | Predictions auto-scored from results; shown as a Home "Called it!" shoutout and "Games called" on profiles (standings page out of the menus) | MILESTONE 13, DECISIONS | Verified — locks at game time, auto-scored, shoutout and profile count e2e-tested |
 | 30 | Community calendar: games, watch parties, gatherings, opt-in birthdays | MILESTONE 13 | Verified |
 | 31 | Aggie History forum exempt from archive; Aggie Time Machine | MILESTONE 13 | Verified — Aggie History forum never archives; Time Machine page |
 | 32 | Year in Review | MILESTONE 13 | Built — page loads; content grows with data |

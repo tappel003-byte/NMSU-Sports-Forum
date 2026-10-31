@@ -54,7 +54,12 @@ community.get('/home', async (c) => {
       WHERE t.deleted = 0 AND t.pending = 0 AND t.last_post_at > ? AND (tr.last_read_post_id IS NULL OR tr.last_read_post_id < t.last_post_id)`, user.id, unreadBaseline(user));
   const followed = await all<ThreadRow>(c.env,
     `${THREAD_SELECT} WHERE t.deleted = 0 AND t.id IN (SELECT thread_id FROM follows WHERE user_id = ?) ORDER BY t.last_post_at DESC LIMIT 5`, user.id, user.id);
-  const members = await memberSummaries(c.env, weekly ? [weekly.user_id] : []);
+  // "Called it!": members who picked a game right in the last week (exact scores first). Replaces a standings page.
+  const called = await all<{ user_id: number; game_id: number; points: number; sport: string; opponent: string; home_away: string; result: string | null; nmsu_score: number | null; opp_score: number | null }>(c.env,
+    `SELECT p.user_id, p.game_id, p.points, g.sport, g.opponent, g.home_away, g.result, g.nmsu_score, g.opp_score
+       FROM predictions p JOIN games g ON g.id = p.game_id
+      WHERE p.points > 0 AND g.status = 'final' AND g.starts_at > ? ORDER BY p.points DESC, g.starts_at DESC LIMIT 6`, weekAgo);
+  const members = await memberSummaries(c.env, [...(weekly ? [weekly.user_id] : []), ...called.map((x) => x.user_id)]);
   const feeds = await first<{ n: number }>(c.env, 'SELECT COUNT(*) AS n FROM data_feeds WHERE enabled = 1');
   const guest = user.role === 'guest';
   return c.json({
@@ -65,6 +70,7 @@ community.get('/home', async (c) => {
     feedsConfigured: (feeds?.n ?? 0) > 0,
     stats: { unread: unread?.n ?? 0, replies: replies?.n ?? 0, chatting: chatting?.n ?? 0 },
     weekly: weekly ? { ...weekly, body: excerpt(weekly.body, 180), author: members.get(weekly.user_id) ?? null } : null,
+    called: called.map((x) => ({ ...x, exact: x.points >= 3, member: members.get(x.user_id) ?? null })),
     online: guest ? [] : online,
     events: guest ? [] : events,
     announcement,
@@ -117,7 +123,7 @@ community.get('/members/:id', async (c) => {
     u.featured_post_id ? first<{ id: number; body: string }>(c.env, `${postSelect} AND p.id = ? AND p.user_id = ?`, u.featured_post_id, id) : Promise.resolve(null),
     all<ThreadRow>(c.env, `${THREAD_SELECT} WHERE t.deleted = 0 AND t.user_id = ? ORDER BY t.created_at DESC LIMIT 8`, me.id, id),
     first(c.env, "SELECT 1 AS m FROM mutes WHERE user_id = ? AND target_type = 'user' AND target_id = ?", me.id, id),
-    first<{ points: number }>(c.env, 'SELECT COALESCE(SUM(points), 0) AS points FROM predictions WHERE user_id = ?', id),
+    first<{ called: number }>(c.env, 'SELECT COUNT(*) AS called FROM predictions WHERE user_id = ? AND points > 0', id),
   ]);
   const trim = <T extends { body: string } | null>(p: T) => (p ? { ...p, body: excerpt(p.body, 240) } : null);
   return c.json({
@@ -128,7 +134,7 @@ community.get('/members/:id', async (c) => {
       email: u.show_email || id === me.id ? u.email : null,
       birthday: u.show_birthday || id === me.id ? u.birthday_md : null,
       joined: u.created_at, last_seen_at: u.last_seen_at, status: u.status,
-      prediction_points: prediction?.points ?? 0,
+      games_called: prediction?.called ?? 0,
     },
     most_appreciated: mostAppreciated && mostAppreciated.up > 0 ? trim(mostAppreciated) : null,
     featured: trim(featured),
