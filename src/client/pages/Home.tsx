@@ -144,7 +144,6 @@ export function Home() {
                 {FEATURED_SPORTS.includes(next.sport) && <Link to={`/chat/game-${next.id}`} className="btn on-crimson outline small">Game chat</Link>}
                 {next.pregame_thread_id && <Link to={`/t/${next.pregame_thread_id}`} className="btn on-crimson outline small">Pregame thread</Link>}
                 {next.postgame_thread_id && <Link to={`/t/${next.postgame_thread_id}`} className="btn on-crimson outline small">Postgame thread</Link>}
-                <a href={next.official_url} target="_blank" rel="noopener noreferrer" className="btn on-crimson outline small">Official info</a>
               </div>
             </>
           ) : (
