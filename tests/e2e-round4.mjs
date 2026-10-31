@@ -3,6 +3,7 @@
 // Run after the other three suites on the same local database.
 import { createRequire } from 'node:module';
 import fs from 'node:fs';
+import http from 'node:http';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
@@ -462,6 +463,73 @@ try {
   check('The member page shows how many Nostradamus awards they have won', /1\s*🏆 Nostradamus wins/.test(winsShown.replace(/\s+/g, ' ')) || /1🏆 Nostradamus wins/.test(winsShown));
   check('When the week ends, the top predictor becomes Nostradamus of the Week once: award on the member card, announced on Home',
     crimsonBadges.length === 1 && champsHome.some((n) => n.member?.username === 'CrimsonFan'));
+
+  // ---------- Automatic game threads: football & men's basketball (default) ----------
+  // A tiny local calendar feed with one men's basketball game tomorrow (fictional opponent).
+  const tomorrow = new Date(Date.now() + 86_400_000);
+  const icsDate = tomorrow.toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z');
+  const featuredIcs = `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:featured-test-1\r\nDTSTART:${icsDate}\r\nSUMMARY:New Mexico State University  Men's Basketball vs Fictional Featured U\r\nLOCATION:Las Cruces\\, N.M.\\, Pan American Center\r\nDESCRIPTION:Men's Basketball vs Fictional Featured U\\nTV: ESPN+\\n\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n`;
+  const featSrv = http.createServer((req, res) => { res.writeHead(200, { 'content-type': 'text/calendar' }); res.end(featuredIcs); }).listen(8796);
+  await api(admin, '/admin/feeds', { body: { sport: 'auto', url: 'http://localhost:8796/featured.ics' } });
+  await api(admin, '/admin/feeds/sync', { method: 'POST' });
+  await api(admin, '/admin/settings', { method: 'PUT', body: { auto_game_threads: '' } });
+  await fetch(`${BASE}/__scheduled?cron=*/30+*+*+*+*`);
+  await new Promise((r) => setTimeout(r, 1500));
+  const featGame = (await api(admin, '/games?range=season&sport=mbb')).body.games.find((g) => g.opponent === 'Fictional Featured U');
+  const featThreadId = featGame && (await api(admin, `/games/${featGame.id}`)).body.game.pregame_thread_id;
+  const featThread = featThreadId ? (await api(admin, `/threads/${featThreadId}`)).body : null;
+  check('Football and men\'s basketball get one automatic game thread, titled like Aggie Alert', featThread?.thread?.title === 'NM State vs. Fictional Featured U', JSON.stringify({ game: featGame && { id: featGame.id, starts_at: featGame.starts_at, status: featGame.status, pre: featGame.pregame_thread_id }, title: featThread?.thread?.title }));
+  await api(admin, `/admin/games/${featGame.id}`, { method: 'PATCH', body: { status: 'final', result: 'W', nmsu_score: 70, opp_score: 60 } });
+  await fetch(`${BASE}/__scheduled?cron=*/30+*+*+*+*`);
+  await new Promise((r) => setTimeout(r, 1500));
+  const featAfter = featThreadId ? (await api(admin, `/threads/${featThreadId}?page=9999`)).body : null;
+  check('At the final, the game thread gets the score and the Player of the Game vote',
+    featAfter?.poll?.kind === 'potg' && featAfter.posts.some((x) => x.body.startsWith('Final: NM State W 70–60')));
+  featSrv.close();
+
+  // ---------- Aggie News Desk (local fictional feed) ----------
+  const rss = `<rss><channel><title>Local test news</title>
+<item><title>New Mexico State lands fictional transfer guard</title><link>http://www.bing.com/news/apiclick.aspx?url=https%3a%2f%2fnews.example.test%2fguard&amp;c=1</link><pubDate>${new Date().toUTCString()}</pubDate><News:Source>Example News</News:Source></item>
+<item><title>New Mexico State lands fictional transfer guard</title><link>https://other.example.test/guard-copy</link><pubDate>${new Date().toUTCString()}</pubDate></item>
+<item><title>Some other college wins a game</title><link>https://news.example.test/other</link><pubDate>${new Date().toUTCString()}</pubDate></item>
+</channel></rss>`;
+  const newsSrv = http.createServer((req, res) => { res.writeHead(200, { 'content-type': 'application/rss+xml' }); res.end(rss); }).listen(8795);
+  await api(admin, '/admin/settings', { method: 'PUT', body: { news_desk: '1', news_feeds: 'http://localhost:8795/news.xml', news_per_day: '3' } });
+  const run1 = (await api(admin, '/admin/news/run', { method: 'POST' })).body;
+  const run2 = (await api(admin, '/admin/news/run', { method: 'POST' })).body;
+  const newsThreads = (await api(admin, '/feed?tab=latest&games=1')).body.threads.filter((x) => x.title.startsWith('📰'));
+  const newsPost = newsThreads[0] ? (await api(admin, `/threads/${newsThreads[0].id}`)).body.posts[0].body : '';
+  check('Aggie News posts NM State stories once (headline + real article link), skips other teams and duplicates',
+    run1.posted === 1 && run2.posted === 0 && newsThreads.length === 1 && newsThreads[0].title === '📰 New Mexico State lands fictional transfer guard' && newsPost.startsWith('https://news.example.test/guard'),
+    JSON.stringify({ run1, run2, titles: newsThreads.map((x) => x.title) }));
+  newsSrv.close();
+  await api(admin, '/admin/settings', { method: 'PUT', body: { news_desk: '0', news_feeds: '' } });
+
+  // ---------- Conversation starters and the 🎲 button ----------
+  const s1 = (await api(admin, '/admin/topics/starter', { method: 'POST' })).body.thread_id;
+  const s2 = (await api(admin, '/admin/topics/starter', { method: 'POST' })).body.thread_id;
+  const t1 = (await api(admin, `/threads/${s1}`)).body.thread.title;
+  const t2 = (await api(admin, `/threads/${s2}`)).body.thread.title;
+  check('Topic of the day posts a 🎲 conversation starter and does not repeat one', t1.startsWith('🎲 ') && t2.startsWith('🎲 ') && t1 !== t2);
+  await reg.goto(BASE + '/new');
+  await reg.click('button:has-text("🎲 Random topic")');
+  await reg.waitForFunction(() => (document.querySelector('#title')?.value || '').length > 5);
+  check('The 🎲 Random topic button fills in a topic on the new-post page', true);
+
+  // ---------- Weekly topics ----------
+  const mt = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Denver', weekday: 'short', hour: 'numeric', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(Date.now() - 2 * 60_000));
+  const part = (k) => mt.find((x) => x.type === k).value;
+  await api(admin, '/admin/settings', { method: 'PUT', body: { recurring_topics: `${part('weekday')} | ${part('hour')}:${part('minute')} | Fictional weekly show` } });
+  await fetch(`${BASE}/__scheduled?cron=*/30+*+*+*+*`);
+  await new Promise((r) => setTimeout(r, 1500));
+  await fetch(`${BASE}/__scheduled?cron=*/30+*+*+*+*`);
+  await new Promise((r) => setTimeout(r, 1500));
+  const weekly = (await api(admin, '/feed?tab=latest&games=1')).body.threads.filter((x) => x.title.startsWith('Fictional weekly show'));
+  check('Weekly topics post once at their day and time', weekly.length === 1, JSON.stringify(weekly.map((x) => x.title)));
+  await api(admin, '/admin/settings', { method: 'PUT', body: { recurring_topics: '' } });
+  await reg.goto(BASE + '/feed');
+  await reg.waitForSelector('.thread-stats');
+  await reg.screenshot({ path: `${SHOTS}/iphone-board-aa.png`, fullPage: true });
 
   // ---------- Audit history ----------
   const log = (await api(admin, '/admin/log')).body.log;

@@ -55,13 +55,9 @@ export function Feed({ initialTab = 'latest', compact = false }: { initialTab?: 
   const tab = params.get('tab') ?? initialTab;
   const tag = params.get('tag') ?? '';
   const [page, setPage] = useState(1);
-  const { data, error, loading, reload } = useApi<{ threads: ThreadItem[]; hasMore: boolean; needsSports?: boolean }>(`/feed?tab=${tab}&page=${page}${tag ? `&tag=${tag}` : ''}${compact ? '' : '&games=1'}`);
-  const { me, refreshPulse, toast, refresh } = useApp();
+  const { data, error, loading, reload } = useApi<{ threads: ThreadItem[]; hasMore: boolean; needsSports?: boolean }>(`/feed?tab=${tab}&page=${page}${tag ? `&tag=${tag}` : ''}&games=1`);
+  const { me, refreshPulse, toast } = useApp();
   const [share, setShare] = useState(false);
-  const toggleCompact = async () => {
-    await api('/me/prefs', { method: 'PATCH', body: { compact: !me?.prefs?.compact } });
-    refresh();
-  };
   const markAll = async () => {
     await api('/mark-all-read', { method: 'POST' });
     toast('Everything marked as read');
@@ -82,7 +78,6 @@ export function Feed({ initialTab = 'latest', compact = false }: { initialTab?: 
         <div className="feed-head">
           <div className="feed-title">
             <h2>The Board</h2>
-            {me && <button className="btn ghost small" onClick={toggleCompact} aria-pressed={Boolean(me?.prefs?.compact)}>{me?.prefs?.compact ? 'Full list' : 'Compact list'}</button>}
           </div>
           {me && (
             <div className="feed-actions">

@@ -6,11 +6,13 @@ import { deleteObject } from './storage';
 import { awardWeeklyPredictor, runGameLifecycle, syncAllFeeds } from './lib/sports';
 import { syncRecruiting } from './lib/recruiting';
 import { expireBanProposals } from './lib/moderation';
+import { runAutoTopics } from './lib/topics';
 
 /** Every 30 minutes: sync schedules, run the game-day lifecycle and deliver bookmark reminders. */
 export async function frequentJobs(env: Env): Promise<void> {
   await syncAllFeeds(env);
   await runGameLifecycle(env);
+  await runAutoTopics(env);
   const due = await all<{ id: number; user_id: number; post_id: number; note: string | null; thread_id: number; title: string }>(env,
     `SELECT b.id, b.user_id, b.post_id, b.note, p.thread_id, t.title FROM bookmarks b JOIN posts p ON p.id = b.post_id JOIN threads t ON t.id = p.thread_id
       WHERE b.reminded = 0 AND b.remind_at IS NOT NULL AND b.remind_at <= ?`, now());

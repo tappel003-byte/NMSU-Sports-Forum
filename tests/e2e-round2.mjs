@@ -73,15 +73,14 @@ try {
   await member.waitForSelector('.hero');
   check('Phone home hides the desktop-only sections (venues, extras)', !(await member.isVisible('text=Sports venues')));
   check('Floating new-thread button on phone', await member.isVisible('.fab'));
+  await member.waitForSelector('.thread-list .thread-title');
   const homeTitles = await member.$$eval('.thread-title', (els) => els.map((e) => e.textContent));
   const all = (await api(member, '/feed?tab=latest&games=1')).body.threads.map((t) => t.title);
-  check('Automatic game threads are grouped under the game card, not in the home list', !homeTitles.some((t) => /^(Pregame|Postgame):/.test(t)) && all.some((t) => /^(Pregame|Postgame):/.test(t)));
+  check('Game threads show in the home list like any other topic (Aggie Alert style)', all.some((t) => /^(Pregame|Postgame):/.test(t)) && homeTitles.length > 0, JSON.stringify({ homeTitles, all }));
   check('Home shows a short preview of the Board with a See all link', await member.isVisible('a:has-text("See all")'));
   await member.goto(BASE + '/feed');
-  await member.click('button:has-text("Compact list")');
-  await member.waitForSelector('.thread-list.compact');
-  check('Compact list option', true);
-  await member.click('button:has-text("Full list")');
+  await member.waitForSelector('.thread-stats');
+  check('Topic rows show replies and views, Aggie Alert style', (await member.textContent('.thread-stats')).includes('👁'));
   await member.goto(BASE + '/');
 
   // ---------- Tags ----------

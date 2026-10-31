@@ -5,6 +5,7 @@ import { all, first, getSetting, logMod, notify, run, stmt, userPrefs } from '..
 import { HttpError, now, parse } from '../util';
 import { TAGS, cleanTags } from '../../shared/forum';
 import { SPORT_BY_KEY } from '../../shared/sports';
+import { starterPrompts } from '../lib/topics';
 import { checkHonorary, memberSummaries } from '../lib/members';
 import { notifyModerators, removePost } from '../lib/moderation';
 import {
@@ -185,6 +186,19 @@ forum.post('/threads/:id/poll', async (c) => {
   if (t.user_id !== user.id && user.role !== 'admin') throw new HttpError(403, 'Only the thread starter can add a poll.');
   if (await first(c.env, 'SELECT id FROM polls WHERE thread_id = ?', t.id)) throw new HttpError(409, 'This thread already has a poll.');
   await createPoll(c.env, t.id, parse(pollSchema, await c.req.json()));
+  return c.json({ ok: true });
+});
+
+// 🎲 Random topic button on the new-post page: a suggestion from the conversation-starter list.
+forum.get('/topics/random', async (c) => {
+  const prompts = await starterPrompts(c.env);
+  return c.json({ topic: prompts[Math.floor(Math.random() * prompts.length)] });
+});
+
+// View count (like Aggie Alert): counted once each time a member opens the discussion, not when paging or refreshing.
+forum.post('/threads/:id/view', async (c) => {
+  const t = await loadThread(c.env, c.get('user'), idParam(c.req.param('id')));
+  await run(c.env, 'UPDATE threads SET view_count = view_count + 1 WHERE id = ?', t.id);
   return c.json({ ok: true });
 });
 
