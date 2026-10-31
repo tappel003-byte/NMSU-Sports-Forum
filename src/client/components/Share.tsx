@@ -94,7 +94,7 @@ export function ShareForm({ initialUrl = '', initialText = '', target = null, on
               <label htmlFor="share-thread">Discussion</label>
               <select id="share-thread" className="select" value={threadId} onChange={(e) => setThreadId(Number(e.target.value) || '')} required>
                 <option value="">Choose a recent discussion…</option>
-                {recent?.threads.map((t) => <option key={t.id} value={t.id}>{t.title} — {t.forum.name}</option>)}
+                {recent?.threads.map((t) => <option key={t.id} value={t.id}>{t.title}</option>)}
               </select>
             </div>
           ) : (

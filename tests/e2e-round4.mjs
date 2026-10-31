@@ -353,6 +353,18 @@ try {
   const seasonButtons = await reg.$$eval('.page-head button', (els) => els.map((e) => e.textContent || ''));
   check('Prediction standings show this season without buttons for empty past or future seasons', seasonButtons.every((t) => !/2025|2027/.test(t)));
 
+  // ---------- Venue forums retired ----------
+  await reg.goto(BASE + '/f/aggie-memorial');
+  await reg.waitForURL('**/feed');
+  const venueThread = (await api(reg, '/feed?tab=latest&games=1')).body.threads.find((t) => t.forum.slug === 'aggie-memorial');
+  let crumbOk = true;
+  if (venueThread) {
+    await reg.goto(BASE + `/t/${venueThread.id}`);
+    await reg.waitForSelector('nav[aria-label="Breadcrumb"]');
+    crumbOk = !(await reg.textContent('nav[aria-label="Breadcrumb"]')).includes('Aggie Memorial');
+  }
+  check('Old venue links land on the Board, and threads no longer show venue names', crumbOk);
+
   // ---------- Posting without gatekeeping ----------
   await reg.goto(BASE + '/new');
   await reg.fill('#title', 'Tailgate spot this Saturday?');

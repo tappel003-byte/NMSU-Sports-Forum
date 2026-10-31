@@ -540,7 +540,7 @@ forum.get('/search', async (c) => {
     `${THREAD_SELECT} WHERE t.deleted = 0 AND t.pending = 0 AND (t.title LIKE ? ESCAPE '\\' OR t.description LIKE ? ESCAPE '\\')${fWhere} ORDER BY t.last_post_at DESC LIMIT 25`,
     user.id, like, like, ...fParams);
   const posts = await all<{ id: number; thread_id: number; body: string; created_at: number; username: string; title: string; forum_name: string }>(c.env,
-    `SELECT p.id, p.thread_id, p.body, p.created_at, u.username, t.title, f.name AS forum_name
+    `SELECT p.id, p.thread_id, p.body, p.created_at, u.username, t.title, f.name AS forum_name, f.slug AS forum_slug
        FROM posts p JOIN threads t ON t.id = p.thread_id JOIN forums f ON f.id = t.forum_id LEFT JOIN users u ON u.id = p.user_id
       WHERE p.deleted = 0 AND p.pending = 0 AND p.hidden = 0 AND t.deleted = 0 AND t.pending = 0 AND p.body LIKE ? ESCAPE '\\'${fWhere} ORDER BY p.id DESC LIMIT 40`, like, ...fParams);
   const members = await all(c.env,
