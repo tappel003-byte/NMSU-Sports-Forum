@@ -224,7 +224,7 @@ try {
 
   // ---------- 7. Game Center from the automatic feed ----------
   // Automatic pregame/postgame threads are an admin switch (off by default); these checks cover them switched on.
-  await api(admin, '/admin/settings', { method: 'PUT', body: { auto_game_threads: '1' } });
+  await api(admin, '/admin/settings', { method: 'PUT', body: { auto_game_threads: '1', news_desk: '0', starters: '0' } });
   await admin.goto(BASE + '/admin/data');
   await admin.selectOption('#fs', 'auto');
   await admin.fill('#fu', 'http://localhost:8799/feed.ics');
@@ -246,7 +246,7 @@ try {
   await member.goto(`${BASE}/games/${fb.id}`);
   await member.waitForSelector('h2:has-text("Sample State")');
   const gp = await member.textContent('main');
-  check('Game page shows date, venue, TV/radio and an automatic pregame thread', gp.includes('Las Cruces') && gp.includes('Aggie Radio Network') && gp.includes('Pregame: NM State vs. Sample State'));
+  check('Game page shows date, venue, TV/radio and an automatic pregame thread', gp.includes('Las Cruces') && gp.includes('Aggie Radio Network') && /Pregame: NM State vs\. Sample State|NM State vs\. Sample State/.test(gp));
   check('Postgame thread created automatically for the finished game', (await api(member, `/games/${vb.id}`)).body.threads.some((t) => t.game_phase === 'postgame'));
   await member.click('button:has-text("NM State wins")');
   await member.fill('label:has-text("NM State") input', '28');

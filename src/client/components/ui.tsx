@@ -90,6 +90,7 @@ export interface ThreadItem {
   last_poster: { id: number; username: string } | null;
   last_post_at: number;
   reply_count: number;
+  views?: number;
   thumbs_up: number;
   pinned: boolean;
   locked: boolean;
@@ -106,33 +107,34 @@ export const SUGGESTION_LABELS: Record<string, string> = {
   under_consideration: 'Under consideration', planned: 'Planned', implemented: 'Implemented', declined: 'Not planned',
 };
 
-export function ThreadList({ threads, showForum = true, empty, compact }: { threads: ThreadItem[]; showForum?: boolean; empty?: ReactNode; compact?: boolean }) {
-  const { me } = useApp();
+const who = (m: MemberLite | null) => (m ? (m.username.startsWith('former_member_') ? 'Former member' : m.display_name || m.username) : 'NMSU Sports Forum');
+
+export function ThreadList({ threads, showForum = true, empty }: { threads: ThreadItem[]; showForum?: boolean; empty?: ReactNode; compact?: boolean }) {
   if (!threads.length) return <div className="empty">{empty ?? 'No discussions yet.'}</div>;
   return (
-    <ul className={`thread-list ${(compact ?? me?.prefs?.compact) ? 'compact' : ''}`}>
+    <ul className="thread-list">
       {threads.map((t) => (
-        <li key={t.id} className="thread-item">
-          <span className="thread-icon" aria-hidden="true">{t.sport ? sportIcon(t.sport) : t.forum.icon}</span>
+        <li key={t.id} className={`thread-item ${t.unread ? '' : 'read'}`}>
+          {/* Aggie Alert-style row: title (grey once read), starter → last poster · when, replies and views. */}
           <div className="thread-main">
-            {showForum && t.forum.slug !== 'general' && (t.sport || !isVenueForum(t.forum.slug)) && <div className="thread-forum">{t.sport ? sportName(t.sport) : t.forum.name}</div>}
             <Link to={`/t/${t.id}${t.unread ? '?unread=1' : ''}`} className={`thread-title ${t.unread ? 'unread' : ''}`}>
               {t.pinned && '📌 '}{t.locked && '🔒 '}{t.title}
             </Link>
-            {t.description && <div className="thread-desc">{t.description}</div>}
             <div className="thread-meta">
-              <span>{t.author ? (t.author.username.startsWith('former_member_') ? 'Former member' : t.author.display_name || t.author.username) : 'NMSU Sports Forum'}</span>
-              <span>·</span>
-              <span>{t.last_poster && t.reply_count > 0 ? `last by ${t.last_poster.username.startsWith('former_member_') ? 'Former member' : t.last_poster.username} ${timeAgo(t.last_post_at)}` : timeAgo(t.last_post_at)}</span>
-              {t.thumbs_up > 0 && <span>· 👍 {t.thumbs_up}</span>}
-              {t.game_phase && <span className="chip">{t.game_phase === 'pregame' ? 'Pregame' : 'Postgame'}</span>}
+              <span>{who(t.author)}</span>
+              {t.last_poster && t.reply_count > 0 && <><span aria-label="last reply by">➜</span><span>{t.last_poster.username.startsWith('former_member_') ? 'Former member' : t.last_poster.username}</span></>}
+              <span>· {timeAgo(t.last_post_at)}</span>
+            </div>
+            <div className="thread-stats">
+              <span title="Replies">💬 {t.reply_count}</span>
+              <span title="Views">👁 {t.views ?? 0}</span>
+              {t.thumbs_up > 0 && <span title="Thumbs up">👍 {t.thumbs_up}</span>}
+              {showForum && t.sport && <span className="thread-sport">{sportIcon(t.sport)} {sportName(t.sport)}</span>}
               {t.archived && <span className="chip gray">Archived</span>}
               {t.suggestion_status && <span className={`status-pill status-${t.suggestion_status}`}>{SUGGESTION_LABELS[t.suggestion_status]}</span>}
-              {t.tags?.map((tg) => <span key={tg} className="tag">{TAGS[tg]}</span>)}
               {t.pending && <span className="chip gray">Awaiting approval</span>}
             </div>
           </div>
-          <div className="thread-count"><b>{t.reply_count}</b>replies</div>
         </li>
       ))}
     </ul>

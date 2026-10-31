@@ -55,6 +55,7 @@ export function ThreadPage() {
   const { me, toast, refreshPulse } = useApp();
   const query = params.get('page') ? `page=${params.get('page')}` : params.get('post') ? `post=${params.get('post')}` : params.get('unread') ? 'unread=1' : '';
   const { data, error, reload, setData } = useApi<ThreadData>(`/threads/${id}?${query}`);
+  useEffect(() => { if (me) api(`/threads/${id}/view`, { method: 'POST' }).catch(() => {}); }, [id, me?.id]);
   const [quote, setQuote] = useState<QuoteRef | null>(null);
   const [replyTo, setReplyTo] = useState<{ id: number; username: string; n: number } | null>(null);
   const [editing, setEditing] = useState<{ id: number; body: string } | null>(null);

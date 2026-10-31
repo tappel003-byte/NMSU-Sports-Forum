@@ -21,6 +21,7 @@ export interface ThreadRow {
   last_post_id: number;
   last_post_user_id: number | null;
   reply_count: number;
+  view_count: number;
   pinned: number;
   locked: number;
   reopened_at: number;
@@ -83,6 +84,7 @@ export async function presentThreads(env: Env, user: SessionUser, rows: ThreadRo
       created_at: r.created_at,
       last_post_at: r.last_post_at,
       reply_count: r.reply_count,
+      views: r.view_count ?? 0,
       thumbs_up: thumbMap.get(r.id) ?? 0,
       pinned: Boolean(r.pinned),
       locked: Boolean(r.locked),

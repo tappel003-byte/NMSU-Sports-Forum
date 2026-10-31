@@ -8,6 +8,7 @@ import { DAY, HttpError, now, parse, randomToken, sha256 } from '../util';
 import { BADGES, SPORT_BY_KEY } from '../../shared/sports';
 import { awardBadge } from '../lib/members';
 import { createInvite } from '../lib/invites';
+import { runNewsDesk, runStarter } from '../lib/topics';
 import { createResetToken } from './auth';
 import { publishPost, broadcastThread } from '../lib/threads';
 import { BAN_APPROVALS_REQUIRED, MAX_SUSPENSION_DAYS, assertNotLastModerator, issueWarning, moderatorIds, notifyModerators, overturn, removePost, suspend, tellMember, voteBan } from '../lib/moderation';
@@ -381,7 +382,7 @@ admin.delete('/badges/:id', async (c) => {
 
 // ---------- Settings ----------
 
-const SETTING_KEYS = ['founding_until', 'founding_limit', 'honorary_threshold', 'chat_window', 'announcement', 'approve_first_post', 'signup_mode', 'public_read', 'troll_threshold', 'hub_links', 'member_invites', 'auto_game_threads'] as const;
+const SETTING_KEYS = ['founding_until', 'founding_limit', 'honorary_threshold', 'chat_window', 'announcement', 'approve_first_post', 'signup_mode', 'public_read', 'troll_threshold', 'hub_links', 'member_invites', 'auto_game_threads', 'news_desk', 'news_feeds', 'news_per_day', 'starters', 'starter_prompts', 'recurring_topics'] as const;
 
 admin.get('/settings', async (c) => {
   const out: Record<string, string> = {};
@@ -403,10 +404,30 @@ admin.put('/settings', async (c) => {
     hub_links: z.string().max(4000).optional(),
     member_invites: z.enum(['0', '1', '']).optional(),
     auto_game_threads: z.enum(['0', '1', '']).optional(),
+    news_desk: z.enum(['0', '1', '']).optional(),
+    news_feeds: z.string().max(3000).optional(),
+    news_per_day: z.string().regex(/^(\d{0,2})$/, 'use a number').optional(),
+    starters: z.enum(['0', '1', '']).optional(),
+    starter_prompts: z.string().max(8000).optional(),
+    recurring_topics: z.string().max(3000).optional(),
   }), await c.req.json());
   for (const [k, v] of Object.entries(body)) if (v !== undefined) await setSetting(c.env, k, v);
   await logMod(c.env, c.get('user').id, 'update_settings', 'settings', null, JSON.stringify(body).slice(0, 500));
   return c.json({ ok: true });
+});
+
+// ---------- Automatic topics ----------
+
+admin.post('/topics/starter', async (c) => {
+  const threadId = await runStarter(c.env, Date.now(), true);
+  await logMod(c.env, c.get('user').id, 'post_topic_of_day', 'thread', threadId, '');
+  return c.json({ thread_id: threadId });
+});
+
+admin.post('/news/run', async (c) => {
+  const r = await runNewsDesk(c.env, true);
+  await logMod(c.env, c.get('user').id, 'run_news_desk', 'settings', null, `posted ${r.posted}, checked ${r.checked}${r.errors.length ? `, errors: ${r.errors.join('; ').slice(0, 300)}` : ''}`);
+  return c.json(r);
 });
 
 // ---------- Sports data feeds ----------

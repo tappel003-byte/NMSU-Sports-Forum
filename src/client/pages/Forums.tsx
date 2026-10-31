@@ -202,7 +202,10 @@ export function NewThread() {
       {gameId && <div className="note-box small" style={{ marginBottom: 12 }}>{game ? <>{sportIcon(game.sport)} <strong>{sportName(game.sport)}: NM State {matchup(game)}</strong> · {gameTime(game.starts_at, game.time_tba)}<br /></> : null}This thread will be linked to the game page{phase ? ` as the ${phase} discussion` : ''}.</div>}
       {!gameId && !forum && <GameThreadPicker />}
       <form onSubmit={submit}>
-        <div className="field"><label htmlFor="title">Title</label><input id="title" className="input" value={draft.title} onChange={(e) => draft.setTitle(e.target.value)} required minLength={4} maxLength={140} /></div>
+        <div className="field">
+          <div className="spread"><label htmlFor="title">Title</label>{!gameId && <button type="button" className="btn ghost small" onClick={async () => { try { const r = await api<{ topic: string }>('/topics/random'); draft.setTitle(r.topic); } catch { /* keep what's there */ } }}>🎲 Random topic</button>}</div>
+          <input id="title" className="input" value={draft.title} onChange={(e) => draft.setTitle(e.target.value)} required minLength={4} maxLength={140} placeholder={gameId ? undefined : 'What do you want to talk about? Stuck? Tap 🎲'} />
+        </div>
         <div className="field">
           <label htmlFor="body">Your post</label>
           <MentionTextarea id="body" textareaRef={bodyRef} className="textarea" style={{ minHeight: 180 }} value={draft.body} onChange={draft.setBody} required />

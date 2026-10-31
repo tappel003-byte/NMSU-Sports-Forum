@@ -1,7 +1,7 @@
 import type { Env } from '../env';
 import { all, first, getSetting, notify, run, userPrefs } from '../db';
 import { DAY, now } from '../util';
-import { SPORT_BY_KEY, TIME_ZONE, officialScheduleUrl, sportLabel } from '../../shared/sports';
+import { FEATURED_SQL, SPORT_BY_KEY, TIME_ZONE, officialScheduleUrl, sportLabel } from '../../shared/sports';
 import { parseIcs, toGame, zonedToUtc, type ParsedGame } from './ics';
 import { awardBadge } from './members';
 
@@ -117,10 +117,43 @@ async function systemThread(env: Env, sport: string, title: string, description:
 
 /** Automatic game-day lifecycle: pregame threads, postgame threads, prediction scoring and game reminders. */
 export async function runGameLifecycle(env: Env): Promise<void> {
-  // Members start game threads from "Start a game thread"; automatic ones only when an admin switches them on.
-  if ((await getSetting(env, 'auto_game_threads')) === '1') await createAutomaticGameThreads(env);
+  // Automatic game threads (Admin → Settings): one Aggie Alert-style thread per football and men's basketball game
+  // by default; '1' = every sport with pregame + postgame threads; '0' = off (members start them from the game picker).
+  const mode = await getSetting(env, 'auto_game_threads');
+  if (mode === '1') await createAutomaticGameThreads(env);
+  else if (mode !== '0') await createFeaturedGameThreads(env);
   await scorePredictions(env);
   await sendGameReminders(env);
+}
+
+/** One thread per football / men's basketball game ("NM State vs. Liberty"), opened two days ahead; at the final it gets the score and the Player of the Game vote. */
+async function createFeaturedGameThreads(env: Env): Promise<void> {
+  const t = now();
+  const upcoming = await all<GameRow>(env,
+    `SELECT * FROM games WHERE removed = 0 AND pregame_thread_id IS NULL AND status = 'scheduled' AND sport IN ${FEATURED_SQL} AND starts_at BETWEEN ? AND ?`, t, t + 2 * DAY);
+  for (const g of upcoming) {
+    const id = await systemThread(env, g.sport, matchup(g), `${sportLabel(g.sport)} · ${dateLabel(g.starts_at, g.time_tba)}`,
+      `${sportLabel(g.sport)}: ${matchup(g)}\n${dateLabel(g.starts_at, g.time_tba)}${g.venue ? `\n${g.venue}` : ''}${g.tv ? `\nTV/Stream: ${g.tv}` : ''}${g.radio ? `\nRadio: ${g.radio}` : ''}\n\nGame thread: predictions, lineups, live reactions and postgame talk all go here. Make your pick on the game page: /games/${g.id}`,
+      g.id, 'pregame');
+    await run(env, 'UPDATE games SET pregame_thread_id = ? WHERE id = ?', id, g.id);
+  }
+  // At the final: post the score in the same thread and open the Player of the Game vote there.
+  const finals = await all<GameRow>(env,
+    `SELECT * FROM games WHERE removed = 0 AND status = 'final' AND sport IN ${FEATURED_SQL} AND pregame_thread_id IS NOT NULL AND postgame_thread_id IS NULL AND starts_at > ?`, t - 7 * DAY);
+  for (const g of finals) {
+    const thread = await first<{ id: number; deleted: number }>(env, 'SELECT id, deleted FROM threads WHERE id = ?', g.pregame_thread_id);
+    if (!thread || thread.deleted) continue;
+    const score = g.result ? `${g.result} ${g.nmsu_score ?? ''}–${g.opp_score ?? ''}` : 'Final';
+    const p = await run(env, 'INSERT INTO posts (thread_id, user_id, body, created_at) VALUES (?, NULL, ?, ?)', thread.id,
+      `Final: NM State ${score} ${matchup(g).replace(/^NM State /, '')}.\n\nWho was the Player of the Game? Vote above. Nominate anyone who isn't listed yet.`, t);
+    await run(env, 'UPDATE threads SET last_post_at = ?, last_post_id = ?, last_post_user_id = NULL, reply_count = reply_count + 1 WHERE id = ?', t, p.meta.last_row_id, thread.id);
+    if (!(await first(env, 'SELECT id FROM polls WHERE thread_id = ?', thread.id))) {
+      await run(env, "INSERT INTO polls (thread_id, question, closes_at, created_at, allow_add, kind) VALUES (?, ?, ?, ?, 1, 'potg')",
+        thread.id, `Player of the Game: ${matchup(g)}`, t + 2 * DAY, t);
+    }
+    // The game thread doubles as the postgame thread, so the game picker sends people here.
+    await run(env, 'UPDATE games SET postgame_thread_id = ? WHERE id = ?', thread.id, g.id);
+  }
 }
 
 async function createAutomaticGameThreads(env: Env): Promise<void> {
