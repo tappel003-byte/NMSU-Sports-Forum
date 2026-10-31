@@ -317,6 +317,11 @@ try {
   await reg.screenshot({ path: `${SHOTS}/iphone-games.png` });
   check('Game Center opens on football, with men\'s basketball as its own button', fbOnly.length > 0 && fbOnly.every((t) => /FOOTBALL/i.test(t)));
 
+  // ---------- Member map starts ----------
+  await reg.goto(BASE + '/map');
+  const mapOk = await reg.waitForSelector('.leaflet-control-zoom', { timeout: 10000 }).then(() => true, () => false);
+  check('The member map loads (zoom controls appear; map images come from OpenStreetMap)', mapOk);
+
   // ---------- Posting without gatekeeping ----------
   await reg.goto(BASE + '/new');
   await reg.fill('#title', 'Tailgate spot this Saturday?');

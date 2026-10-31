@@ -202,7 +202,8 @@ export function MapPage() {
       await import('leaflet/dist/leaflet.css');
       if (cancelled || !box.current) return;
       map = L.map(box.current, { scrollWheelZoom: false }).setView([32.3, -106.75], 5);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 10, attribution: '© OpenStreetMap contributors' }).addTo(map);
+      // OpenStreetMap's tile policy requires a Referer, which the site's same-origin policy would otherwise withhold.
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 10, attribution: '© OpenStreetMap contributors', referrerPolicy: 'strict-origin-when-cross-origin' }).addTo(map);
       const groups = new Map<string, typeof data.pins>();
       for (const p of data.pins) {
         const k = `${p.map_lat},${p.map_lon}`;
@@ -225,6 +226,8 @@ export function MapPage() {
         }
         m.bindPopup(el);
       }
+      // Zoom to where members are (never closer than city level).
+      if (data.pins.length) map.fitBounds(L.latLngBounds(data.pins.map((p) => [p.map_lat, p.map_lon] as [number, number])).pad(0.4), { maxZoom: 7 });
     })();
     return () => { cancelled = true; map?.remove(); };
   }, [data, nav]);
