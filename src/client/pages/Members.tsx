@@ -103,7 +103,7 @@ export function MemberPage() {
         <div className="rep" style={{ marginTop: 16 }}>
           <div><b>{m.reputation}</b><span>Aggie Reputation</span></div>
           <div><b>{m.post_count}</b><span>Forum posts</span></div>
-          <div><b>{m.games_called}{m.games_picked > 0 && <small style={{ fontSize: '.6em', fontWeight: 600 }}> of {m.games_picked}</small>}</b><span>Games called{(() => { const n = m.badges.filter((b) => b.badge === 'nostradamus').length; return n ? ` · 🔮×${n}` : ''; })()}</span></div>
+          <div><b>{m.badges.filter((b) => b.badge === 'nostradamus').length}</b><span>🔮 Nostradamus wins</span></div>
         </div>
       </section>
 
