@@ -53,7 +53,6 @@ export function Games() {
         )}
       </section>
       <div className="row" style={{ justifyContent: 'center' }}>
-        <Link to="/predictions" className="btn secondary small">Prediction standings</Link>
         <Link to="/time-machine" className="btn secondary small">Aggie Time Machine</Link>
       </div>
     </div>

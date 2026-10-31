@@ -260,6 +260,9 @@ try {
   await api(admin, '/admin/feeds/sync', { method: 'POST' });
   const standings = (await api(member, '/predictions/standings')).body.standings;
   check('Predictions are scored automatically when a final arrives (exact score = 3 pts)', standings[0]?.username === 'CrimsonFan' && standings[0]?.points === 3, JSON.stringify(standings[0] ?? {}));
+  const homeCalled = (await api(member, '/home')).body.called;
+  const calledProfile = (await api(admin, '/members/2')).body.member;
+  check('Home shows a "Called it!" shoutout for the right pick, and the profile counts games called', homeCalled.some((x) => x.member?.username === 'CrimsonFan' && x.exact) && calledProfile.games_called === 1);
   const after = (await api(admin, '/admin/feeds/sync', { method: 'POST' }), (await api(member, `/games/${fb.id}`)).body.game);
   check('Admin correction is protected from being overwritten by the next sync', after.status === 'final' && after.overridden === true);
 

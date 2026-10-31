@@ -20,6 +20,7 @@ interface HomeData {
   announcement: string;
   birthdays: { id: number; username: string }[];
   followed: ThreadItem[];
+  called: { user_id: number; game_id: number; exact: boolean; sport: string; opponent: string; home_away: string; result: string | null; nmsu_score: number | null; opp_score: number | null; member: MemberLite | null }[];
 }
 
 function greeting() {
@@ -177,6 +178,19 @@ export function Home() {
         </Link>
       )}
 
+      {data && data.called.length > 0 && (
+        <section className="card card-pad">
+          <div className="eyebrow">🎯 Called it!</div>
+          <div className="stack" style={{ gap: 6, marginTop: 6 }}>
+            {data.called.map((c) => (
+              <Link key={`${c.user_id}-${c.game_id}`} to={`/games/${c.game_id}`} style={{ color: 'inherit' }}>
+                <strong>{c.member?.display_name || c.member?.username}</strong> called {sportIcon(c.sport)} NM State {matchup(c)}{me?.prefs?.spoiler_free ? '' : ` · ${c.result ?? ''} ${c.nmsu_score ?? ''}–${c.opp_score ?? ''}`}{c.exact && <> · <strong>exact score!</strong></>}
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
       {data && data.followed.length > 0 && (
         <section className="card">
           <div className="section-head"><h2>Discussions you follow</h2><Link to="/?tab=following" className="small">All</Link></div>
@@ -198,7 +212,6 @@ export function Home() {
         <button className="btn ghost small" onClick={() => nav('/rosters')}>Rosters &amp; links</button>
         <button className="btn ghost small" onClick={() => nav('/recruiting')}>Recruiting &amp; portal</button>
         <button className="btn ghost small" onClick={() => nav('/time-machine')}>Aggie Time Machine</button>
-        <button className="btn ghost small" onClick={() => nav('/predictions')}>Prediction standings</button>
         <button className="btn ghost small" onClick={() => nav('/calendar')}>Community calendar</button>
       </div>
       <p className="footer-note">NMSU Sports Forum is an independent fan community, not affiliated with New Mexico State University. Last refreshed {timeAgo(Date.now())}.</p>
