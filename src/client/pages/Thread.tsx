@@ -320,7 +320,7 @@ export function ThreadPage() {
                 <div className="post-actions">
                   <button className={`react ${p.my_reaction === 1 ? 'on' : ''}`} aria-pressed={p.my_reaction === 1} aria-label={`Thumbs up, ${p.up}`} disabled={!p.author || p.author.id === me?.id} onClick={() => react(p, 1)}><ThumbsUp size={16} /> {p.up}</button>
                   <button className={`react down ${p.my_reaction === -1 ? 'on' : ''}`} aria-pressed={p.my_reaction === -1} aria-label={`Thumbs down, ${p.down}`} disabled={!p.author || p.author.id === me?.id} onClick={() => react(p, -1)}><ThumbsDown size={16} /> {p.down}</button>
-                  {t.can_reply && p.author && p.author.id !== me?.id && !p.author.username.startsWith('former_member_') && <button onClick={() => setReplyTo({ id: p.id, username: p.author!.username, n: Date.now() })}><Reply size={15} /> Reply</button>}
+                  {t.can_reply && <button onClick={() => setReplyTo({ id: p.id, username: p.author && !p.author.username.startsWith('former_member_') ? p.author.username : 'NMSU Sports Forum', n: Date.now() })}><Reply size={15} /> Reply</button>}
                   {t.can_reply && <button onClick={() => setQuote({ id: p.id, username: p.author?.username ?? 'NMSU Sports Forum', body: p.body })}><Quote size={15} /> Quote</button>}
                   <button onClick={() => (p.bookmarked ? api(`/posts/${p.id}/bookmark`, { body: { bookmarked: false } }).then(() => { patchPost(p.id, { bookmarked: false }); toast('Bookmark removed'); }) : setBookmark(p))} aria-label={p.bookmarked ? 'Remove bookmark' : 'Bookmark'}>
                     {p.bookmarked ? <BookmarkCheck size={15} /> : <Bookmark size={15} />}
