@@ -76,10 +76,13 @@ try {
   const homeTitles = await member.$$eval('.thread-title', (els) => els.map((e) => e.textContent));
   const all = (await api(member, '/feed?tab=latest&games=1')).body.threads.map((t) => t.title);
   check('Automatic game threads are grouped under the game card, not in the home list', !homeTitles.some((t) => /^(Pregame|Postgame):/.test(t)) && all.some((t) => /^(Pregame|Postgame):/.test(t)));
-  await member.click('button[title="Compact list"]');
+  check('Home shows a short preview of the Board with a See all link', await member.isVisible('a:has-text("See all")'));
+  await member.goto(BASE + '/feed');
+  await member.click('button:has-text("Compact list")');
   await member.waitForSelector('.thread-list.compact');
   check('Compact list option', true);
-  await member.click('button[title="Compact list"]');
+  await member.click('button:has-text("Full list")');
+  await member.goto(BASE + '/');
 
   // ---------- Tags ----------
   await member.goto(BASE + '/new?forum=aggie-memorial');
