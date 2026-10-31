@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { List, Plus, Rows3 } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { ShareModal } from '../components/Share';
 import { FEATURED_SPORTS } from '../../shared/sports';
 import { api } from '../api';
@@ -68,20 +68,30 @@ export function Feed({ initialTab = 'latest', compact = false }: { initialTab?: 
   };
   return (
     <section className="card">
-      <div className="feed-head">
-        <div className="feed-title">
-          <h2>{compact ? 'Community discussions' : 'The Board'}</h2>
-          {me && <button className="btn ghost small" onClick={toggleCompact} aria-pressed={Boolean(me?.prefs?.compact)} title="Compact list">{me?.prefs?.compact ? <List size={16} /> : <Rows3 size={16} />}<span className="sr-only">Compact list</span></button>}
-        </div>
-        {me && (
-          <div className="feed-actions">
-            <Link to="/new" className="btn small desktop-only-inline"><Plus size={16} /> New thread</Link>
-            <Link to="/new" className="btn secondary small">🏟️ Game thread</Link>
-            <button className="btn secondary small" onClick={() => setShare(true)}>Share a tweet</button>
-            {tab === 'unread' && <button className="btn ghost small" onClick={markAll}>Mark all read</button>}
+      {compact ? (
+        // Home shows a short preview of the Board; posting lives on the Board and the + button.
+        <div className="feed-head">
+          <div className="feed-title">
+            <h2>Latest discussions</h2>
+            <Link to="/feed" className="small">See all →</Link>
           </div>
-        )}
-      </div>
+        </div>
+      ) : (
+        <div className="feed-head">
+          <div className="feed-title">
+            <h2>The Board</h2>
+            {me && <button className="btn ghost small" onClick={toggleCompact} aria-pressed={Boolean(me?.prefs?.compact)}>{me?.prefs?.compact ? 'Full list' : 'Compact list'}</button>}
+          </div>
+          {me && (
+            <div className="feed-actions">
+              <Link to="/new" className="btn small desktop-only-inline"><Plus size={16} /> New thread</Link>
+              <Link to="/new" className="btn secondary small">🏟️ Game thread</Link>
+              <button className="btn secondary small" onClick={() => setShare(true)}>Share a tweet</button>
+              {tab === 'unread' && <button className="btn ghost small" onClick={markAll}>Mark all read</button>}
+            </div>
+          )}
+        </div>
+      )}
       {!compact && <Scoreboard />}
       {share && <ShareModal onClose={() => setShare(false)} />}
       {me && <Link to="/new" className="fab" aria-label="Start a new discussion"><Plus size={26} /></Link>}
