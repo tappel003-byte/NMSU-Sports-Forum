@@ -347,6 +347,12 @@ try {
   check('Invitation links use only letters and digits, survive stray punctuation, and the join page says exactly why a link fails',
     /^[a-f0-9]{40}$/.test(tok) && clipped.body.valid === true && missing.body.reason === 'not_found' && usedCheck.body.reason === 'used' && usedPage);
 
+  // ---------- Prediction standings: no empty season buttons ----------
+  await reg.goto(BASE + '/predictions');
+  await reg.waitForSelector('h1:has-text("this season")');
+  const seasonButtons = await reg.$$eval('.page-head button', (els) => els.map((e) => e.textContent || ''));
+  check('Prediction standings show this season without buttons for empty past or future seasons', seasonButtons.every((t) => !/2025|2027/.test(t)));
+
   // ---------- Posting without gatekeeping ----------
   await reg.goto(BASE + '/new');
   await reg.fill('#title', 'Tailgate spot this Saturday?');
