@@ -177,8 +177,9 @@ export function ComposerTools({ value, onChange, textareaRef, onError }: { value
   );
 }
 
-export function ReplyComposer({ threadId, quote, clearQuote, onPosted, open, setOpen, replyTo, clearReplyTo }: { threadId: number; quote: QuoteRef | null; clearQuote: () => void; onPosted: (postId: number, pending: boolean) => void; open: boolean; setOpen: (v: boolean) => void; replyTo?: { username: string; n: number } | null; clearReplyTo?: () => void }) {
+export function ReplyComposer({ threadId, quote, clearQuote, onPosted, open, setOpen, replyTo, clearReplyTo }: { threadId: number; quote: QuoteRef | null; clearQuote: () => void; onPosted: (postId: number, pending: boolean) => void; open: boolean; setOpen: (v: boolean) => void; replyTo?: { id: number; username: string; n: number } | null; clearReplyTo?: () => void }) {
   const draftKey = `reply-${threadId}`;
+  const [replyPost, setReplyPost] = useState<{ id: number; username: string } | null>(null);
   const draft = useDraft(draftKey);
   const [photos, setPhotos] = useState<{ id: string; url: string }[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -189,6 +190,7 @@ export function ReplyComposer({ threadId, quote, clearQuote, onPosted, open, set
   // Reply to a specific post: start the reply with @name (they get notified) unless it's already there.
   useEffect(() => {
     if (!replyTo) return;
+    setReplyPost({ id: replyTo.id, username: replyTo.username });
     const tag = `@${replyTo.username} `;
     if (!draft.body.includes(`@${replyTo.username}`)) draft.setBody(tag + draft.body);
     setOpen(true);
@@ -203,10 +205,11 @@ export function ReplyComposer({ threadId, quote, clearQuote, onPosted, open, set
     setBusy(true);
     setError(null);
     try {
-      const r = await api<{ id: number; pending: boolean }>(`/threads/${threadId}/posts`, { body: { body: draft.body, quote_post_id: quote?.id ?? null, attachments: photos.map((p) => p.id), draft_key: draftKey } });
+      const r = await api<{ id: number; pending: boolean }>(`/threads/${threadId}/posts`, { body: { body: draft.body, quote_post_id: quote?.id ?? null, reply_to_post_id: replyPost?.id ?? null, attachments: photos.map((p) => p.id), draft_key: draftKey } });
       draft.clear();
       setPhotos([]);
       clearQuote();
+      setReplyPost(null);
       setOpen(false);
       onPosted(r.id, r.pending);
     } catch (e) {
@@ -226,6 +229,12 @@ export function ReplyComposer({ threadId, quote, clearQuote, onPosted, open, set
           <strong>Reply</strong>
           <button type="button" className="btn ghost small" onClick={() => setOpen(false)}>Close</button>
         </div>
+        {replyPost && (
+          <div className="reply-ref spread">
+            <span>↩ Replying to <strong>{replyPost.username}</strong>'s post</span>
+            <button type="button" className="btn ghost small" onClick={() => setReplyPost(null)}>Remove</button>
+          </div>
+        )}
         {quote && (
           <div className="quote-embed spread">
             <div className="grow"><div className="who">Quoting {quote.username}</div><div className="small">{quote.body.slice(0, 160)}{quote.body.length > 160 ? '…' : ''}</div></div>

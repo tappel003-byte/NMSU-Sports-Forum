@@ -375,10 +375,15 @@ try {
     if (await replyBtn.count()) {
       await replyBtn.click();
       await reg.waitForFunction(() => /^@\w+ /.test(document.querySelector('#reply-box')?.value || ''));
-      threadReplyOk = true;
+      await reg.waitForSelector('.reply-ref >> text=Replying to');
+      await reg.locator('#reply-box').pressSequentially('good point');
+      await reg.click('button:has-text("Post reply")');
+      await reg.waitForSelector('.reply-ref-link', { timeout: 8000 });
+      const posts = (await api(reg, `/threads/${anyThread.id}?page=9999`)).body.posts;
+      threadReplyOk = Boolean(posts[posts.length - 1]?.reply_to?.username);
     }
   }
-  check('Thread posts have a Reply button that starts the reply with @name', threadReplyOk);
+  check('Thread posts have a Reply button: the reply starts with @name and shows "↩ Replying to …" linking to the original', threadReplyOk);
   await reg.goto(BASE + '/chat/lounge');
   await reg.waitForSelector('text=● Connected', { timeout: 10000 });
   await reg.fill('#chat-text', 'First chat line for quoting');

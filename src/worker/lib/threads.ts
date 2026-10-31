@@ -120,11 +120,11 @@ export async function needsApproval(env: Env, user: SessionUser): Promise<boolea
 
 /** Inserts a post, links attachments, updates thread counters and sends notifications. Pending posts wait for approval. */
 export async function createPost(env: Env, user: SessionUser, thread: { id: number; title: string; user_id: number | null }, body: string,
-  opts: { quotePostId?: number | null; attachmentIds?: string[]; isFirst?: boolean; pending?: boolean }): Promise<number> {
+  opts: { quotePostId?: number | null; replyToPostId?: number | null; attachmentIds?: string[]; isFirst?: boolean; pending?: boolean }): Promise<number> {
   const t = now();
   const pending = Boolean(opts.pending);
-  const r = await run(env, 'INSERT INTO posts (thread_id, user_id, body, quote_post_id, created_at, pending) VALUES (?, ?, ?, ?, ?, ?)',
-    thread.id, user.id, body, opts.quotePostId ?? null, t, pending ? 1 : 0);
+  const r = await run(env, 'INSERT INTO posts (thread_id, user_id, body, quote_post_id, reply_to_post_id, created_at, pending) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    thread.id, user.id, body, opts.quotePostId ?? null, opts.replyToPostId ?? null, t, pending ? 1 : 0);
   const postId = r.meta.last_row_id;
   if (opts.attachmentIds?.length) {
     for (const id of opts.attachmentIds.slice(0, 6)) {

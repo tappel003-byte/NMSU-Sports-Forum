@@ -27,6 +27,7 @@ interface Post {
   hidden: boolean;
   can_flag: boolean;
   quote: { id: number; thread_id: number; username: string; body: string; deleted: boolean } | null;
+  reply_to: { id: number; username: string } | null;
   attachments: { id: string; content_type: string; expires_at: number | null }[];
   expired_attachments: number;
   can_edit: boolean;
@@ -55,7 +56,7 @@ export function ThreadPage() {
   const query = params.get('page') ? `page=${params.get('page')}` : params.get('post') ? `post=${params.get('post')}` : params.get('unread') ? 'unread=1' : '';
   const { data, error, reload, setData } = useApi<ThreadData>(`/threads/${id}?${query}`);
   const [quote, setQuote] = useState<QuoteRef | null>(null);
-  const [replyTo, setReplyTo] = useState<{ username: string; n: number } | null>(null);
+  const [replyTo, setReplyTo] = useState<{ id: number; username: string; n: number } | null>(null);
   const [editing, setEditing] = useState<{ id: number; body: string } | null>(null);
   const [history, setHistory] = useState<{ current: string; edits: { old_body: string; edited_at: number; editor: string }[] } | null>(null);
   const [report, setReport] = useState<number | null>(null);
@@ -297,6 +298,9 @@ export function ThreadPage() {
                 </div>
               ) : (
                 <>
+                  {p.reply_to && (
+                    <button type="button" className="reply-ref-link" onClick={() => setParams({ post: String(p.reply_to!.id) })}>↩ Replying to {p.reply_to.username}'s post</button>
+                  )}
                   {p.quote && (
                     <div className="quote-embed">
                       <div className="who">{p.quote.username} wrote:</div>
@@ -316,7 +320,7 @@ export function ThreadPage() {
                 <div className="post-actions">
                   <button className={`react ${p.my_reaction === 1 ? 'on' : ''}`} aria-pressed={p.my_reaction === 1} aria-label={`Thumbs up, ${p.up}`} disabled={!p.author || p.author.id === me?.id} onClick={() => react(p, 1)}><ThumbsUp size={16} /> {p.up}</button>
                   <button className={`react down ${p.my_reaction === -1 ? 'on' : ''}`} aria-pressed={p.my_reaction === -1} aria-label={`Thumbs down, ${p.down}`} disabled={!p.author || p.author.id === me?.id} onClick={() => react(p, -1)}><ThumbsDown size={16} /> {p.down}</button>
-                  {t.can_reply && p.author && p.author.id !== me?.id && !p.author.username.startsWith('former_member_') && <button onClick={() => setReplyTo({ username: p.author!.username, n: Date.now() })}><Reply size={15} /> Reply</button>}
+                  {t.can_reply && p.author && p.author.id !== me?.id && !p.author.username.startsWith('former_member_') && <button onClick={() => setReplyTo({ id: p.id, username: p.author!.username, n: Date.now() })}><Reply size={15} /> Reply</button>}
                   {t.can_reply && <button onClick={() => setQuote({ id: p.id, username: p.author?.username ?? 'NMSU Sports Forum', body: p.body })}><Quote size={15} /> Quote</button>}
                   <button onClick={() => (p.bookmarked ? api(`/posts/${p.id}/bookmark`, { body: { bookmarked: false } }).then(() => { patchPost(p.id, { bookmarked: false }); toast('Bookmark removed'); }) : setBookmark(p))} aria-label={p.bookmarked ? 'Remove bookmark' : 'Bookmark'}>
                     {p.bookmarked ? <BookmarkCheck size={15} /> : <Bookmark size={15} />}
