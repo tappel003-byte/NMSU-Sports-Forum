@@ -206,7 +206,7 @@ export function JoinCta({ text = 'Join free to post, react and chat.' }: { text?
 interface LiveScoreData { live: { state: 'pre' | 'in' | 'post'; detail: string; nmsu_score: number | null; opp_score: number | null; espn_url: string } | null; espn_url: string | null; active: boolean }
 
 /** In-game score from ESPN (football and men's basketball), refreshed every 30 seconds while the game is on, plus the ESPN Gamecast link. */
-export function LiveScore({ game, compact = false }: { game: GameItem; compact?: boolean }) {
+export function LiveScore({ game, compact = false, children }: { game: GameItem; compact?: boolean; children?: ReactNode }) {
   const [data, setData] = useState<LiveScoreData | null>(null);
   useEffect(() => {
     let stop = false;
@@ -222,7 +222,8 @@ export function LiveScore({ game, compact = false }: { game: GameItem; compact?:
     load();
     return () => { stop = true; window.clearTimeout(timer); };
   }, [game.id]);
-  if (!data?.espn_url) return null;
+  // Other buttons passed as children share one wrapping row with the ESPN link.
+  if (!data?.espn_url) return children ? <div className="row">{children}</div> : null;
   const l = data.live;
   const showScore = l && l.state !== 'pre' && l.nmsu_score !== null;
   return (
@@ -234,7 +235,12 @@ export function LiveScore({ game, compact = false }: { game: GameItem; compact?:
           <span className="live-detail">{l.detail}</span>
         </span>
       )}
-      <a href={data.espn_url} target="_blank" rel="noopener noreferrer" className={compact ? 'btn ghost small' : 'btn on-crimson outline small'}>{l ? 'ESPN Gamecast ↗' : 'NM State on ESPN ↗'}</a>
+      {children ? (
+        <div className="row" style={{ width: '100%' }}>
+          {children}
+          <a href={data.espn_url} target="_blank" rel="noopener noreferrer" className="btn on-crimson outline small">{l ? 'ESPN Gamecast ↗' : 'ESPN ↗'}</a>
+        </div>
+      ) : <a href={data.espn_url} target="_blank" rel="noopener noreferrer" className={compact ? 'btn ghost small' : 'btn on-crimson outline small'}>{l ? 'ESPN Gamecast ↗' : 'NM State on ESPN ↗'}</a>}
     </div>
   );
 }
