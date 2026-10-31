@@ -156,7 +156,7 @@ function Members() {
           return (
             <li key={m.id}>
               <div className="grow">
-                <Link to={`/members/${m.id}`}><strong>{m.username}</strong></Link>{m.role === 'moderator' && <span className="chip" style={{ marginLeft: 6 }}>Moderator</span>}{m.role === 'admin' && <span className="chip" style={{ marginLeft: 6 }}>{m.owner ? 'Owner' : 'Admin'}</span>}{m.status !== 'active' && <span className="chip gray" style={{ marginLeft: 6 }}>{m.status}</span>}
+                <Link to={`/members/${m.id}`}><strong>{m.username}</strong></Link>{m.role === 'moderator' && <span className="chip" style={{ marginLeft: 6 }}>Moderator</span>}{m.role === 'admin' && <span className="chip" style={{ marginLeft: 6 }}>Admin</span>}{m.status !== 'active' && <span className="chip gray" style={{ marginLeft: 6 }}>{m.status}</span>}
                 {m.email && <div className="tiny muted">{m.email}</div>}
                 <div className="tiny muted">{m.posts} {m.posts === 1 ? 'post' : 'posts'} · joined {timeAgo(m.created_at)} · {m.last_seen_at ? `seen ${timeAgo(m.last_seen_at)}` : 'never seen'}{m.suspended_until ? ` · suspended until ${fullTime(m.suspended_until)}` : ''}</div>
               </div>
