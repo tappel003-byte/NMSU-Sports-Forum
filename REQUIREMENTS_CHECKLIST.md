@@ -77,3 +77,4 @@ Audit, October 30, 2026 (after first live review): 65 rows. 59 Verified, 5 Built
 | 68 | Aggie News: topics from NM State news feeds, capped, deduplicated, headline + link | DECISIONS (content engine) | Verified with a local fictional feed (relevance filter, redirect unwrapping, duplicates, cap); unit-tested parsing. **The real feeds can only be confirmed on the live site** (build environment can't reach them) |
 | 69 | Topic of the day on quiet days + 🎲 Random topic button | DECISIONS (content engine) | Verified — e2e: admin "post now" (no repeats) and the 🎲 button; the quiet-day trigger runs on the 30-minute job |
 | 70 | Weekly recurring topics | DECISIONS (content engine) | Verified — e2e posts once at its day and time; unit-tested time parsing |
+| 71 | Profile photo crop: drag and zoom inside a circle before saving, to center faces or the subject | Owner request (Oct 31, 2026) | Planned |
