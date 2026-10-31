@@ -488,3 +488,10 @@ table.simple th { font-size: .72rem; text-transform: uppercase; letter-spacing: 
 .feed-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .filter-row select { flex: none; }
 .small-select.chosen { background-color: var(--crimson); color: var(--white); border-color: var(--crimson); }
+
+/* Profile: Save stays in reach while the form scrolls */
+.sticky-save { position: sticky; bottom: 12px; z-index: 5; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 12px; padding: 10px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+.sticky-save .save-ok { color: var(--crimson); font-weight: 700; font-size: .9rem; }
+.sticky-save .save-bad { color: var(--crimson); font-size: .9rem; }
+@media (max-width: 899px) { .sticky-save { bottom: calc(var(--bottom-h) + env(safe-area-inset-bottom) + 8px); } }
+:root[data-theme='dark'] .sticky-save .save-ok, :root[data-theme='dark'] .sticky-save .save-bad { color: var(--white); }
