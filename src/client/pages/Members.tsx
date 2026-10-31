@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Mail, Send, VolumeX } from 'lucide-react';
 import { api, uploadImage } from '../api';
+import { AvatarCropper } from '../components/AvatarCropper';
 import { useApi, useApp, type Prefs } from '../state';
 import { PostBody, fullTime, timeAgo } from '../format';
 import { Avatar, Badges, ErrorState, Loading, ThreadList, type MemberLite, type ThreadItem } from '../components/ui';
@@ -182,6 +183,8 @@ export function Settings() {
   const [prefs, setPrefs] = useState<Prefs>({});
   const [pw, setPw] = useState({ current: '', password: '' });
   const avatarInput = useRef<HTMLInputElement>(null);
+  // Choosing a photo opens the cropper; the cropped square is what gets uploaded.
+  const [cropFile, setCropFile] = useState<File | null>(null);
 
   useEffect(() => {
     if (!data) return;
@@ -229,9 +232,16 @@ export function Settings() {
     try { await api('/auth/password', { body: pw }); setPw({ current: '', password: '' }); toast('Password changed. Other devices were signed out.'); } catch (err) { toast((err as Error).message); }
   };
 
-  const onAvatar = async (files: FileList | null) => {
-    if (!files?.[0]) return;
-    try { await uploadImage(files[0], 'avatar'); toast('Photo updated'); refresh(); reload(); } catch (err) { toast((err as Error).message); }
+  const onAvatar = (files: FileList | null) => {
+    if (files?.[0]) setCropFile(files[0]);
+    if (avatarInput.current) avatarInput.current.value = '';
+  };
+  const saveCropped = async (blob: Blob) => {
+    await uploadImage(new File([blob], 'avatar.jpg', { type: 'image/jpeg' }), 'avatar');
+    setCropFile(null);
+    toast('Photo updated');
+    refresh();
+    reload();
   };
 
   const toggle = (k: keyof Prefs) => savePrefs({ ...prefs, [k]: !prefs[k] });
@@ -259,6 +269,7 @@ export function Settings() {
         <div className="row" style={{ marginBottom: 14 }}>
           <Avatar member={data.me} size="lg" />
           <input ref={avatarInput} type="file" accept="image/*" hidden onChange={(e) => onAvatar(e.target.files)} />
+          {cropFile && <AvatarCropper file={cropFile} onCancel={() => setCropFile(null)} onSave={saveCropped} />}
           <button className="btn secondary small" onClick={() => avatarInput.current?.click()}>Change photo</button>
         </div>
         <form onSubmit={saveProfile}>
