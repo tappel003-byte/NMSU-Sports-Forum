@@ -11,7 +11,7 @@ Updated October 29, 2026.
 - Topics, replies, reactions, polls, follows, game center, game chat, member directory and profiles, badges and moderation appear in **overall vision**. Presence in vision does not mean implement all at once.
 - Reputation rises with received thumbs-up; thumbs-down does not reduce points. Show member's most appreciated post and optionally weekly highlights.
 - Legacy Aggie Alert moniker and self-reported legacy post count may appear on profiles, clearly separate from this forum's automatic count.
-- 30-day Founding Member period after eventual launch, with honorary founders possible later.
+- ~~30-day Founding Member period after eventual launch~~ superseded Oct 31, 2026: see Founding Members below. Honorary founders remain possible.
 - Read-only thread archive after 90 days since last reply; uploaded discussion photos expire 90 days after upload, excluding avatar and brand assets.
 - **Aggie Ring of Honor** is a future **moniker-only** list, starting with **Rojo**. It remains **hidden from launch navigation and website** until ready. No memorial details required.
 - No mandatory subscriptions, advertisements or commercial ownership model. Voluntary hosting/domain contributions may be recognized without voting/moderation privileges.
@@ -69,6 +69,7 @@ Updated October 29, 2026.
 - **Crest:** larger in the header (68px desktop, 58px phone); tapping it opens the approved crest full screen. The site name next to it still goes home.
 - **Live scores (supersedes "no live scores at launch"):** for football and men's basketball, the game page and game chat show the in-game score and clock from ESPN's public scoreboard feed, refreshed every 30 seconds from 30 minutes before kickoff/tip-off to 5 hours after (one shared lookup per 30 seconds, cached). There's also an ESPN Gamecast button. ESPN doesn't formally offer this feed to outside sites; if it changes, the score bar hides and the ESPN link remains. Final results still come from the official NMSU calendar.
 - **Crest trademark review — owner decision (Oct 31, 2026):** the owner was told about the NMSU/NM State lettering, the mascot resemblance and the Zia symbol, and chose to keep the crest as supplied. If anyone objects, the owner will change it then. Don't raise this again unless the owner asks.
+- **Founding Members (Oct 31, 2026):** anyone who joins through **Thanksgiving, November 26, 2026**, up to **30** people (the first 30 by join time). No launch date is needed. Both values are adjustable in Admin → Settings.
 - **Plain Board (Oct 31, 2026):** the Board and the home page's discussion list are just the thread list, like Sports Trough: no Latest/Unread/Following/Popular tabs and no topic filter buttons. Unread threads still get a dot, and tags still show on threads.
 - **Admin → Members:** compact one-line rows; all member actions (make/remove admin, suspend/reinstate, warn, propose ban, password reset link, recognize) live in one Actions menu.
 - **Aggie Alert up votes on profiles:** members can add their Aggie Alert up votes received (self-reported, beside moniker, join year and post count). Shown on the profile only; it does not change Aggie Reputation here.
@@ -81,7 +82,7 @@ Updated October 29, 2026.
 - Confirm official feed URLs/terms (SPORTS_DATA.md); any future licensed live-score source and its cost.
 - Cloudflare deployment configuration and domain DNS/current live site assessment.
 - Trademark/mascot/Zia artwork clearance and source photo licensing before wide public launch.
-- Official launch date (Founding Member window), honorary founder criteria, category growth, Ring of Honor visibility.
+- Honorary founder criteria, category growth, Ring of Honor visibility.
 
 ## Build policy
 **Single integrated initial release is authorized.** Claude Code should implement the functional forum, membership/invitations, real discussions, profiles/admin features and game chat together with the responsive UI, as specified in MILESTONE.md. This supersedes the prior visual-only prototype policy. Don't require approval at every trivial milestone; protect security, costs and existing Cloudflare site.

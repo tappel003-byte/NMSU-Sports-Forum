@@ -3,7 +3,7 @@ Every owner decision, where it is documented, and its build status. Update the s
 
 Status values: **Planned** · **Built** (code exists) · **Verified** (tested end-to-end) · **Blocked** (named reason)
 
-Audit, October 30, 2026 (after first live review): 65 rows. 56 Verified, 8 Built (working, but still waiting on a key, a file, real data or a real-device check), 1 Blocked (recruiting data needs a free key). Owner changes: one Board instead of venue forums (row 8), open sign-up as a switch alongside invites (row 56), member-picked game threads instead of automatic ones (row 18), and optional thread descriptions (row 9).
+Audit, October 30, 2026 (after first live review): 65 rows. 57 Verified, 7 Built (working, but still waiting on a key, a file, real data or a real-device check), 1 Blocked (recruiting data needs a free key). Owner changes: one Board instead of venue forums (row 8), open sign-up as a switch alongside invites (row 56), member-picked game threads instead of automatic ones (row 18), and optional thread descriptions (row 9).
 
 | # | Requirement | Documented in | Status |
 | --- | --- | --- | --- |
@@ -20,7 +20,7 @@ Audit, October 30, 2026 (after first live review): 65 rows. 56 Verified, 8 Built
 | 11 | Thumbs-up/down; Aggie Reputation counts thumbs-up only; no self-reactions | MILESTONE 6 | Verified |
 | 12 | Most appreciated post on profile (member may choose to highlight); weekly highlight on home | MILESTONE 6–7 | Verified — profile most appreciated post, weekly highlight on home; members can highlight a chosen post |
 | 13 | Directory, profiles, avatar, Aggie Alert legacy moniker + self-reported join year, post count and up votes received (separate from forum count and reputation) | MILESTONE 7, DECISIONS | Verified |
-| 14 | Founding Member (30 days after configurable launch date); honorary founders | DECISIONS | Built — Founding Member from configurable launch date; optional automatic honorary threshold (off by default) plus admin award |
+| 14 | Founding Member: the first 30 members who join through Thanksgiving, Nov 26, 2026 (both adjustable); honorary founders | DECISIONS | Verified — e2e checks the limit and the deadline; optional automatic honorary threshold (off by default) plus admin award |
 | 15 | 4–5 admins; invite, pin/lock/move/remove, reports, member suspension; can't remove last admin; owner/hosting separate from admin | MILESTONE 8 | Verified |
 | 16 | **Schedules and results self-populate from official sources; manual = emergency override only** | SPORTS_DATA | Verified live — the official nmstatesports.com composite feed is connected in production (181 games, syncing without errors) |
 | 17 | ~~No live scores at launch~~ superseded: live score and clock for football and men's basketball from ESPN's public scoreboard (30-second refresh, shared cache), ESPN Gamecast link, official live stats link; never invent scores | SPORTS_DATA, DECISIONS | Built — parsing unit-tested with ESPN-shaped data; ESPN links e2e-tested. **The live lookup can only be confirmed during the first game (Nov 3, men's basketball)**, because ESPN is unreachable from the build environment |

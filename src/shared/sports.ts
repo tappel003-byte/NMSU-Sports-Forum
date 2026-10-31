@@ -62,7 +62,7 @@ export function parseHubLinks(raw: string): { label: string; url: string }[] {
 export const TIME_ZONE = 'America/Denver';
 
 export const BADGES: Record<string, { label: string; description: string }> = {
-  founding: { label: 'Founding Member', description: 'Joined in the first 30 days after launch.' },
+  founding: { label: 'Founding Member', description: 'One of the first members, joined during the founding period.' },
   honorary_founding: { label: 'Honorary Founding Member', description: 'Recognized by the community as a founder in spirit.' },
   supporter: { label: 'Clubhouse Supporter', description: 'Helped pay for the domain or hosting.' },
   architect: { label: 'Forum Architect', description: 'Designed a feature or layout.' },

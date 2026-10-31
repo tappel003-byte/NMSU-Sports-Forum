@@ -322,6 +322,18 @@ try {
   const mapOk = await reg.waitForSelector('.leaflet-control-zoom', { timeout: 10000 }).then(() => true, () => false);
   check('The member map loads (zoom controls appear; map images come from OpenStreetMap)', mapOk);
 
+  // ---------- Founding Members: first N who join by the deadline ----------
+  const badgeOf = async (uid) => ((await api(admin, `/members/${uid}`)).body.member.badges || []).some((b) => b.badge === 'founding');
+  const allMembers = (await api(admin, '/admin/members')).body.members;
+  const firstId = Math.min(...allMembers.map((m) => m.id));
+  const laterId = allMembers.find((m) => m.username === 'RickFromTailgate').id;
+  await api(admin, '/admin/settings', { method: 'PUT', body: { founding_limit: '2' } });
+  const capped = (await badgeOf(firstId)) && !(await badgeOf(laterId));
+  await api(admin, '/admin/settings', { method: 'PUT', body: { founding_limit: '', founding_until: '2020-01-01' } });
+  const pastDeadline = !(await badgeOf(firstId));
+  await api(admin, '/admin/settings', { method: 'PUT', body: { founding_limit: '', founding_until: '' } });
+  check('Founding Member goes to the first members who join by the deadline, up to the limit (defaults: Thanksgiving, 30)', capped && pastDeadline && (await badgeOf(laterId)));
+
   // ---------- Posting without gatekeeping ----------
   await reg.goto(BASE + '/new');
   await reg.fill('#title', 'Tailgate spot this Saturday?');
