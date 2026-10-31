@@ -209,7 +209,7 @@ export function NewThread() {
         <div className="field">
           <label htmlFor="body">Your post</label>
           <MentionTextarea id="body" textareaRef={bodyRef} className="textarea" style={{ minHeight: 180 }} value={draft.body} onChange={draft.setBody} required />
-          <span className="hint">Tips: paste a tweet or YouTube link and it shows as a card; start a line with &gt; to quote; **bold**; ||spoiler||; @ to mention. {draft.status === 'saved' && draft.body ? 'Draft saved.' : draft.status === 'saving' ? 'Saving draft…' : ''}</span>
+          <span className="hint">Tips: paste a tweet, Facebook or YouTube link and it shows as a card; start a line with &gt; to quote; **bold**; ||spoiler||; @ to mention. {draft.status === 'saved' && draft.body ? 'Draft saved.' : draft.status === 'saving' ? 'Saving draft…' : ''}</span>
         </div>
         {f && f.slug !== 'general' && <div className="note-box small" style={{ marginBottom: 12 }}>Posting in {f.name}.</div>}
         <div className="field"><label htmlFor="desc">Short description <span className="muted small">(optional)</span></label><input id="desc" className="input" value={description} onChange={(e) => setDescription(e.target.value)} maxLength={240} placeholder="One line shown in the thread list" /></div>

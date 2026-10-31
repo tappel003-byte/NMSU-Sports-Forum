@@ -83,7 +83,7 @@ export function Feed({ initialTab = 'latest', compact = false }: { initialTab?: 
             <div className="feed-actions">
               <Link to="/new" className="btn small desktop-only-inline"><Plus size={16} /> New thread</Link>
               <Link to="/new" className="btn secondary small">🏟️ Game thread</Link>
-              <button className="btn secondary small" onClick={() => setShare(true)}>Share a tweet</button>
+              <button className="btn secondary small" onClick={() => setShare(true)}>Share a post</button>
               {tab === 'unread' && <button className="btn ghost small" onClick={markAll}>Mark all read</button>}
             </div>
           )}

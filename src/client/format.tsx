@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useState, type ReactNode } from 'react';
-import { parseTweetUrl, parseYouTubeId } from '../shared/forum';
+import { parseFacebookUrl, parseTweetUrl, parseYouTubeId } from '../shared/forum';
 import { Link } from 'react-router-dom';
 import { SPORT_BY_KEY, TIME_ZONE } from '../shared/sports';
 import { useApp } from './state';
@@ -129,12 +129,34 @@ function YouTube({ id, title }: { id: string; title?: string | null }) {
   );
 }
 
-/** Rich card for a pasted link: tweets, YouTube videos and articles. */
+/** Facebook post card. The post itself loads from Facebook only when tapped (no Facebook tracking until then). */
+function FacebookPost({ url, canonical, video }: { url: string; canonical: string; video: boolean }) {
+  const [show, setShow] = useState(false);
+  const src = `https://www.facebook.com/plugins/${video ? 'video' : 'post'}.php?href=${encodeURIComponent(canonical)}&show_text=true&width=500`;
+  return (
+    <div className="preview fb">
+      <div className="head"><span className="logo fb-logo" aria-hidden="true">f</span><span>Facebook {video ? 'video' : 'post'}</span></div>
+      {show ? (
+        <iframe className="fb-frame" src={src} title={`Facebook ${video ? 'video' : 'post'}`} scrolling="yes" allow="encrypted-media; picture-in-picture; clipboard-write" allowFullScreen />
+      ) : (
+        <button type="button" className="btn secondary small" style={{ marginTop: 6 }} onClick={() => setShow(true)}>Show the post here</button>
+      )}
+      <div className="tiny muted" style={{ marginTop: 6 }}>
+        <a href={url} target="_blank" rel="noopener noreferrer nofollow">Open on Facebook ↗</a>
+        {show && ' · If it stays blank, the post is private or Facebook won\'t show it outside Facebook.'}
+      </div>
+    </div>
+  );
+}
+
+/** Rich card for a pasted link: tweets, Facebook posts, YouTube videos and articles. */
 export function LinkPreview({ url }: { url: string }) {
   const [p, setP] = useState<PreviewData | null | undefined>(undefined);
   const yt = parseYouTubeId(url);
   const tweet = parseTweetUrl(url);
-  useEffect(() => { let live = true; loadPreview(url).then((d) => live && setP(d)); return () => { live = false; }; }, [url]);
+  const fb = parseFacebookUrl(url);
+  useEffect(() => { if (fb) return; let live = true; loadPreview(url).then((d) => live && setP(d)); return () => { live = false; }; }, [url]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (fb) return <FacebookPost url={url} canonical={fb.canonical} video={fb.video} />;
   if (yt) return <YouTube id={yt} title={p?.title} />;
   if (tweet) {
     return (

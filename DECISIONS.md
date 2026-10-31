@@ -86,6 +86,8 @@ Updated October 29, 2026.
 - **Latest scores on top of the Board:** a strip shows the most recent results (from the automatic schedule feed; spoiler-free mode respected) and the next game.
 - **Rosters & links hub:** every sport links to its official roster and schedule (always current, nothing to maintain), plus an admin-maintained list of useful links (radio feeds, streams, tickets) in Admin → Settings. Shown in the desktop side column and from the phone home page.
 - **Admins and moderators (Oct 31, 2026):** two staff roles. **Admins** control everything: settings, invitations, sports data, password reset links, recognitions and who is an admin or moderator. **Moderators** keep discussions in line: review reports, lock/pin/move/remove posts and threads, approve new posts, warn, suspend, propose bans and see the moderation log, and remove game-chat messages. Moderators never see member email addresses. Only admins change roles, and the last admin can't be removed.
+- **Sharing Facebook posts (Oct 31, 2026):** members paste a Facebook post, photo, video or reel link (Share → Copy link in the Facebook app) into "Share a post" or any reply. It shows as a Facebook card; the post itself loads from Facebook only when someone taps "Show the post here" (no Facebook tracking otherwise), with an Open on Facebook link. Only public posts display; the site does not follow Facebook pages automatically (that needs Facebook's app approval).
+- **Automatic refresh after updates:** an open page (including the home-screen app) checks for a newer release when it comes back on screen and every 10 minutes, and reloads unless someone is typing.
 
 ## Decisions pending
 - Politics category and possible opt-in.

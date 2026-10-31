@@ -6,11 +6,11 @@ import { useApi, useApp } from '../state';
 import { LinkPreview } from '../format';
 import { Modal, type ThreadItem } from './ui';
 import { TAGS } from '../../shared/forum';
-import { parseTweetUrl } from '../../shared/forum';
+import { parseFacebookUrl, parseTweetUrl } from '../../shared/forum';
 
 export type ShareTarget = { kind: 'thread'; id: number; title: string } | { kind: 'player'; id: number; name: string } | null;
 
-/** The fastest way to bring a tweet (or any link) into the forum: paste, comment, post. */
+/** The fastest way to bring a tweet, Facebook post (or any link) into the forum: paste, comment, post. */
 export function ShareForm({ initialUrl = '', initialText = '', target = null, onDone }: { initialUrl?: string; initialText?: string; target?: ShareTarget; onDone?: () => void }) {
   const nav = useNavigate();
   const { toast } = useApp();
@@ -25,6 +25,7 @@ export function ShareForm({ initialUrl = '', initialText = '', target = null, on
   const { data: recent } = useApi<{ threads: ThreadItem[] }>(target ? null : '/feed?tab=latest&games=1');
   const validUrl = /^https?:\/\/\S+$/.test(url.trim());
   const isTweet = Boolean(parseTweetUrl(url.trim()));
+  const isFacebook = Boolean(parseFacebookUrl(url.trim()));
 
   useEffect(() => { if (isTweet && !tag) setTag('recruiting'); }, [isTweet, tag]);
 
@@ -33,7 +34,7 @@ export function ShareForm({ initialUrl = '', initialText = '', target = null, on
       const text = (await navigator.clipboard.readText()).trim();
       const found = text.match(/https?:\/\/\S+/)?.[0];
       if (found) setUrl(found);
-      else setError('No link found on your clipboard. Copy the tweet link first (Share → Copy link in the X app).');
+      else setError('No link found on your clipboard. Copy the post link first (in X or Facebook: Share → Copy link).');
     } catch {
       setError('Your browser blocked clipboard access. Press and hold in the link box and choose Paste.');
     }
@@ -57,7 +58,7 @@ export function ShareForm({ initialUrl = '', initialText = '', target = null, on
         onDone?.();
         nav(`/t/${threadId}?post=${r.id}`);
       } else {
-        const r = await api<{ id: number }>('/threads', { body: { title, description: isTweet ? 'Shared from X' : 'Shared link', body, tags: tag ? [tag] : [] } });
+        const r = await api<{ id: number }>('/threads', { body: { title, description: isTweet ? 'Shared from X' : isFacebook ? 'Shared from Facebook' : 'Shared link', body, tags: tag ? [tag] : [] } });
         toast('Shared');
         onDone?.();
         nav(`/t/${r.id}`);
@@ -72,12 +73,12 @@ export function ShareForm({ initialUrl = '', initialText = '', target = null, on
   return (
     <form onSubmit={submit}>
       <div className="field">
-        <label htmlFor="share-url">Tweet or link</label>
+        <label htmlFor="share-url">Tweet, Facebook post or link</label>
         <div className="row" style={{ flexWrap: 'nowrap' }}>
-          <input id="share-url" className="input grow" type="url" inputMode="url" placeholder="https://x.com/…/status/…" value={url} onChange={(e) => setUrl(e.target.value)} required />
+          <input id="share-url" className="input grow" type="url" inputMode="url" placeholder="Paste an X or Facebook link" value={url} onChange={(e) => setUrl(e.target.value)} required />
           <button type="button" className="btn secondary" onClick={paste}><ClipboardPaste size={16} /> Paste</button>
         </div>
-        <span className="hint">In the X app: tap Share → Copy link, then tap Paste here.</span>
+        <span className="hint">In the X or Facebook app: tap Share → Copy link, then tap Paste here.</span>
       </div>
       {validUrl && <LinkPreview url={url.trim()} />}
       <div className="field"><label htmlFor="share-comment">Your comment (optional)</label><textarea id="share-comment" className="textarea" style={{ minHeight: 80 }} value={comment} onChange={(e) => setComment(e.target.value)} /></div>
@@ -119,7 +120,7 @@ export function ShareForm({ initialUrl = '', initialText = '', target = null, on
 
 export function ShareModal({ onClose, target = null, initialUrl }: { onClose: () => void; target?: ShareTarget; initialUrl?: string }) {
   return (
-    <Modal title={target?.kind === 'player' ? 'Share news about this player' : 'Share a tweet or link'} onClose={onClose}>
+    <Modal title={target?.kind === 'player' ? 'Share news about this player' : 'Share a post or link'} onClose={onClose}>
       <ShareForm target={target} onDone={onClose} initialUrl={initialUrl} />
     </Modal>
   );

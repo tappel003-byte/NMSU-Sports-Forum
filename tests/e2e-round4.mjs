@@ -582,6 +582,38 @@ try {
   await api(admin, `/admin/members/${rickMemberId}`, { method: 'PATCH', body: { role: 'member', reason: 'Test over' } });
   check('Members see a Moderator label, and admins can change a moderator back to a regular member', modBadge && (await api(reg, '/admin/flagged')).status === 403);
 
+  // ---------- An admin can turn another admin into a moderator from the Actions menu ----------
+  await admin.goto(BASE + '/admin/members');
+  const crimsonActions = admin.locator('select[aria-label="Actions for CrimsonFan"]');
+  await crimsonActions.waitFor();
+  const crimsonOptions = await crimsonActions.locator('option').allTextContents();
+  answer(admin);
+  await crimsonActions.selectOption('moderator');
+  await admin.waitForSelector('text=Now a moderator');
+  const crimsonRole = (await api(admin, `/members/${ids.crimson}`)).body.member.role;
+  check('Admin → Members: an existing admin can be made a moderator from Actions', crimsonOptions.includes('Make moderator') && crimsonOptions.includes('Make regular member') && !crimsonOptions.includes('Make admin') && crimsonRole === 'moderator', JSON.stringify({ crimsonOptions, crimsonRole }));
+  await api(admin, `/admin/members/${ids.crimson}`, { method: 'PATCH', body: { role: 'admin', reason: 'Back to admin' } });
+
+  // ---------- Share a Facebook post ----------
+  const phone = crimson;
+  await phone.setViewportSize({ width: 390, height: 844 });
+  await phone.goto(BASE + '/feed');
+  await phone.click('button:has-text("Share a post")');
+  await phone.fill('#share-url', 'https://www.facebook.com/share/p/1AbCdEfGh/?mibextid=test');
+  await phone.fill('#share-title', 'Great Aggie Facebook post');
+  await phone.click('form button.btn.block:has-text("Share")');
+  await phone.waitForURL(/\/t\/\d+$/);
+  await phone.waitForSelector('.preview.fb');
+  const fbText = await phone.textContent('.preview.fb');
+  const fbLink = await phone.getAttribute('.preview.fb a', 'href');
+  const noFrameYet = (await phone.locator('.preview.fb iframe').count()) === 0;
+  await phone.click('button:has-text("Show the post here")');
+  const frameSrc = await phone.getAttribute('.preview.fb iframe', 'src');
+  await phone.screenshot({ path: `${SHOTS}/iphone-facebook-share.png` });
+  check('Facebook post links share as a card that loads the post from Facebook only when tapped',
+    /Facebook post/.test(fbText) && fbLink?.startsWith('https://www.facebook.com/share/p/1AbCdEfGh/') && noFrameYet
+    && frameSrc?.startsWith('https://www.facebook.com/plugins/post.php?href=https%3A%2F%2Fwww.facebook.com%2Fshare%2Fp%2F1AbCdEfGh%2F'), JSON.stringify({ fbText, fbLink, frameSrc }));
+
   // ---------- Audit history ----------
   const log = (await api(admin, '/admin/log')).body.log;
   const actions = new Set(log.map((l) => l.action));

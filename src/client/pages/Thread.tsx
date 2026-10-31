@@ -243,7 +243,7 @@ export function ThreadPage() {
             <button className="btn secondary small" onClick={follow}>{t.followed ? 'Following ✓' : 'Follow'}</button>
             {t.first_unread_post_id && <Link className="btn secondary small" to={`/t/${t.id}?post=${t.first_unread_post_id}`}>Jump to first unread</Link>}
             {t.can_reply && <button className="btn secondary small desktop-only" onClick={() => { setReplyOpen(true); document.getElementById('reply')?.scrollIntoView({ behavior: 'smooth' }); }}>Reply</button>}
-            {t.can_reply && <button className="btn secondary small" onClick={() => setShare(true)}>Share a tweet</button>}
+            {t.can_reply && <button className="btn secondary small" onClick={() => setShare(true)}>Share a post</button>}
             {(t.user_id === me?.id || isAdmin) && !editTitle && <button className="btn ghost small" onClick={() => setEditTitle(true)}>Edit title</button>}
             {isAdmin && <button className="btn ghost small" onClick={() => setAdminOpen(true)}><MoreHorizontal size={16} /> Moderate</button>}
           </div>}
