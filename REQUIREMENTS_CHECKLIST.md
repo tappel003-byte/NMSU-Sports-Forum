@@ -3,7 +3,7 @@ Every owner decision, where it is documented, and its build status. Update the s
 
 Status values: **Planned** · **Built** (code exists) · **Verified** (tested end-to-end) · **Blocked** (named reason)
 
-Audit, October 30, 2026 (after first live review): 65 rows. 57 Verified, 7 Built (working, but still waiting on a key, a file, real data or a real-device check), 1 Blocked (recruiting data needs a free key). Owner changes: one Board instead of venue forums (row 8), open sign-up as a switch alongside invites (row 56), member-picked game threads instead of automatic ones (row 18), and optional thread descriptions (row 9).
+Audit, October 30, 2026 (after first live review): 65 rows. 59 Verified, 5 Built (working, but still waiting on a key, a file, real data or a real-device check), 1 Blocked (recruiting data needs a free key). Owner changes: one Board instead of venue forums (row 8), open sign-up as a switch alongside invites (row 56), member-picked game threads instead of automatic ones (row 18), and optional thread descriptions (row 9).
 
 | # | Requirement | Documented in | Status |
 | --- | --- | --- | --- |
@@ -11,7 +11,7 @@ Audit, October 30, 2026 (after first live review): 65 rows. 57 Verified, 7 Built
 | 2 | Approved cowboy crest used as supplied; no crossed pistols; derivatives (icon, badges) need owner approval | CLAUDE, BRAND_COLORS | Verified — the owner supplied the approved crest (Oct 30, 2026), stored at `assets/approved-crest.webp`; header, favicons, app and home-screen icons are generated from it unchanged. No other derivatives made. The owner reviewed the trademark considerations and chose to keep the crest as is (DECISIONS, Oct 31). |
 | 3 | Official NMSU colors (#8C0B42, #FFFFFF, #B6A5AD, #D7C9C4, #6D6E71); screenshots are layout-only | BRAND_COLORS | Verified — CSS tokens in `src/client/styles.css` |
 | 4 | Mobile-first, polished desktop; phone bottom nav, desktop three columns | VISION, DECISIONS | Verified — e2e checks bottom nav at 390px and three columns at 1440px, no horizontal scroll |
-| 5 | Installable PWA with crest home-screen icon | MILESTONE 1 | Built — manifest, icons, service worker; site is live. Add to Home Screen not yet confirmed on the owner's iPhone |
+| 5 | Installable PWA with crest home-screen icon | MILESTONE 1 | Verified — the owner added it to their iPhone home screen with the crest icon (Oct 31) |
 | 6 | Invite-only accounts: one-use/expiring invites, login, password reset, secure sessions, server-side protection | MILESTONE 3 | Verified — one-use expiring invites, login, admin reset links, sessions, suspension ends sessions. Self-service reset email needs an email service (optional). Admins invite by text (opens Messages with the invitation written; phone numbers are never stored) or email (opens the email app, or sends automatically once Resend is configured) |
 | 7 | No member content or APIs visible without login | MILESTONE 3 | Verified — every private API returns 401 signed out; WebSocket refused; photos require sign-in |
 | 8 | ~~Venue forums in navigation~~ superseded: one Board with pinned topics on top; sport labels on game threads | MILESTONE 4, DECISIONS | Verified — old forum links land on the Board; pinned first |
@@ -41,7 +41,7 @@ Audit, October 30, 2026 (after first live review): 65 rows. 57 Verified, 7 Built
 | 32 | Year in Review | MILESTONE 13 | Built — page loads; content grows with data |
 | 33 | Suggestions & Improvements board with statuses; Idea Contributor auto-credit | MILESTONE 13, VISION | Verified — statuses and automatic Idea Contributor |
 | 34 | Recognition badges with reasons; contribution history; recognition never buys authority | VISION, DECISIONS | Verified |
-| 35 | Opt-in approximate member map; never precise locations | VISION, MILESTONE 13 | Built — city-level, rounded ~10 km. Geocoding uses OpenStreetMap and could not be tested from the build environment |
+| 35 | Opt-in approximate member map; never precise locations | VISION, MILESTONE 13 | Verified — city-level, rounded ~10 km; the owner confirmed live map and pins on iPhone (Oct 31) |
 | 36 | Threads read-only 90 days after last reply (admins can reopen); discussion photos deleted 90 days after upload | DECISIONS | Built and unit-tested; photo expiry runs in the daily job |
 | 37 | Ring of Honor (Rojo) hidden from site and navigation | AGGIE_RING_OF_HONOR, MILESTONE | Verified — e2e confirms it appears nowhere |
 | 38 | Politics forum not at launch | MILESTONE | Verified — no Politics forum |
