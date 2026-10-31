@@ -38,6 +38,11 @@ export function randomToken(bytes = 32): string {
   return b64(arr).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
+/** Token for links people send by text or email: letters and digits only, so messaging apps can't clip a trailing - or _ or turn _ into italics. */
+export function linkToken(bytes = 20): string {
+  return [...crypto.getRandomValues(new Uint8Array(bytes))].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
 export async function sha256(s: string): Promise<string> {
   const d = await crypto.subtle.digest('SHA-256', enc.encode(s));
   return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, '0')).join('');

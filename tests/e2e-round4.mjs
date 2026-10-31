@@ -334,6 +334,19 @@ try {
   await api(admin, '/admin/settings', { method: 'PUT', body: { founding_limit: '', founding_until: '' } });
   check('Founding Member goes to the first members who join by the deadline, up to the limit (defaults: Thanksgiving, 30)', capped && pastDeadline && (await badgeOf(laterId)));
 
+  // ---------- Invitation links: clear reasons, and clipped links still work ----------
+  const fresh = (await api(admin, '/admin/invites', { body: { note: 'clip test' } })).body.link;
+  const tok = fresh.split('/join/')[1];
+  const clipped = await api(reg, `/auth/invite/${encodeURIComponent(tok + ').')}`);
+  const missing = await api(reg, '/auth/invite/nothinghere123');
+  const usedTok = mlink.split('/join/')[1];
+  const usedCheck = await api(reg, `/auth/invite/${usedTok}`);
+  const visitor = await (await browser.newContext()).newPage();
+  await visitor.goto(BASE + `/join/${usedTok}`);
+  const usedPage = await visitor.waitForSelector('text=Invitation already used', { timeout: 8000 }).then(() => true, () => false);
+  check('Invitation links use only letters and digits, survive stray punctuation, and the join page says exactly why a link fails',
+    /^[a-f0-9]{40}$/.test(tok) && clipped.body.valid === true && missing.body.reason === 'not_found' && usedCheck.body.reason === 'used' && usedPage);
+
   // ---------- Posting without gatekeeping ----------
   await reg.goto(BASE + '/new');
   await reg.fill('#title', 'Tailgate spot this Saturday?');

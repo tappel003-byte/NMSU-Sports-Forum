@@ -1,7 +1,7 @@
 import type { Env, SessionUser } from '../env';
 import { getSetting, run } from '../db';
 import { emailEnabled, sendEmail } from '../email';
-import { DAY, now, randomToken, sha256 } from '../util';
+import { DAY, linkToken, now, sha256 } from '../util';
 
 export interface InviteOptions { email?: string; lockEmail?: boolean; name?: string; note?: string; days: number; maxUses: number }
 
@@ -12,7 +12,7 @@ export async function memberInvitesOn(env: Env): Promise<boolean> {
 
 /** Creates an invitation and returns its link (shown once; only the hash is stored). Emails it when an email service is set up. */
 export async function createInvite(env: Env, origin: string, user: SessionUser, o: InviteOptions) {
-  const token = randomToken(24);
+  const token = linkToken();
   const t = now();
   // Phone numbers are never sent here: texting happens on the inviter's own phone.
   const note = [o.name, o.note].filter(Boolean).join(' — ') || (o.email ? `Emailed to ${o.email}` : null);

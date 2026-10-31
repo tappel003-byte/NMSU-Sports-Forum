@@ -5,7 +5,7 @@ import { clientIp, createSession, destroySession, liftExpiredSuspension, rateLim
 import { first, getSetting, logMod, run } from '../db';
 import { emailEnabled, sendEmail } from '../email';
 import { fileAppeal } from './community';
-import { HttpError, DAY, hashPassword, now, parse, passwordSchema, randomToken, sha256, usernameSchema, verifyPassword } from '../util';
+import { HttpError, DAY, hashPassword, now, parse, passwordSchema, randomToken, sha256, usernameSchema, verifyPassword, linkToken } from '../util';
 
 export const auth = new Hono<AppEnv>();
 
@@ -44,15 +44,31 @@ auth.post('/setup', async (c) => {
 
 auth.get('/invite/:token', async (c) => {
   await rateLimit(c.env, `invitecheck:${clientIp(c)}`, 30, 900_000);
-  const inv = await validInvite(c.env, c.req.param('token'));
-  return c.json({ valid: Boolean(inv), email: inv?.email ?? null });
+  const { inv, reason } = await findInvite(c.env, c.req.param('token'));
+  return c.json({ valid: !reason, reason, email: inv?.email ?? null });
 });
 
+type InviteRow = { id: number; email: string | null; uses: number; max_uses: number; expires_at: number; revoked: number };
+
+/** Looks up an invitation and says why it can't be used. Forgives punctuation a messaging app tacked on or clipped at the end. */
+async function findInvite(env: AppEnv['Bindings'], raw: string): Promise<{ inv: InviteRow | null; reason: 'not_found' | 'used' | 'expired' | 'revoked' | null }> {
+  const lookup = async (t: string) => first<InviteRow>(env, 'SELECT id, email, uses, max_uses, expires_at, revoked FROM invites WHERE token_hash = ?', await sha256(t));
+  const token = raw.trim();
+  let inv = await lookup(token);
+  const trimmed = token.replace(/[^A-Za-z0-9]+$/, '');
+  if (!inv && trimmed !== token) inv = await lookup(trimmed);
+  // Older links could end in - or _, which some apps drop when linking the URL.
+  if (!inv) for (const end of ['-', '_', '--', '__']) { inv = await lookup(trimmed + end); if (inv) break; }
+  if (!inv) return { inv: null, reason: 'not_found' };
+  if (inv.revoked) return { inv, reason: 'revoked' };
+  if (inv.uses >= inv.max_uses) return { inv, reason: 'used' };
+  if (inv.expires_at < now()) return { inv, reason: 'expired' };
+  return { inv, reason: null };
+}
+
 async function validInvite(env: AppEnv['Bindings'], token: string) {
-  const inv = await first<{ id: number; email: string | null; uses: number; max_uses: number; expires_at: number; revoked: number }>(env,
-    'SELECT id, email, uses, max_uses, expires_at, revoked FROM invites WHERE token_hash = ?', await sha256(token));
-  if (!inv || inv.revoked || inv.uses >= inv.max_uses || inv.expires_at < now()) return null;
-  return inv;
+  const { inv, reason } = await findInvite(env, token);
+  return reason ? null : inv;
 }
 
 /** Cloudflare Turnstile human check for open sign-up (skipped when no key is configured). */
@@ -165,7 +181,7 @@ auth.post('/logout-all', requireUser, async (c) => {
 });
 
 export async function createResetToken(env: AppEnv['Bindings'], userId: number, createdBy: number | null): Promise<string> {
-  const token = randomToken();
+  const token = linkToken();
   const t = now();
   await run(env, 'INSERT INTO password_resets (token_hash, user_id, created_by, expires_at, created_at) VALUES (?, ?, ?, ?, ?)',
     await sha256(token), userId, createdBy, t + (createdBy ? 3 * DAY : 3_600_000), t);

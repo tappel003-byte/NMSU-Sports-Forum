@@ -62,10 +62,10 @@ export function Join() {
   const { token = '' } = useParams();
   const { refresh } = useApp();
   const nav = useNavigate();
-  const [check, setCheck] = useState<{ valid: boolean; email: string | null } | null>(null);
+  const [check, setCheck] = useState<{ valid: boolean; reason?: string | null; email: string | null } | null>(null);
   const [f, setF] = useState({ username: '', email: '', password: '', confirm: '', display_name: '' });
   useEffect(() => {
-    api<{ valid: boolean; email: string | null }>(`/auth/invite/${token}`).then((r) => { setCheck(r); if (r.email) setF((x) => ({ ...x, email: r.email! })); }).catch(() => setCheck({ valid: false, email: null }));
+    api<{ valid: boolean; reason: string | null; email: string | null }>(`/auth/invite/${encodeURIComponent(token)}`).then((r) => { setCheck(r); if (r.email) setF((x) => ({ ...x, email: r.email! })); }).catch(() => setCheck({ valid: false, reason: 'offline', email: null }));
   }, [token]);
   const { error, busy, submit } = useSubmit(async () => {
     if (f.password !== f.confirm) throw new Error('Passwords do not match.');
@@ -74,7 +74,18 @@ export function Join() {
     nav('/settings?welcome=1');
   });
   if (!check) return <AuthShell title="Checking your invitation…"><div /></AuthShell>;
-  if (!check.valid) return <AuthShell title="Invitation not valid" subtitle="This link is expired, revoked or already used. Ask an administrator for a new invitation."><Link className="btn block" to="/login">Go to sign in</Link></AuthShell>;
+  if (!check.valid) {
+    // Say exactly what's wrong, so a clipped link isn't mistaken for an expired one.
+    const why: Record<string, [string, string]> = {
+      used: ['Invitation already used', 'Each invitation link works for one person, and this one has been used. Ask whoever sent it for a new one.'],
+      expired: ['Invitation expired', 'Invitations last 14 days, and this one has run out. Ask whoever sent it for a new one.'],
+      revoked: ['Invitation cancelled', 'Whoever sent this invitation cancelled it. Ask them for a new one.'],
+      not_found: ["We couldn't find this invitation", 'The link may have been cut off when it was sent. Ask the sender to send it again, or copy and paste the whole link.'],
+      offline: ["Couldn't check your invitation", 'Check your internet connection and try again.'],
+    };
+    const [title, subtitle] = why[check.reason ?? 'not_found'] ?? why.not_found;
+    return <AuthShell title={title} subtitle={subtitle}>{check.reason === 'offline' ? <button className="btn block" onClick={() => window.location.reload()}>Try again</button> : <Link className="btn block" to="/login">Go to sign in</Link>}</AuthShell>;
+  }
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value });
   return (
     <AuthShell title="You're invited!" subtitle="Create your NMSU Sports Forum account.">
