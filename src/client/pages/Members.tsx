@@ -236,6 +236,16 @@ export function Settings() {
     if (files?.[0]) setCropFile(files[0]);
     if (avatarInput.current) avatarInput.current.value = '';
   };
+  // Edit photo: reopen the current picture in the cropper to zoom or re-center it without choosing a new one.
+  const editCurrentPhoto = async () => {
+    if (!data?.me.avatar_key) return;
+    try {
+      const res = await fetch(`/api/files/${data.me.avatar_key}`, { credentials: 'same-origin' });
+      if (!res.ok) throw new Error("Couldn't open your current photo. Try Change photo instead.");
+      const blob = await res.blob();
+      setCropFile(new File([blob], 'current.jpg', { type: blob.type || 'image/jpeg' }));
+    } catch (err) { toast((err as Error).message); }
+  };
   const saveCropped = async (blob: Blob) => {
     await uploadImage(new File([blob], 'avatar.jpg', { type: 'image/jpeg' }), 'avatar');
     setCropFile(null);
@@ -270,6 +280,7 @@ export function Settings() {
           <Avatar member={data.me} size="lg" />
           <input ref={avatarInput} type="file" accept="image/*" hidden onChange={(e) => onAvatar(e.target.files)} />
           {cropFile && <AvatarCropper file={cropFile} onCancel={() => setCropFile(null)} onSave={saveCropped} />}
+          {data.me.avatar_key && <button className="btn secondary small" onClick={editCurrentPhoto}>Edit photo</button>}
           <button className="btn secondary small" onClick={() => avatarInput.current?.click()}>Change photo</button>
         </div>
         <form onSubmit={saveProfile}>

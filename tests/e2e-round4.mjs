@@ -553,6 +553,13 @@ try {
   await reg.waitForSelector('text=Position your photo', { state: 'detached', timeout: 10000 });
   const afterKey = (await api(reg, '/auth/me')).body.user.avatar_key;
   check('Choosing a profile photo opens a cropper (drag and zoom inside a circle) and saves the cropped photo', Boolean(afterKey) && afterKey !== beforeKey);
+  await reg.click('button:has-text("Edit photo")');
+  await reg.waitForSelector('.crop-stage img');
+  await reg.fill('input[aria-label="Zoom"]', '2');
+  await reg.click('button:has-text("Save photo")');
+  await reg.waitForSelector('text=Position your photo', { state: 'detached', timeout: 10000 });
+  const editedKey = (await api(reg, '/auth/me')).body.user.avatar_key;
+  check('Edit photo reopens the current picture in the cropper to zoom or re-center it', Boolean(editedKey) && editedKey !== afterKey);
 
   // ---------- Audit history ----------
   const log = (await api(admin, '/admin/log')).body.log;
