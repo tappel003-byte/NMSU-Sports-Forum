@@ -8,7 +8,7 @@ Audit, October 30, 2026 (after first live review): 65 rows. 56 Verified, 8 Built
 | # | Requirement | Documented in | Status |
 | --- | --- | --- | --- |
 | 1 | Name is NMSU Sports Forum (never Aggie Clubhouse); independent, not NMSU-affiliated | VISION, DECISIONS | Verified — name everywhere; independence disclaimer on sign-in and home |
-| 2 | Approved cowboy crest used as supplied; no crossed pistols; derivatives (icon, badges) need owner approval | CLAUDE, BRAND_COLORS | Verified — the owner supplied the approved crest (Oct 30, 2026), stored at `assets/approved-crest.webp`; header, favicons, app and home-screen icons are generated from it unchanged. No other derivatives made. Trademark review of the lettering and Zia-style symbol is still open (VISION). |
+| 2 | Approved cowboy crest used as supplied; no crossed pistols; derivatives (icon, badges) need owner approval | CLAUDE, BRAND_COLORS | Verified — the owner supplied the approved crest (Oct 30, 2026), stored at `assets/approved-crest.webp`; header, favicons, app and home-screen icons are generated from it unchanged. No other derivatives made. The owner reviewed the trademark considerations and chose to keep the crest as is (DECISIONS, Oct 31). |
 | 3 | Official NMSU colors (#8C0B42, #FFFFFF, #B6A5AD, #D7C9C4, #6D6E71); screenshots are layout-only | BRAND_COLORS | Verified — CSS tokens in `src/client/styles.css` |
 | 4 | Mobile-first, polished desktop; phone bottom nav, desktop three columns | VISION, DECISIONS | Verified — e2e checks bottom nav at 390px and three columns at 1440px, no horizontal scroll |
 | 5 | Installable PWA with crest home-screen icon | MILESTONE 1 | Built — manifest, icons, service worker; site is live. Add to Home Screen not yet confirmed on the owner's iPhone |
