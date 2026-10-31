@@ -128,39 +128,46 @@ function Members() {
   return (
     <section className="card">
       <div className="section-head"><h2>Members</h2><span className="small muted">Email addresses are visible to admins for account recovery only.</span></div>
-      <div className="table-scroll"><table className="simple"><thead><tr><th>Member</th><th>Role</th><th>Status</th><th>Activity</th><th>Actions</th></tr></thead><tbody>
-        {data.members.map((m) => (
-          <tr key={m.id}>
-            <td><Link to={`/members/${m.id}`}>{m.username}</Link><div className="tiny muted">{m.email}</div></td>
-            <td>{m.role}</td>
-            <td>{m.status}{m.suspended_until ? <div className="tiny muted">until {fullTime(m.suspended_until)}</div> : null}</td>
-            <td className="tiny">{m.posts} posts<br />joined {timeAgo(m.created_at)}<br />{m.last_seen_at ? `seen ${timeAgo(m.last_seen_at)}` : 'never seen'}</td>
-            <td>
-              <div className="row" style={{ gap: 4 }}>
-                {m.id !== me?.id && (m.role === 'admin'
-                  ? <button className="btn ghost small" onClick={() => patch(m.id, { role: 'member' }, 'Admin role removed')}>Remove admin</button>
-                  : <button className="btn ghost small" onClick={() => confirm(`Make ${m.username} an administrator?`) && patch(m.id, { role: 'admin' }, 'Now an administrator')}>Make admin</button>)}
-                {m.id !== me?.id && (m.status === 'active'
-                  ? <button className="btn ghost small" onClick={() => {
-                      const days = prompt(`Suspend ${m.username} for how many days? (1–90. Permanent bans need three moderators: use "Propose ban".)`, '7');
-                      if (!days) return;
-                      const reason = prompt('Reason (the member sees it and can appeal):');
-                      if (!reason) return;
-                      patch(m.id, { status: 'suspended', days: Number(days), reason }, `Suspended for ${days} days`);
-                    }}>Suspend</button>
-                  : <button className="btn ghost small" onClick={() => { const reason = prompt(`Lift ${m.username}'s suspension? Reason (recorded):`); if (reason) patch(m.id, { status: 'active', reason }, 'Member reinstated'); }}>Reinstate</button>)}
-                {m.id !== me?.id && <button className="btn ghost small" onClick={() => { const reason = prompt(`Warning for ${m.username} (they see it and can appeal):`); if (reason) api(`/admin/members/${m.id}/warn`, { body: { reason } }).then(() => toast('Warning sent')).catch((e) => toast(e.message)); }}>Warn</button>}
-                {m.id !== me?.id && m.status === 'active' && <button className="btn ghost small" onClick={() => {
-                  const reason = prompt(`Propose permanently banning ${m.username}? Three moderators must approve. Explain why:`);
-                  if (reason) api<{ status: string; approvals: number }>('/admin/bans', { body: { user_id: m.id, reason } }).then((r) => toast(r.status === 'approved' ? 'Banned' : `Ban proposed: ${r.approvals} of 3 approvals. Other moderators have been notified.`)).catch((e) => toast(e.message));
-                }}>Propose ban</button>}
-                <button className="btn ghost small" onClick={() => reset(m.id)}>Reset link</button>
-                <button className="btn ghost small" onClick={() => setBadgeFor(m)}>Recognize</button>
+      <ul className="member-admin-list">
+        {data.members.map((m) => {
+          const self = m.id === me?.id;
+          // One compact menu instead of a row of buttons; each choice runs once, then the menu resets.
+          const act = (choice: string) => {
+            if (choice === 'admin') { if (confirm(`Make ${m.username} an administrator?`)) patch(m.id, { role: 'admin' }, 'Now an administrator'); }
+            else if (choice === 'unadmin') { if (confirm(`Remove ${m.username}'s admin role?`)) patch(m.id, { role: 'member' }, 'Admin role removed'); }
+            else if (choice === 'suspend') {
+              const days = prompt(`Suspend ${m.username} for how many days? (1–90. Permanent bans need three moderators: use "Propose ban".)`, '7');
+              if (!days) return;
+              const reason = prompt('Reason (the member sees it and can appeal):');
+              if (reason) patch(m.id, { status: 'suspended', days: Number(days), reason }, `Suspended for ${days} days`);
+            } else if (choice === 'reinstate') { const reason = prompt(`Lift ${m.username}'s suspension? Reason (recorded):`); if (reason) patch(m.id, { status: 'active', reason }, 'Member reinstated'); }
+            else if (choice === 'warn') { const reason = prompt(`Warning for ${m.username} (they see it and can appeal):`); if (reason) api(`/admin/members/${m.id}/warn`, { body: { reason } }).then(() => toast('Warning sent')).catch((e) => toast(e.message)); }
+            else if (choice === 'ban') {
+              const reason = prompt(`Propose permanently banning ${m.username}? Three moderators must approve. Explain why:`);
+              if (reason) api<{ status: string; approvals: number }>('/admin/bans', { body: { user_id: m.id, reason } }).then((r) => toast(r.status === 'approved' ? 'Banned' : `Ban proposed: ${r.approvals} of 3 approvals. Other moderators have been notified.`)).catch((e) => toast(e.message));
+            } else if (choice === 'reset') reset(m.id);
+            else if (choice === 'recognize') setBadgeFor(m);
+          };
+          return (
+            <li key={m.id}>
+              <div className="grow">
+                <Link to={`/members/${m.id}`}><strong>{m.username}</strong></Link>{m.role === 'admin' && <span className="chip" style={{ marginLeft: 6 }}>Admin</span>}{m.status !== 'active' && <span className="chip gray" style={{ marginLeft: 6 }}>{m.status}</span>}
+                <div className="tiny muted">{m.email}</div>
+                <div className="tiny muted">{m.posts} {m.posts === 1 ? 'post' : 'posts'} · joined {timeAgo(m.created_at)} · {m.last_seen_at ? `seen ${timeAgo(m.last_seen_at)}` : 'never seen'}{m.suspended_until ? ` · suspended until ${fullTime(m.suspended_until)}` : ''}</div>
               </div>
-            </td>
-          </tr>
-        ))}
-      </tbody></table></div>
+              <select className="select small-select" aria-label={`Actions for ${m.username}`} value="" onChange={(e) => { act(e.target.value); e.target.value = ''; }}>
+                <option value="">Actions…</option>
+                {!self && (m.role === 'admin' ? <option value="unadmin">Remove admin</option> : <option value="admin">Make admin</option>)}
+                {!self && (m.status === 'active' ? <option value="suspend">Suspend</option> : <option value="reinstate">Reinstate</option>)}
+                {!self && <option value="warn">Warn</option>}
+                {!self && m.status === 'active' && <option value="ban">Propose ban</option>}
+                <option value="reset">Password reset link</option>
+                <option value="recognize">Recognize</option>
+              </select>
+            </li>
+          );
+        })}
+      </ul>
       {link && (
         <Modal title="Password reset link" onClose={() => setLink(null)}>
           <p className="small">Send this to the member. It works once and expires in 3 days.</p>

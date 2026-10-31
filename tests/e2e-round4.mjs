@@ -296,6 +296,17 @@ try {
   const espnBtn = await reg.waitForSelector('a:has-text("on ESPN"), a:has-text("ESPN Gamecast")', { timeout: 8000 }).then(() => true, () => false);
   check('Football and men\'s basketball games link to ESPN (live score bar during the game); other sports don\'t', espnBtn && fbLive?.espn_url?.startsWith('https://www.espn.com/college-football/') && minorLive?.espn_url === null);
 
+  // ---------- Admin → Members: compact rows with an Actions menu ----------
+  await admin.setViewportSize({ width: 390, height: 844 });
+  await admin.goto(BASE + '/admin/members');
+  await admin.waitForSelector('select[aria-label="Actions for RickFromTailgate"]');
+  await admin.screenshot({ path: `${SHOTS}/iphone-admin-members.png` });
+  await admin.selectOption('select[aria-label="Actions for RickFromTailgate"]', 'reset');
+  const resetModal = await admin.waitForSelector('input[aria-label="Reset link"]', { timeout: 5000 }).then(() => true, () => false);
+  check('Admin member actions live in one compact menu on a phone', resetModal && (await admin.inputValue('input[aria-label="Reset link"]')).includes('/reset/'));
+  await admin.click('button:has-text("Close")');
+  await admin.setViewportSize({ width: 1440, height: 900 });
+
   // ---------- Posting without gatekeeping ----------
   await reg.goto(BASE + '/new');
   await reg.fill('#title', 'Tailgate spot this Saturday?');
