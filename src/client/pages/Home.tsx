@@ -181,7 +181,7 @@ export function Home() {
 
       {data && (data.called.length > 0 || data.nostradamus.length > 0) && (
         <section className="card card-pad">
-          <div className="eyebrow">🔮 Predictions this week</div>
+          <div className="eyebrow">🎯 Predictions this week</div>
           {data.nostradamus.map((n, i) => (
             <div key={i} className="note-box small" style={{ marginTop: 8 }}>
               <strong>🏆 Last week's Nostradamus: {n.member ? <Link to={`/members/${n.member.id}`}>{n.member.display_name || n.member.username}</Link> : 'a member'}</strong>
