@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ClipboardPaste, EyeOff, ImagePlus, Send, X } from 'lucide-react';
 import type React from 'react';
 import { api, uploadImage } from '../api';
+import { useApp } from '../state';
 
 export interface QuoteRef { id: number; username: string; body: string }
 
@@ -178,6 +179,7 @@ export function ComposerTools({ value, onChange, textareaRef, onError }: { value
 }
 
 export function ReplyComposer({ threadId, quote, clearQuote, onPosted, open, setOpen, replyTo, clearReplyTo }: { threadId: number; quote: QuoteRef | null; clearQuote: () => void; onPosted: (postId: number, pending: boolean) => void; open: boolean; setOpen: (v: boolean) => void; replyTo?: { id: number; username: string; n: number } | null; clearReplyTo?: () => void }) {
+  const { me } = useApp();
   const draftKey = `reply-${threadId}`;
   const [replyPost, setReplyPost] = useState<{ id: number; username: string } | null>(null);
   const draft = useDraft(draftKey);
@@ -191,8 +193,9 @@ export function ReplyComposer({ threadId, quote, clearQuote, onPosted, open, set
   useEffect(() => {
     if (!replyTo) return;
     setReplyPost({ id: replyTo.id, username: replyTo.username });
-    const tag = `@${replyTo.username} `;
-    if (!draft.body.includes(`@${replyTo.username}`)) draft.setBody(tag + draft.body);
+    // @name only for a real member who isn't you (no mention for your own posts or site posts).
+    const mentionable = /^[A-Za-z0-9_]{3,24}$/.test(replyTo.username) && replyTo.username !== me?.username;
+    if (mentionable && !draft.body.includes(`@${replyTo.username}`)) draft.setBody(`@${replyTo.username} ` + draft.body);
     setOpen(true);
     requestAnimationFrame(() => { const el = area.current; if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); } });
     clearReplyTo?.();
