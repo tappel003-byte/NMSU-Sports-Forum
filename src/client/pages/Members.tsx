@@ -282,8 +282,11 @@ export function Settings() {
           {check('show_email', 'Show my email on my profile', 'Off by default. Your email is otherwise visible only to you.')}
           {check('show_on_map', 'Show me on the member map', 'Uses your city only, rounded to about 10 km. Never a precise location.')}
           {check('show_birthday', 'Show my birthday on the community calendar')}
-          {saveMsg && <div className={saveMsg.ok ? 'note-box small' : 'error-box'} role="status" style={{ marginTop: 8 }}>{saveMsg.text}</div>}
-          <button className="btn" style={{ marginTop: 8 }}>Save profile</button>
+          {/* Pinned to the bottom of the screen while the long form scrolls, so Save is always in reach. */}
+          <div className="sticky-save">
+            <button className="btn">Save profile</button>
+            {saveMsg && <span className={saveMsg.ok ? 'save-ok' : 'save-bad'} role="status">{saveMsg.text}</span>}
+          </div>
         </form>
       </section>
 
