@@ -517,7 +517,19 @@ function SettingsTab() {
           <div className="field"><span className="label">Check now</span><button type="button" className="btn secondary" onClick={async () => { try { const r = await api<{ posted: number; checked: number; errors: string[] }>('/admin/news/run', { method: 'POST' }); toast(`News: ${r.posted} new topic${r.posted === 1 ? '' : 's'} from ${r.checked} stories${r.errors.length ? ` (${r.errors.length} source${r.errors.length === 1 ? '' : 's'} failed)` : ''}`); } catch (err) { toast((err as Error).message); } }}>Check news now</button></div>
         </div>
         <div className="field"><label htmlFor="nf">News sources (optional)</label><textarea id="nf" className="textarea" style={{ minHeight: 70 }} value={cur.news_feeds ?? ''} onChange={set('news_feeds')} placeholder={'Leave blank for the defaults: NM State Athletics news and a news search for NM State.\nOr list RSS feed addresses, one per line.'} /></div>
-        <label className="check"><input type="checkbox" checked={cur.starters !== '0'} onChange={(e) => setS({ ...cur, starters: e.target.checked ? '1' : '0' })} /><span>🎲 Topic of the day on quiet days<span className="hint" style={{ display: 'block' }}>If no member starts a topic for a day, the site posts one from the list below (9 AM–8 PM, at most one a day). The same list powers the 🎲 Random topic button.</span></span></label>
+        <div className="field">
+          <label htmlFor="starters">🎲 Random topic from the site</label>
+          <select id="starters" className="select" value={cur.starters || '1'} onChange={(e) => setS({ ...cur, starters: e.target.value })}>
+            <option value="0">Off</option>
+            <option value="1">Every day</option>
+            <option value="2">Every 2 days</option>
+            <option value="3">Every 3 days</option>
+            <option value="4">Every 4 days</option>
+            <option value="5">Every 5 days</option>
+            <option value="7">Once a week</option>
+          </select>
+          <span className="hint">Posted only when no member has started a topic in that time (9 AM–8 PM). The same list powers the 🎲 Random topic button, which never posts by itself.</span>
+        </div>
         <button type="button" className="btn secondary small" style={{ marginBottom: 10 }} onClick={async () => { try { const r = await api<{ thread_id: number }>('/admin/topics/starter', { method: 'POST' }); toast('Topic posted to the Board'); window.open(`/t/${r.thread_id}`, '_self'); } catch (err) { toast((err as Error).message); } }}>🎲 Post a topic now</button>
         <div className="field"><label htmlFor="sp">Conversation starters (optional, one per line)</label><textarea id="sp" className="textarea" style={{ minHeight: 90 }} value={cur.starter_prompts ?? ''} onChange={set('starter_prompts')} placeholder={'Leave blank to use the built-in list of 30+ Aggie topics, or write your own, one per line.'} /></div>
         <div className="field"><label htmlFor="rt">Weekly topics (optional)</label><textarea id="rt" className="textarea" style={{ minHeight: 70 }} value={cur.recurring_topics ?? ''} onChange={set('recurring_topics')} placeholder={'Mon | 6:00 PM | Radio Show Tonight\nTue | 7:00 AM | Cup of Joe'} /><span className="hint">One per line: day | time (Mountain) | title. Each posts once a week at that time.</span></div>

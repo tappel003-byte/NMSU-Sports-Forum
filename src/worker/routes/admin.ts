@@ -422,7 +422,7 @@ admin.put('/settings', requireAdmin, async (c) => {
     news_desk: z.enum(['0', '1', '']).optional(),
     news_feeds: z.string().max(3000).optional(),
     news_per_day: z.string().regex(/^(\d{0,2})$/, 'use a number').optional(),
-    starters: z.enum(['0', '1', '']).optional(),
+    starters: z.enum(['0', '1', '2', '3', '4', '5', '6', '7', '']).optional(),
     starter_prompts: z.string().max(8000).optional(),
     recurring_topics: z.string().max(3000).optional(),
   }), await c.req.json());

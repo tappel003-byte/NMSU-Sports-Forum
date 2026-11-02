@@ -159,15 +159,18 @@ function mtHour(t: number): number {
   return Number(new Intl.DateTimeFormat('en-US', { timeZone: TIME_ZONE, hour: 'numeric', hourCycle: 'h23' }).format(new Date(t)));
 }
 
-/** On a quiet day (no member started a topic in 24 hours), post one conversation starter between 9 AM and 8 PM. */
+/** Every N days (setting `starters`: '0' off, ''/'1' daily, '2'–'7'), if no member started a topic in that time, post one conversation starter between 9 AM and 8 PM. */
 export async function runStarter(env: Env, t = now(), force = false): Promise<number | null> {
   // force: an admin's "Post a topic now" skips the quiet-day and time-of-day checks.
   if (!force) {
-    if ((await getSetting(env, 'starters')) === '0') return null;
+    const setting = (await getSetting(env, 'starters')) ?? '';
+    if (setting === '0') return null;
+    const every = Math.min(7, Math.max(1, Number(setting) || 1)) * DAY;
     const h = mtHour(t);
     if (h < 9 || h >= 20) return null;
-    if (await first(env, 'SELECT id FROM threads WHERE user_id IS NOT NULL AND deleted = 0 AND created_at > ?', t - DAY)) return null;
-    if (await first(env, "SELECT key FROM auto_topics WHERE kind = 'starter' AND created_at > ?", t - DAY)) return null;
+    if (await first(env, 'SELECT id FROM threads WHERE user_id IS NOT NULL AND deleted = 0 AND created_at > ?', t - every)) return null;
+    // Small slack so "every 3 days" doesn't slip later each time because of the 30-minute job schedule.
+    if (await first(env, "SELECT key FROM auto_topics WHERE kind = 'starter' AND created_at > ?", t - every + 2 * 60 * 60_000)) return null;
   }
   const prompts = await starterPrompts(env);
   const used = new Set((await all<{ key: string }>(env, "SELECT key FROM auto_topics WHERE kind = 'starter'")).map((r) => r.key));
