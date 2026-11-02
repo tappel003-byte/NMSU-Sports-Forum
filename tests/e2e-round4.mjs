@@ -517,6 +517,17 @@ try {
   await reg.waitForFunction(() => (document.querySelector('#title')?.value || '').length > 5);
   check('The 🎲 Random topic button fills in a topic on the new-post page', true);
 
+  // Admin picks how often: Off, every day, every 2–5 days, or weekly.
+  await admin.goto(BASE + '/admin/settings');
+  await admin.selectOption('#starters', '3');
+  await admin.click('button:has-text("Save settings")');
+  await admin.waitForTimeout(800);
+  const savedEvery = (await api(admin, '/admin/settings')).body.settings.starters;
+  await admin.reload();
+  const shownEvery = await admin.inputValue('#starters');
+  check('Admin can set the site\'s random topic to every 3 days (or off)', savedEvery === '3' && shownEvery === '3', JSON.stringify({ savedEvery, shownEvery }));
+  await api(admin, '/admin/settings', { method: 'PUT', body: { starters: '0' } });
+
   // ---------- Weekly topics ----------
   const mt = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Denver', weekday: 'short', hour: 'numeric', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(Date.now() - 2 * 60_000));
   const part = (k) => mt.find((x) => x.type === k).value;
