@@ -141,7 +141,7 @@ export async function runNewsDesk(env: Env, force = false): Promise<{ posted: nu
     const hash = await sha256(item.url);
     const titleHash = await sha256(`title:${titleKey}`);
     if (await first(env, 'SELECT url_hash FROM news_items WHERE url_hash IN (?, ?)', hash, titleHash)) continue;
-    const threadId = await siteTopic(env, `📰 ${item.title}`, `News · ${item.source}`, `${item.url}\n\nVia ${item.source}. What do you make of it?`);
+    const threadId = await siteTopic(env, `📰 ${item.title}`, `News · ${item.source}`, item.url);
     await run(env, 'INSERT INTO news_items (url_hash, url, title, source, thread_id, created_at) VALUES (?, ?, ?, ?, ?, ?)', hash, item.url, item.title, item.source, threadId, t);
     await run(env, 'INSERT OR IGNORE INTO news_items (url_hash, url, title, source, thread_id, created_at) VALUES (?, ?, ?, ?, NULL, ?)', titleHash, item.url, item.title, item.source, t);
     out.posted++;
@@ -182,7 +182,7 @@ export async function runStarter(env: Env, t = now(), force = false): Promise<nu
     pool = keyed;
   }
   const pick = pool[Math.floor(Math.random() * pool.length)];
-  const threadId = await siteTopic(env, `🎲 ${pick.p}`, 'Topic of the day', `${pick.p}\n\nRandom topic of the day. Jump in!`);
+  const threadId = await siteTopic(env, `🎲 ${pick.p}`, 'Topic of the day', pick.p);
   await run(env, "INSERT INTO auto_topics (key, kind, thread_id, created_at) VALUES (?, 'starter', ?, ?)", pick.key, threadId, t);
   return threadId;
 }
