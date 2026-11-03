@@ -141,7 +141,7 @@ export async function runNewsDesk(env: Env, force = false): Promise<{ posted: nu
     const hash = await sha256(item.url);
     const titleHash = await sha256(`title:${titleKey}`);
     if (await first(env, 'SELECT url_hash FROM news_items WHERE url_hash IN (?, ?)', hash, titleHash)) continue;
-    const threadId = await siteTopic(env, `📰 ${item.title}`, `News · ${item.source}`, item.url);
+    const threadId = await siteTopic(env, `📰 ${item.title}`, `News · ${item.source}`, `${item.url}\n\nFrom ${item.source}.`);
     await run(env, 'INSERT INTO news_items (url_hash, url, title, source, thread_id, created_at) VALUES (?, ?, ?, ?, ?, ?)', hash, item.url, item.title, item.source, threadId, t);
     await run(env, 'INSERT OR IGNORE INTO news_items (url_hash, url, title, source, thread_id, created_at) VALUES (?, ?, ?, ?, NULL, ?)', titleHash, item.url, item.title, item.source, t);
     out.posted++;
