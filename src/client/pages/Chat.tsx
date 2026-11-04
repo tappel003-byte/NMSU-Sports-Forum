@@ -129,7 +129,7 @@ export function ChatRoomPage() {
   if (error) return <ErrorState error={error} />;
   return (
     <div className="card chat-wrap">
-      <div className="section-head">
+      <div className="section-head chat-head">
         <div className="grow">
           <h2 style={{ fontSize: '1rem' }}>{title}</h2>
           <div className="tiny muted">
