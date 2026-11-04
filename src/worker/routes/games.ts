@@ -40,7 +40,14 @@ games.get('/games', async (c) => {
   }
   const rows = await all<GameRow>(c.env, `SELECT * FROM games WHERE ${where} ORDER BY ${order} LIMIT 200`, ...params);
   const feeds = await first<{ n: number; ok: number }>(c.env, 'SELECT COUNT(*) AS n, SUM(last_ok_at IS NOT NULL) AS ok FROM data_feeds WHERE enabled = 1');
-  return c.json({ games: rows.map(presentGame), feedsConfigured: (feeds?.n ?? 0) > 0, feedsSynced: (feeds?.ok ?? 0) > 0 });
+  // Chat button on each game card: open (automatic football/men's basketball, or started by a member) or "start", from the day before until a day after.
+  const ids = rows.map((r) => r.id);
+  const started = new Set(ids.length ? (await all<{ game_id: number }>(c.env, `SELECT game_id FROM started_chats WHERE game_id IN (${ids.map(() => '?').join(',')})`, ...ids)).map((r) => r.game_id) : []);
+  const chatState = (g: GameRow) => {
+    if (g.status === 'canceled' || g.starts_at > t + 86_400_000 || g.starts_at < t - 86_400_000) return null;
+    return FEATURED_SPORTS.includes(g.sport) || started.has(g.id) ? 'open' : 'can_start';
+  };
+  return c.json({ games: rows.map((g) => ({ ...presentGame(g), chat: chatState(g) })), feedsConfigured: (feeds?.n ?? 0) > 0, feedsSynced: (feeds?.ok ?? 0) > 0 });
 });
 
 // Compact strip on top of the Board: latest results and the next game.
