@@ -302,6 +302,7 @@ try {
   await reg.waitForSelector('.scorebox');
   const scoreText = await reg.textContent('.scorebox');
   const espnLinks = await reg.locator('a:has-text("ESPN")').count();
+  const rosterHref = await reg.getAttribute('.chat-head a:has-text("Roster")', 'href');
   const boxHref = await reg.locator('.boxscore > summary').count();
   await reg.screenshot({ path: `${SHOTS}/iphone-chat-scoreboard.png` });
   // Box score accordion (ESPN's summary simulated).
@@ -324,7 +325,7 @@ try {
   await reg.screenshot({ path: `${SHOTS}/iphone-game-scoreboard.png` });
   await reg.unroute('**/api/games/*/live');
   await reg.setViewportSize({ width: 1280, height: 900 });
-  check('Live scoreboard shows both teams, big scores and the clock, with a Box score drop-down and no ESPN Gamecast link', /NM State/.test(scoreText) && /34/.test(scoreText) && /28/.test(scoreText) && /14:34/.test(scoreText) && espnLinks === 0 && espnOnGame === 0 && boxHref === 1, JSON.stringify({ scoreText, espnLinks, espnOnGame, boxHref }));
+  check('Live scoreboard shows both teams, big scores and the clock, with a Box score drop-down and no ESPN Gamecast link', /NM State/.test(scoreText) && /34/.test(scoreText) && /28/.test(scoreText) && /14:34/.test(scoreText) && espnLinks === 0 && espnOnGame === 0 && boxHref === 1 && /nmstatesports\.com\/sports\/football\/roster$/.test(rosterHref ?? ''), JSON.stringify({ scoreText, espnLinks, espnOnGame, boxHref, rosterHref }));
 
   // ---------- Admin → Members: compact rows with an Actions menu ----------
   await admin.setViewportSize({ width: 390, height: 844 });
