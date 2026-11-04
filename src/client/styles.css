@@ -607,3 +607,11 @@ table.simple th { font-size: .72rem; text-transform: uppercase; letter-spacing: 
 /* Big, obvious way out of a chat room. */
 .chat-title-row { display: flex; align-items: center; gap: 10px; }
 .chat-back { flex: none; font-weight: 800; }
+@media (max-width: 899px) {
+  .chat-head .row { flex-wrap: wrap; gap: 2px; }
+  .chat-head .btn.small { padding: 0 7px; font-size: .82rem; }
+  .chat-head .btn.small.chat-back { padding: 0 11px; }
+}
+/* Big, obvious way out of a chat room. */
+.chat-title-row { display: flex; align-items: center; gap: 10px; }
+.chat-back { flex: none; font-weight: 800; }
