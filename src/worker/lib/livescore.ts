@@ -12,6 +12,7 @@ const LEAGUES: Record<string, { path: string; site: string; groups: string }> = 
   mbb: { path: 'basketball/mens-college-basketball', site: 'mens-college-basketball', groups: '50' },
 };
 const CACHE_MS = 30_000;
+export const LEAGUE_PATHS: Record<string, string> = Object.fromEntries(Object.entries(LEAGUES).map(([k, v]) => [k, v.path]));
 
 export interface LiveScore {
   state: 'pre' | 'in' | 'post';

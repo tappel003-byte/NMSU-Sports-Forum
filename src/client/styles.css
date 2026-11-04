@@ -543,3 +543,25 @@ table.simple th { font-size: .72rem; text-transform: uppercase; letter-spacing: 
   .chat-head { flex-direction: column; align-items: stretch; gap: 6px; }
   .chat-head .grow { min-width: 0; }
 }
+
+/* Drop-down box score under the scoreboard. */
+.boxscore { width: 100%; margin-top: 4px; }
+.boxscore > summary { cursor: pointer; font-weight: 800; font-size: .9rem; padding: 6px 0; list-style: none; text-align: center; }
+.boxscore > summary::-webkit-details-marker { display: none; }
+.boxscore > summary::after { content: ' ▾'; }
+.boxscore[open] > summary::after { content: ' ▴'; }
+.box-team { background: var(--surface); color: var(--text); border-radius: var(--radius-sm); padding: 8px 10px; margin: 6px 0; text-align: left; }
+.box-team h4 { margin: 2px 0 6px; font-size: .95rem; color: var(--crimson); }
+:root[data-theme='dark'] .box-team h4 { color: var(--white); }
+.box-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 8px; }
+.box-table { border-collapse: collapse; font-size: .8rem; width: 100%; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.box-table th, .box-table td { padding: 4px 6px; text-align: right; border-bottom: 1px solid var(--line); }
+.box-table th:first-child, .box-table td:first-child { text-align: left; position: sticky; left: 0; background: var(--surface); }
+.box-table th { font-size: .7rem; color: var(--muted); font-weight: 800; }
+.box-table tr.starter td:first-child { font-weight: 700; }
+.box-table tr.totals td { font-weight: 800; border-bottom: 0; }
+.box-team-stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 4px 12px; margin: 4px 0 2px; font-size: .8rem; }
+.box-team-stats div { display: flex; justify-content: space-between; gap: 8px; border-bottom: 1px dotted var(--line); }
+.box-team-stats dt { color: var(--muted); }
+.box-team-stats dd { margin: 0; font-weight: 700; }
+.live-score.compact .boxscore[open] { max-height: 45vh; overflow-y: auto; }
