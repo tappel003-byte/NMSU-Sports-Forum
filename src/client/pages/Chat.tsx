@@ -132,16 +132,14 @@ export function ChatRoomPage() {
     <div className="card chat-wrap">
       <div className="section-head chat-head">
         <div className="grow">
-          <div className="chat-title-row">
-            <button type="button" className="btn small chat-back" onClick={() => (window.history.length > 1 ? nav(-1) : nav('/'))} aria-label="Leave the chat">← Back</button>
-            <h2 style={{ fontSize: '1rem', margin: 0 }}>{title}</h2>
-          </div>
+          <h2 style={{ fontSize: '1rem' }}>{title}</h2>
           <div className="tiny muted">
             <span className={`conn ${status === 'open' ? 'ok' : 'bad'}`}>{status === 'open' ? '● Connected' : status === 'connecting' ? '● Connecting…' : '● Reconnecting…'}</span>
             {' · '}{presence.length} here{presence.length ? `: ${presence.slice(0, 6).map((p) => p.username).join(', ')}${presence.length > 6 ? '…' : ''}` : ''}
           </div>
         </div>
         <div className="row">
+          <button type="button" className="btn small chat-back" onClick={() => (window.history.length > 1 ? nav(-1) : nav('/'))} aria-label="Leave the chat">← Back</button>
           {game && <Link to={`/games/${game.id}`} className="btn ghost small">Game</Link>}
           {game && <a href={officialRosterUrl(game.sport)} target="_blank" rel="noopener noreferrer" className="btn ghost small">Roster ↗</a>}
           <Link to={`/chat/${room}/archive`} className="btn ghost small">Archive</Link>
