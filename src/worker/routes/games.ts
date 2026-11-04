@@ -7,7 +7,7 @@ import { FEATURED_SQL, officialRosterUrl, officialScheduleUrl, parseHubLinks, SP
 import { memberSummaries } from '../lib/members';
 import { THREAD_SELECT, presentThreads, type ThreadRow } from '../lib/threads';
 import { seasonOf, seasonRange, type GameRow } from '../lib/sports';
-import { espnTeamUrl, getLiveScore, inLiveWindow } from '../lib/livescore';
+import { espnTeamUrl, getLiveScore, inLiveWindow, type LiveScore } from '../lib/livescore';
 
 export const games = new Hono<AppEnv>();
 
@@ -81,8 +81,16 @@ games.get('/games/:id/live', async (c) => {
   const teamUrl = espnTeamUrl(g.sport);
   if (!teamUrl) return c.json({ live: null, espn_url: null, active: false });
   const active = inLiveWindow(g.starts_at) && g.status !== 'canceled' && g.status !== 'postponed';
-  const live = active ? await getLiveScore(c.env, g) : null;
-  return c.json({ live, espn_url: live?.espn_url ?? teamUrl, active });
+  let live: LiveScore | null = active ? await getLiveScore(c.env, g) : null;
+  if (!live) {
+    // After the game window, keep showing the final score we saw (no new lookup).
+    const cached = await first<{ payload: string }>(c.env, 'SELECT payload FROM live_scores WHERE game_id = ?', g.id);
+    const last = cached ? (JSON.parse(cached.payload) as LiveScore | null) : null;
+    if (last?.state === 'post') live = last;
+  }
+  // ESPN's box score page for this exact game, once it has started.
+  const box_url = live && live.state !== 'pre' && /\/game\/_\/gameId\//.test(live.espn_url) ? live.espn_url.replace('/game/_/gameId/', '/boxscore/_/gameId/') : null;
+  return c.json({ live, espn_url: live?.espn_url ?? teamUrl, box_url, active });
 });
 
 games.get('/games/:id', async (c) => {

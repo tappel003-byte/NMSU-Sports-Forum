@@ -206,9 +206,9 @@ export function JoinCta({ text = 'Join free to post, react and chat.' }: { text?
   );
 }
 
-interface LiveScoreData { live: { state: 'pre' | 'in' | 'post'; detail: string; nmsu_score: number | null; opp_score: number | null; espn_url: string } | null; espn_url: string | null; active: boolean }
+interface LiveScoreData { live: { state: 'pre' | 'in' | 'post'; detail: string; nmsu_score: number | null; opp_score: number | null; espn_url: string } | null; espn_url: string | null; box_url?: string | null; active: boolean }
 
-/** In-game score from ESPN (football and men's basketball), refreshed every 30 seconds while the game is on, plus the ESPN Gamecast link. */
+/** In-game score from ESPN (football and men's basketball), refreshed every 30 seconds while the game is on, plus a link to ESPN's box score for the game. */
 export function LiveScore({ game, compact = false, children }: { game: GameItem; compact?: boolean; children?: ReactNode }) {
   const [data, setData] = useState<LiveScoreData | null>(null);
   useEffect(() => {
@@ -239,7 +239,12 @@ export function LiveScore({ game, compact = false, children }: { game: GameItem;
         <div className="mid">{l.state === 'in' && <span className="live-dot" aria-hidden="true" />}<span>{final ? 'Final' : l.detail}</span></div>
         <div className={`team away ${them > us ? 'lead' : ''}`}><span className="pts">{them}</span><span className="name">{game.opponent}</span></div>
       </div>
-      {children && <div className="row" style={{ width: '100%' }}>{children}</div>}
+      {(children || data?.box_url) && (
+        <div className="row" style={{ width: '100%', justifyContent: compact ? 'center' : undefined }}>
+          {children}
+          {data?.box_url && <a href={data.box_url} target="_blank" rel="noopener noreferrer" className={compact ? 'btn ghost small' : 'btn on-crimson outline small'}>Box score ↗</a>}
+        </div>
+      )}
     </div>
   );
 }
