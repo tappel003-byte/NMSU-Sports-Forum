@@ -603,6 +603,7 @@ table.simple th { font-size: .72rem; text-transform: uppercase; letter-spacing: 
 }
 .score-foot { position: relative; height: 26px; width: 100%; }
 @media (max-width: 899px) {
-  .shell:has(.chat-wrap) { padding-bottom: 0; }
-  .chat-wrap .chat-input { padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
+  .shell:has(.chat-wrap) { padding-bottom: calc(var(--bottom-h) + 2px + env(safe-area-inset-bottom)); }
+  .chat-wrap { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+  .chat-wrap .chat-input { border-radius: 0; }
 }
