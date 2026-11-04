@@ -460,7 +460,7 @@ export function Conversation() {
 }
 
 export function Notifications() {
-  const { refreshPulse } = useApp();
+  const { refreshPulse, toast } = useApp();
   const nav = useNavigate();
   const { data, reload } = useApi<{ notifications: { id: number; type: string; text: string; link: string; created_at: number; read_at: number | null }[] }>('/notifications');
   const open = async (n: { id: number; link: string; read_at: number | null }) => {
@@ -469,10 +469,43 @@ export function Notifications() {
     nav(n.link);
   };
   const readAll = async () => { await api('/notifications/read', { body: { all: true } }); refreshPulse(); reload(); };
+  // On/off switches for each kind of notification, right here (same settings as Settings → Notifications).
+  const [showPrefs, setShowPrefs] = useState(false);
+  const { data: meData, reload: reloadMe } = useApi<{ me: { prefs: Record<string, unknown> } }>(showPrefs ? '/me' : null);
+  const [changed, setChanged] = useState<Record<string, boolean>>({});
+  const prefs = { notify_replies: true, notify_mentions: true, notify_quotes: true, notify_dm: true, notify_games: true, ...(meData?.me?.prefs ?? {}), ...changed } as Record<string, unknown>;
+  const togglePref = async (k: string, v: boolean) => {
+    setChanged((c) => ({ ...c, [k]: v }));
+    try { await api('/me/prefs', { method: 'PATCH', body: { [k]: v } }); toast(v ? 'Turned on' : 'Turned off'); }
+    catch (err) { setChanged((c) => ({ ...c, [k]: !v })); toast((err as Error).message); }
+    reloadMe();
+  };
   if (!data) return <Loading />;
   return (
     <div className="stack">
-      <div className="page-head spread"><h1>Notifications</h1><button className="btn secondary small" onClick={readAll}>Mark all read</button></div>
+      <div className="page-head spread"><h1>Notifications</h1>
+        <div className="row">
+          <button className="btn ghost small" onClick={() => setShowPrefs(!showPrefs)} aria-expanded={showPrefs}>{showPrefs ? 'Done' : 'Turn on/off'}</button>
+          <button className="btn secondary small" onClick={readAll}>Mark all read</button>
+        </div>
+      </div>
+      {showPrefs && (
+        <section className="card" style={{ padding: '12px 16px' }} aria-label="Notification settings">
+          <div className="small muted" style={{ marginBottom: 6 }}>Notify me about:</div>
+          {meData ? ([
+            ['notify_replies', '💬 Replies in discussions I follow'],
+            ['notify_mentions', '📣 When someone @mentions me'],
+            ['notify_quotes', '❝ When someone quotes me'],
+            ['notify_dm', '✉️ Private messages'],
+            ['notify_games', '🏟️ Game reminders'],
+          ] as const).map(([k, label]) => (
+            <label key={k} className="check" style={{ display: 'flex', margin: '6px 0' }}>
+              <input type="checkbox" checked={prefs[k] !== false} onChange={(e) => togglePref(k, e.target.checked)} />
+              <span>{label}</span>
+            </label>
+          )) : <Loading />}
+        </section>
+      )}
       <section className="card">
         {data.notifications.length ? data.notifications.map((n) => (
           <button key={n.id} className={`list-row ${n.read_at ? '' : 'unread'}`} style={{ width: '100%', border: 0, textAlign: 'left', cursor: 'pointer', background: n.read_at ? 'none' : undefined }} onClick={() => open(n)}>

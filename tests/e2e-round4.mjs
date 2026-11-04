@@ -295,13 +295,14 @@ try {
   const minorLive = minor ? (await api(reg, `/games/${minor.id}/live`)).body : null;
   check('Football and men\'s basketball games look up the live score from ESPN; other sports don\'t', fbLive?.espn_url?.startsWith('https://www.espn.com/college-football/') && minorLive?.espn_url === null);
   // Scoreboard during a game (ESPN's answer is simulated here; the build machine can't reach ESPN). No ESPN link (owner request).
-  const fakeLive = { active: true, espn_url: 'https://www.espn.com/', live: { state: 'in', nmsu_score: 34, opp_score: 28, detail: '14:34 - 2nd' } };
+  const fakeLive = { active: true, espn_url: 'https://www.espn.com/', box_url: 'https://www.espn.com/college-football/boxscore/_/gameId/401', live: { state: 'in', nmsu_score: 34, opp_score: 28, detail: '14:34 - 2nd' } };
   await reg.setViewportSize({ width: 390, height: 844 });
   await reg.route('**/api/games/*/live', (r) => r.fulfill({ contentType: 'application/json', body: JSON.stringify(fakeLive) }));
   await reg.goto(BASE + `/chat/game-${fbGame.id}`);
   await reg.waitForSelector('.scorebox');
   const scoreText = await reg.textContent('.scorebox');
   const espnLinks = await reg.locator('a:has-text("ESPN")').count();
+  const boxHref = await reg.getAttribute('a:has-text("Box score")', 'href');
   await reg.screenshot({ path: `${SHOTS}/iphone-chat-scoreboard.png` });
   await reg.goto(BASE + `/games/${fbGame.id}`);
   await reg.waitForSelector('.scorebox');
@@ -309,7 +310,7 @@ try {
   await reg.screenshot({ path: `${SHOTS}/iphone-game-scoreboard.png` });
   await reg.unroute('**/api/games/*/live');
   await reg.setViewportSize({ width: 1280, height: 900 });
-  check('Live scoreboard shows both teams, big scores and the clock, with no ESPN link', /NM State/.test(scoreText) && /34/.test(scoreText) && /28/.test(scoreText) && /14:34/.test(scoreText) && espnLinks === 0 && espnOnGame === 0, JSON.stringify({ scoreText, espnLinks, espnOnGame }));
+  check('Live scoreboard shows both teams, big scores and the clock, with a Box score link and no ESPN Gamecast link', /NM State/.test(scoreText) && /34/.test(scoreText) && /28/.test(scoreText) && /14:34/.test(scoreText) && espnLinks === 0 && espnOnGame === 0 && boxHref === fakeLive.box_url, JSON.stringify({ scoreText, espnLinks, espnOnGame, boxHref }));
 
   // ---------- Admin → Members: compact rows with an Actions menu ----------
   await admin.setViewportSize({ width: 390, height: 844 });
@@ -655,6 +656,19 @@ try {
   check('Facebook post links share as a card that loads the post from Facebook only when tapped',
     /Facebook post/.test(fbText) && fbLink?.startsWith('https://www.facebook.com/share/p/1AbCdEfGh/') && noFrameYet
     && frameSrc?.startsWith('https://www.facebook.com/plugins/post.php?href=https%3A%2F%2Fwww.facebook.com%2Fshare%2Fp%2F1AbCdEfGh%2F'), JSON.stringify({ fbText, fbLink, frameSrc }));
+
+  // ---------- Notification on/off switches on the Notifications page ----------
+  await reg.goto(BASE + '/notifications');
+  await reg.click('button:has-text("Turn on/off")');
+  const repliesBox = reg.locator('label:has-text("Replies in discussions I follow") input');
+  await repliesBox.waitFor();
+  await repliesBox.uncheck();
+  await reg.waitForSelector('text=Turned off');
+  const offPref = (await api(reg, '/me')).body.me.prefs.notify_replies;
+  await repliesBox.check();
+  await reg.waitForSelector('text=Turned on');
+  const onPref = (await api(reg, '/me')).body.me.prefs.notify_replies;
+  check('Members can turn each kind of notification on or off right from the Notifications page', offPref === false && onPref === true, JSON.stringify({ offPref, onPref }));
 
   // ---------- Audit history ----------
   const log = (await api(admin, '/admin/log')).body.log;
