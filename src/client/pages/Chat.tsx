@@ -157,16 +157,19 @@ export function ChatRoomPage() {
         {messages.filter((m) => !muted.has(m.user_id)).map((m) => (
           <div key={m.id} className={`chat-msg ${m.user_id === me?.id ? 'mine' : ''} ${selected.includes(m.id) ? 'selected' : ''}`} onClick={() => selecting && toggle(m.id)}>
             <div className="bubble">
-              <div className="spread"><span className="who">{m.display_name || m.username}</span><span className="tiny muted" title={fullTime(m.created_at)}>{timeAgo(m.created_at)}</span></div>
+              <div className="chat-meta">
+                <span className="who">{m.display_name || m.username}</span>
+                <span className="tiny muted" title={fullTime(m.created_at)}>{timeAgo(m.created_at)}</span>
+                {!selecting && (
+                  <span className="chat-acts">
+                    <button className="chat-act" aria-label={`Reply to ${m.username}`} title="Reply" onClick={() => { setCtx({ mode: 'reply', username: m.username, body: m.body }); document.getElementById('chat-text')?.focus(); }}><Reply size={14} /></button>
+                    <button className="chat-act" aria-label={`Quote ${m.username}`} title="Quote" onClick={() => { setCtx({ mode: 'quote', username: m.username, body: m.body }); document.getElementById('chat-text')?.focus(); }}><Quote size={14} /></button>
+                    {m.user_id !== me?.id && <button className="chat-act" aria-label="Report message" title="Report" onClick={() => setReport(m.id)}><Flag size={13} /></button>}
+                    {(me?.role === 'admin' || me?.role === 'moderator') && <button className="chat-act" aria-label="Remove message" title="Remove" onClick={() => del(m.id)}><Trash2 size={13} /></button>}
+                  </span>
+                )}
+              </div>
               <PostBody text={m.body} />
-              {!selecting && (
-                <div className="row" style={{ gap: 2 }}>
-                  <button className="btn ghost small chat-act" onClick={() => { setCtx({ mode: 'reply', username: m.username, body: m.body }); document.getElementById('chat-text')?.focus(); }}><Reply size={12} /> Reply</button>
-                  <button className="btn ghost small chat-act" onClick={() => { setCtx({ mode: 'quote', username: m.username, body: m.body }); document.getElementById('chat-text')?.focus(); }}><Quote size={12} /> Quote</button>
-                  {m.user_id !== me?.id && <button className="btn ghost small" style={{ minHeight: 24, padding: '0 6px' }} aria-label="Report message" onClick={() => setReport(m.id)}><Flag size={12} /></button>}
-                  {(me?.role === 'admin' || me?.role === 'moderator') && <button className="btn ghost small" style={{ minHeight: 24, padding: '0 6px' }} aria-label="Remove message" onClick={() => del(m.id)}><Trash2 size={12} /></button>}
-                </div>
-              )}
             </div>
           </div>
         ))}

@@ -514,7 +514,8 @@ table.simple th { font-size: .72rem; text-transform: uppercase; letter-spacing: 
 :root[data-theme='dark'] .sticky-save .save-ok, :root[data-theme='dark'] .sticky-save .save-bad { color: var(--white); }
 
 /* Live chat: reply / quote */
-.chat-act { min-height: 24px; padding: 0 6px; font-size: .75rem; gap: 3px; }
+.chat-act { display: inline-flex; align-items: center; justify-content: center; min-width: 28px; min-height: 26px; padding: 0; border: 0; background: none; color: var(--muted); cursor: pointer; border-radius: 6px; }
+.chat-act:hover { color: var(--crimson); background: var(--crimson-tint); }
 .chat-ctx { display: flex; align-items: center; gap: 8px; padding: 6px 12px; font-size: .85rem; background: var(--crimson-tint); border-top: 1px solid var(--line); }
 
 /* "↩ Replying to …" on replies and in the reply box */
@@ -570,3 +571,16 @@ table.simple th { font-size: .72rem; text-transform: uppercase; letter-spacing: 
 .live-pip { position: absolute; top: 8px; right: calc(50% - 18px); width: 10px; height: 10px; border-radius: 50%; background: var(--crimson); border: 2px solid var(--white); animation: livepulse 1.6s infinite; }
 .live-pip.inline { position: relative; top: -6px; right: auto; display: inline-block; margin-left: 4px; width: 8px; height: 8px; background: var(--white); border-color: var(--crimson); }
 .bottom-nav a.chat-live { color: var(--crimson); font-weight: 900; }
+
+/* Compact chat messages: name, time and Reply/Quote icons on one line. */
+.chat-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.chat-acts { display: inline-flex; margin-left: auto; }
+.chat-msg .bubble { padding: 4px 8px 6px; }
+.chat-msg .bubble .post-body p { margin: 2px 0; }
+.chat-log { gap: 4px; padding: 8px 10px; }
+/* Phones: the chat room uses nearly the whole screen. */
+@media (max-width: 899px) {
+  .shell:has(.chat-wrap) { padding: 6px 6px calc(var(--bottom-h) + 6px + env(safe-area-inset-bottom)); }
+  .chat-wrap { height: calc(100dvh - var(--header-h) - var(--bottom-h) - 12px - env(safe-area-inset-bottom) - env(safe-area-inset-top)); }
+  .chat-head { padding: 8px 12px; }
+}
