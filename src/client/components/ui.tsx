@@ -246,7 +246,6 @@ export function LiveScore({ game, compact = false, children }: { game: GameItem;
   }
   return (
     <div className={`live-score ${compact ? 'compact' : ''} ${l.state === 'in' ? 'on' : ''}`}>
-      {compact && <button type="button" className="score-hide" onClick={() => setHiddenPref(true)} aria-label="Hide scoreboard">Hide ▴</button>}
       <div className="scorebox" aria-live="polite" aria-label={`NM State ${us}, ${game.opponent} ${them}, ${l.detail}`}>
         <div className={`team ${us > them ? 'lead' : ''}`}><span className="name">NM State</span><span className="pts">{us}</span></div>
         <div className="mid">{l.state === 'in' && <span className="live-dot" aria-hidden="true" />}<span>{final ? 'Final' : l.detail}</span></div>
@@ -257,7 +256,9 @@ export function LiveScore({ game, compact = false, children }: { game: GameItem;
           {children}
         </div>
       )}
-      {data?.box_url && <BoxScoreAccordion gameId={game.id} live={l.state === 'in'} espnUrl={data.box_url} />}
+      {data?.box_url
+        ? <BoxScoreAccordion gameId={game.id} live={l.state === 'in'} espnUrl={data.box_url} extra={compact ? <button type="button" className="score-hide" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setHiddenPref(true); }} aria-label="Hide scoreboard">Hide ▴</button> : null} />
+        : compact && <div className="score-foot"><button type="button" className="score-hide" onClick={() => setHiddenPref(true)} aria-label="Hide scoreboard">Hide ▴</button></div>}
     </div>
   );
 }
@@ -266,7 +267,7 @@ interface BoxGroup { name: string; labels: string[]; players: { name: string; st
 interface BoxTeam { name: string; nmsu: boolean; groups: BoxGroup[]; team_stats: { label: string; value: string }[] }
 
 /** Drop-down box score under the scoreboard. Loads when opened; refreshes every minute while the game is live. */
-function BoxScoreAccordion({ gameId, live, espnUrl }: { gameId: number; live: boolean; espnUrl: string }) {
+function BoxScoreAccordion({ gameId, live, espnUrl, extra }: { gameId: number; live: boolean; espnUrl: string; extra?: ReactNode }) {
   const [open, setOpen] = useState(false);
   const [teams, setTeams] = useState<BoxTeam[] | null | undefined>(undefined);
   useEffect(() => {
@@ -285,7 +286,7 @@ function BoxScoreAccordion({ gameId, live, espnUrl }: { gameId: number; live: bo
   }, [open, gameId, live]);
   return (
     <details className="boxscore" onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}>
-      <summary>Box score</summary>
+      <summary><span className="box-label">Box score</span>{extra}</summary>
       {teams === undefined ? <div className="tiny muted" style={{ padding: 8 }}>Loading…</div>
         : teams === null ? <div className="tiny muted" style={{ padding: 8 }}>The box score isn't available yet. <a href={espnUrl} target="_blank" rel="noopener noreferrer">See it on ESPN ↗</a></div>
         : teams.map((t) => (
