@@ -424,7 +424,7 @@ try {
   await reg.fill('#chat-text', 'First chat line for quoting');
   await reg.click('button[aria-label="Send"]');
   await reg.waitForSelector('.chat-msg >> text=First chat line for quoting');
-  await reg.locator('.chat-msg', { hasText: 'First chat line for quoting' }).last().locator('button:has-text("Quote")').click();
+  await reg.locator('.chat-msg', { hasText: 'First chat line for quoting' }).last().locator('button[title="Quote"]').click();
   await reg.waitForSelector('.chat-ctx >> text=Quoting');
   await reg.fill('#chat-text', 'Agreed with that');
   await reg.click('button[aria-label="Send"]');
