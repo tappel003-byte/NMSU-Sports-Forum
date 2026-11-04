@@ -50,24 +50,6 @@ export function ChatRoomPage() {
   const [muted, setMuted] = useState<Set<number>>(new Set());
   const ws = useRef<WebSocket | null>(null);
   const log = useRef<HTMLDivElement>(null);
-  // Phones: stretch the chat down to the bottom bar (measured on the device, also when the keyboard opens).
-  const wrap = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const fit = () => {
-      const el = wrap.current;
-      if (!el) return;
-      if (window.innerWidth >= 900) { el.style.height = ''; return; }
-      const vh = window.visualViewport?.height ?? window.innerHeight;
-      const top = el.getBoundingClientRect().top + window.scrollY;
-      const bar = (document.querySelector('.bottom-nav') as HTMLElement | null)?.offsetHeight ?? 0;
-      el.style.height = `${Math.max(320, Math.round(vh - top - bar - 2))}px`;
-    };
-    fit();
-    window.addEventListener('resize', fit);
-    window.visualViewport?.addEventListener('resize', fit);
-    const t = window.setTimeout(fit, 300);
-    return () => { window.removeEventListener('resize', fit); window.visualViewport?.removeEventListener('resize', fit); window.clearTimeout(t); };
-  }, []);
   const retry = useRef(0);
   const stuckToBottom = useRef(true);
 
@@ -147,10 +129,13 @@ export function ChatRoomPage() {
 
   if (error) return <ErrorState error={error} />;
   return (
-    <div className="card chat-wrap" ref={wrap}>
+    <div className="card chat-wrap">
       <div className="section-head chat-head">
         <div className="grow">
-          <h2 style={{ fontSize: '1rem' }}><Link to="/chat" className="chat-back" aria-label="Back to chat rooms">←</Link>{title}</h2>
+          <div className="chat-title-row">
+            <button type="button" className="btn small chat-back" onClick={() => (window.history.length > 1 ? nav(-1) : nav('/'))} aria-label="Leave the chat">← Back</button>
+            <h2 style={{ fontSize: '1rem', margin: 0 }}>{title}</h2>
+          </div>
           <div className="tiny muted">
             <span className={`conn ${status === 'open' ? 'ok' : 'bad'}`}>{status === 'open' ? '● Connected' : status === 'connecting' ? '● Connecting…' : '● Reconnecting…'}</span>
             {' · '}{presence.length} here{presence.length ? `: ${presence.slice(0, 6).map((p) => p.username).join(', ')}${presence.length > 6 ? '…' : ''}` : ''}
