@@ -50,7 +50,7 @@ export function ChatRoomPage() {
   const [muted, setMuted] = useState<Set<number>>(new Set());
   const ws = useRef<WebSocket | null>(null);
   const log = useRef<HTMLDivElement>(null);
-  // Phones: stretch the chat down to the bottom of the screen (measured on the device, also when the keyboard opens).
+  // Phones: stretch the chat down to the bottom bar (measured on the device, also when the keyboard opens).
   const wrap = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const fit = () => {
@@ -59,7 +59,8 @@ export function ChatRoomPage() {
       if (window.innerWidth >= 900) { el.style.height = ''; return; }
       const vh = window.visualViewport?.height ?? window.innerHeight;
       const top = el.getBoundingClientRect().top + window.scrollY;
-      el.style.height = `${Math.max(320, Math.round(vh - top - 4))}px`;
+      const bar = (document.querySelector('.bottom-nav') as HTMLElement | null)?.offsetHeight ?? 0;
+      el.style.height = `${Math.max(320, Math.round(vh - top - bar - 2))}px`;
     };
     fit();
     window.addEventListener('resize', fit);
