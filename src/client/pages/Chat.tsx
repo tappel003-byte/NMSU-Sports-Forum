@@ -143,7 +143,6 @@ export function ChatRoomPage() {
           {game && <Link to={`/games/${game.id}`} className="btn ghost small">Game</Link>}
           {game && <a href={officialRosterUrl(game.sport)} target="_blank" rel="noopener noreferrer" className="btn ghost small">Roster ↗</a>}
           <Link to={`/chat/${room}/archive`} className="btn ghost small">Archive</Link>
-          <button className="btn secondary small" onClick={() => { setSelecting(!selecting); setSelected([]); }}>{selecting ? 'Cancel' : 'Save to thread'}</button>
         </div>
       </div>
       {game && <LiveScore game={game} compact />}
