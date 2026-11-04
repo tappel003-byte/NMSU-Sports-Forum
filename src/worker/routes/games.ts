@@ -41,8 +41,9 @@ games.get('/games', async (c) => {
   const rows = await all<GameRow>(c.env, `SELECT * FROM games WHERE ${where} ORDER BY ${order} LIMIT 200`, ...params);
   const feeds = await first<{ n: number; ok: number }>(c.env, 'SELECT COUNT(*) AS n, SUM(last_ok_at IS NOT NULL) AS ok FROM data_feeds WHERE enabled = 1');
   // Chat button on each game card: open (automatic football/men's basketball, or started by a member) or "start", from the day before until a day after.
-  const ids = rows.map((r) => r.id);
-  const started = new Set(ids.length ? (await all<{ game_id: number }>(c.env, `SELECT game_id FROM started_chats WHERE game_id IN (${ids.map(() => '?').join(',')})`, ...ids)).map((r) => r.game_id) : []);
+  // Only games within a day either side can have a chat, so look up just those (a long list would exceed D1's 100-variable limit).
+  const started = new Set((await all<{ game_id: number }>(c.env,
+    'SELECT s.game_id FROM started_chats s JOIN games g ON g.id = s.game_id WHERE g.starts_at BETWEEN ? AND ?', t - 86_400_000, t + 86_400_000)).map((r) => r.game_id));
   const chatState = (g: GameRow) => {
     if (g.status === 'canceled' || g.starts_at > t + 86_400_000 || g.starts_at < t - 86_400_000) return null;
     return FEATURED_SPORTS.includes(g.sport) || started.has(g.id) ? 'open' : 'can_start';
