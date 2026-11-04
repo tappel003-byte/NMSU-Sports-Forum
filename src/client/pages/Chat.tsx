@@ -6,6 +6,7 @@ import { useApi, useApp } from '../state';
 import { PostBody, fullTime, gameTime, timeAgo } from '../format';
 import { ErrorState, Loading, Modal, type GameItem, LiveScore } from '../components/ui';
 import { ReportModal } from './Thread';
+import { officialRosterUrl } from '../../shared/sports';
 
 interface Msg { id: number; user_id: number; username: string; display_name: string | null; body: string; created_at: number }
 
@@ -139,6 +140,7 @@ export function ChatRoomPage() {
         </div>
         <div className="row">
           {game && <Link to={`/games/${game.id}`} className="btn ghost small">Game</Link>}
+          {game && <a href={officialRosterUrl(game.sport)} target="_blank" rel="noopener noreferrer" className="btn ghost small">Roster ↗</a>}
           <Link to={`/chat/${room}/archive`} className="btn ghost small">Archive</Link>
           <button className="btn secondary small" onClick={() => { setSelecting(!selecting); setSelected([]); }}>{selecting ? 'Cancel' : 'Save to thread'}</button>
         </div>
