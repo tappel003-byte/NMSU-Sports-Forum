@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { FEATURED_SPORTS, officialRosterUrl } from '../../shared/sports';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../api';
 import { useApi, useApp } from '../state';
 import { Score, fullTime, gameTime, matchup, sportIcon, sportName } from '../format';
@@ -62,7 +62,7 @@ export function Games() {
 interface GameDetail {
   game: GameItem;
   threads: ThreadItem[];
-  chat: { room: string; messages: number };
+  chat: { room: string; messages: number; automatic?: boolean; open?: boolean; can_start?: boolean };
   predictions: { locked: boolean; mine: { pick: string; nmsu_score: number | null; opp_score: number | null; points: number | null } | null; count: number; nmsu: number; opp: number; picks: { username: string; pick: string; nmsu_score: number | null; opp_score: number | null; points: number | null }[] };
   events: { id: number; title: string; kind: string; location: string; starts_at: number }[];
   top_posts: { id: number; thread_id: number; body: string; username: string; up: number }[];
@@ -74,6 +74,11 @@ export function GamePage() {
   const { data, error, reload } = useApi<GameDetail>(`/games/${id}`);
   const [pick, setPick] = useState<'nmsu' | 'opp' | ''>('');
   const [scores, setScores] = useState({ nmsu: '', opp: '' });
+  const nav = useNavigate();
+  const startChat = async () => {
+    try { const r = await api<{ room: string }>(`/chat/game-${id}/start`, { method: 'POST' }); nav(`/chat/${r.room}`); }
+    catch (err) { toast((err as Error).message); }
+  };
   if (error) return <ErrorState error={error} retry={reload} />;
   if (!data) return <Loading />;
   const g = data.game;
@@ -100,7 +105,8 @@ export function GamePage() {
           <div style={{ marginTop: 8 }}><Score game={g} /></div>
           {/* One wrapping row: chat, listen/watch, schedule, and ESPN (live stats and box score for football and men's basketball). */}
           <LiveScore game={g}>
-            {FEATURED_SPORTS.includes(g.sport) && <Link to={`/chat/${data.chat.room}`} className="btn on-crimson small">{g.live ? 'Join live chat' : 'Game chat'}</Link>}
+            {data.chat.open && <Link to={`/chat/${data.chat.room}`} className="btn on-crimson small">{g.live ? 'Join live chat' : 'Game chat'}</Link>}
+            {!data.chat.open && data.chat.can_start && <button type="button" className="btn on-crimson small" onClick={startChat}>💬 Start a game chat</button>}
             {g.audio_url && <a href={g.audio_url} target="_blank" rel="noopener noreferrer" className="btn on-crimson outline small">🎧 Listen ↗</a>}
             {g.video_url && <a href={g.video_url} target="_blank" rel="noopener noreferrer" className="btn on-crimson outline small">📺 Watch ↗</a>}
             <a href={officialRosterUrl(g.sport)} target="_blank" rel="noopener noreferrer" className="btn on-crimson outline small">Roster ↗</a>
@@ -145,7 +151,7 @@ export function GamePage() {
           {!pregame && <Link className="btn secondary small" to={`/new?forum=${forum}&game=${g.id}&phase=pregame`}>Start pregame thread</Link>}
           {!postgame && g.status === 'final' && <Link className="btn secondary small" to={`/new?forum=${forum}&game=${g.id}&phase=postgame`}>Start postgame thread</Link>}
           <Link className="btn secondary small" to={`/new?forum=${forum}&game=${g.id}`}>New thread about this game</Link>
-          {(FEATURED_SPORTS.includes(g.sport) || data.chat.messages > 0) && <Link className="btn ghost small" to={`/chat/${data.chat.room}/archive`}>Chat archive ({data.chat.messages} messages)</Link>}
+          {(data.chat.open || data.chat.messages > 0) && <Link className="btn ghost small" to={`/chat/${data.chat.room}/archive`}>Chat archive ({data.chat.messages} messages)</Link>}
         </div>
       </section>
 

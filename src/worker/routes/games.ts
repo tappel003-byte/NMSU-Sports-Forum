@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { AppEnv } from '../env';
 import { all, first, getSetting, run } from '../db';
 import { HttpError, now, parse } from '../util';
-import { FEATURED_SQL, officialRosterUrl, officialScheduleUrl, parseHubLinks, SPORTS, SPORT_BY_KEY } from '../../shared/sports';
+import { FEATURED_SPORTS, FEATURED_SQL, officialRosterUrl, officialScheduleUrl, parseHubLinks, SPORTS, SPORT_BY_KEY } from '../../shared/sports';
 import { memberSummaries } from '../lib/members';
 import { THREAD_SELECT, presentThreads, type ThreadRow } from '../lib/threads';
 import { seasonOf, seasonRange, type GameRow } from '../lib/sports';
@@ -131,7 +131,13 @@ games.get('/games/:id', async (c) => {
   return c.json({
     game: presentGame(g),
     threads: await presentThreads(c.env, user, threads),
-    chat: { room, messages: chatCount?.n ?? 0 },
+    // Chat: automatic for football and men's basketball; any other game once a member starts it (from the day before until a day after).
+    chat: await (async () => {
+      const automatic = FEATURED_SPORTS.includes(g.sport);
+      const started = automatic || Boolean(await first(c.env, 'SELECT game_id FROM started_chats WHERE game_id = ?', g.id));
+      const t = now();
+      return { room, messages: chatCount?.n ?? 0, automatic, open: started, can_start: !started && g.status !== 'canceled' && g.starts_at <= t + 86_400_000 && g.starts_at >= t - 86_400_000 };
+    })(),
     predictions: {
       locked,
       mine,

@@ -287,7 +287,23 @@ try {
   const minor = season.find((g) => !['fb', 'mbb'].includes(g.sport));
   const minorChat = minor ? await api(reg, `/chat/game-${minor.id}/history`) : { status: 404 };
   const lounge = await api(reg, '/chat/lounge/history');
-  check('Chat rooms: the Aggie Lounge plus football and men\'s basketball games only', rooms[0].room === 'lounge' && rooms.slice(1).every((r) => ['fb', 'mbb'].includes(r.game.sport)) && minorChat.status === 404 && lounge.status === 200);
+  check('Chat rooms open automatically only for the Aggie Lounge, football and men\'s basketball', rooms[0].room === 'lounge' && rooms.slice(1).every((r) => ['fb', 'mbb'].includes(r.game.sport)) && minorChat.status === 404 && lounge.status === 200);
+  // Any member can start a chat for any other game (from the day before until a day after); then everyone joins the same room.
+  await api(admin, `/admin/games/${minor.id}`, { method: 'PATCH', body: { starts_at: Date.now() + 3 * 3_600_000, time_tba: false } });
+  await reg.goto(BASE + `/games/${minor.id}`);
+  await reg.click('button:has-text("Start a game chat")');
+  await reg.waitForURL(`**/chat/game-${minor.id}`);
+  await reg.waitForSelector('text=● Connected', { timeout: 10000 });
+  const startedChat = await api(reg, `/chat/game-${minor.id}/history`);
+  const roomsAfter = (await api(reg, '/chat/rooms')).body.rooms.map((r) => r.room);
+  await crimson.goto(BASE + `/games/${minor.id}`);
+  const joinLink = await crimson.getAttribute('a.btn:has-text("Game chat")', 'href');
+  const noSecondStart = (await crimson.locator('button:has-text("Start a game chat")').count()) === 0;
+  const farGame = season.find((g) => !['fb', 'mbb'].includes(g.sport) && g.id !== minor.id && Math.abs(g.starts_at - Date.now()) > 3 * 86_400_000);
+  const tooEarly = farGame ? (await api(reg, `/chat/game-${farGame.id}/start`, { method: 'POST' })).status : 400;
+  check('Members can start a game chat for any sport; others then see "Game chat" (no duplicate), and it shows in the Chat list',
+    startedChat.status === 200 && roomsAfter.includes(`game-${minor.id}`) && joinLink === `/chat/game-${minor.id}` && noSecondStart && tooEarly === 400,
+    JSON.stringify({ status: startedChat.status, joinLink, noSecondStart, tooEarly }));
 
   // ---------- ESPN link and live score bar ----------
   const fbGame = season.find((g) => g.sport === 'fb');

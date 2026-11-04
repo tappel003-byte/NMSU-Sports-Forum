@@ -11,21 +11,24 @@ import { presentGame } from './games';
 
 export const chat = new Hono<AppEnv>();
 
-/** The Aggie Lounge is always open; live game chats exist only for football and men's basketball (archives stay readable). */
+/** The Aggie Lounge is always open. Football and men's basketball games get a chat automatically; any other game gets one once a member starts it. Archives stay readable. */
 async function resolveRoom(env: Env, room: string, live = false): Promise<{ room: string; game: GameRow | null }> {
   if (room === 'lounge') return { room, game: null };
   const m = room.match(/^game-(\d+)$/);
   if (!m) throw new HttpError(404, 'Chat room not found.');
   const game = await first<GameRow>(env, 'SELECT * FROM games WHERE id = ?', Number(m[1]));
   if (!game) throw new HttpError(404, 'Chat room not found.');
-  if (live && !FEATURED_SPORTS.includes(game.sport)) throw new HttpError(404, 'Game chats are for football and men\'s basketball. Join the Aggie Lounge instead.');
+  if (live && !FEATURED_SPORTS.includes(game.sport) && !(await first(env, 'SELECT game_id FROM started_chats WHERE game_id = ?', game.id))) {
+    throw new HttpError(404, 'Nobody has started a chat for this game yet. Start one from the game page.');
+  }
   return { room, game };
 }
 
 chat.get('/chat/rooms', async (c) => {
   const t = now();
   // Game rooms are listed from the day before a game until a day after.
-  const games = await all<GameRow>(c.env, `SELECT * FROM games WHERE removed = 0 AND status != 'canceled' AND sport IN ${FEATURED_SQL} AND starts_at BETWEEN ? AND ? ORDER BY starts_at`, t - 86_400_000, t + 86_400_000);
+  const games = await all<GameRow>(c.env, `SELECT * FROM games WHERE removed = 0 AND status != 'canceled' AND (sport IN ${FEATURED_SQL} OR id IN (SELECT game_id FROM started_chats))
+     AND starts_at BETWEEN ? AND ? ORDER BY starts_at`, t - 86_400_000, t + 86_400_000);
   const activity = await all<{ room: string; n: number }>(c.env, 'SELECT room, COUNT(DISTINCT user_id) AS n FROM chat_messages WHERE created_at > ? GROUP BY room', t - 15 * 60_000);
   const act = new Map(activity.map((a) => [a.room, a.n]));
   return c.json({
@@ -34,6 +37,21 @@ chat.get('/chat/rooms', async (c) => {
       ...games.map((g) => ({ room: `game-${g.id}`, title: matchup(g), subtitle: SPORT_BY_KEY[g.sport]?.label ?? '', active: act.get(`game-${g.id}`) ?? 0, game: presentGame(g) })),
     ],
   });
+});
+
+// Any member can start a chat for a game without an automatic one, from the day before the game until a day after.
+chat.post('/chat/:room/start', async (c) => {
+  const user = c.get('user');
+  const m = c.req.param('room').match(/^game-(\d+)$/);
+  if (!m) throw new HttpError(404, 'Chat room not found.');
+  const g = await first<GameRow>(c.env, "SELECT * FROM games WHERE id = ? AND removed = 0 AND status != 'canceled'", Number(m[1]));
+  if (!g) throw new HttpError(404, 'Game not found.');
+  if (!FEATURED_SPORTS.includes(g.sport)) {
+    const t = now();
+    if (g.starts_at > t + 86_400_000 || g.starts_at < t - 86_400_000) throw new HttpError(400, 'Game chats can be started from the day before the game until a day after.');
+    await run(c.env, 'INSERT OR IGNORE INTO started_chats (game_id, started_by, started_at) VALUES (?, ?, ?)', g.id, user.id, now());
+  }
+  return c.json({ room: `game-${g.id}` });
 });
 
 // Rolling live window: the most recent N messages (admin setting `chat_window`).
