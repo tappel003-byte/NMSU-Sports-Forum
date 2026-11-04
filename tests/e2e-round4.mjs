@@ -547,8 +547,8 @@ try {
   await fetch(`${BASE}/__scheduled?cron=*/30+*+*+*+*`);
   await new Promise((r) => setTimeout(r, 1500));
   const featAfter = featThreadId ? (await api(admin, `/threads/${featThreadId}?page=9999`)).body : null;
-  check('At the final, the game thread gets the score and the Player of the Game vote',
-    featAfter?.poll?.kind === 'potg' && featAfter.posts.some((x) => x.body.startsWith('Final: NM State W 70–60')));
+  check('At the final, the game thread gets just the final score (no vote, no commentary)',
+    !featAfter?.poll && featAfter.posts.some((x) => x.body === 'Final: NM State W 70–60 vs. Fictional Featured U.'), JSON.stringify(featAfter?.posts?.map((x) => x.body).slice(-1)));
   featSrv.close();
 
   // ---------- Aggie News Desk (local fictional feed) ----------
