@@ -8,6 +8,7 @@ import { memberSummaries } from '../lib/members';
 import { THREAD_SELECT, presentThreads, type ThreadRow } from '../lib/threads';
 import { seasonOf, seasonRange, type GameRow } from '../lib/sports';
 import { espnTeamUrl, getLiveScore, inLiveWindow, type LiveScore } from '../lib/livescore';
+import { getBoxScore } from '../lib/boxscore';
 
 export const games = new Hono<AppEnv>();
 
@@ -91,6 +92,21 @@ games.get('/games/:id/live', async (c) => {
   // ESPN's box score page for this exact game, once it has started.
   const box_url = live && live.state !== 'pre' && /\/game\/_\/gameId\//.test(live.espn_url) ? live.espn_url.replace('/game/_/gameId/', '/boxscore/_/gameId/') : null;
   return c.json({ live, espn_url: live?.espn_url ?? teamUrl, box_url, active });
+});
+
+// Box score (football and men's basketball) once the game has started, from ESPN's game summary.
+games.get('/games/:id/boxscore', async (c) => {
+  const g = await first<GameRow>(c.env, 'SELECT * FROM games WHERE id = ? AND removed = 0', Number(c.req.param('id')));
+  if (!g) throw new HttpError(404, 'Game not found.');
+  const active = inLiveWindow(g.starts_at);
+  let live: LiveScore | null = active ? await getLiveScore(c.env, g) : null;
+  if (!live) {
+    const cached = await first<{ payload: string }>(c.env, 'SELECT payload FROM live_scores WHERE game_id = ?', g.id);
+    live = cached ? (JSON.parse(cached.payload) as LiveScore | null) : null;
+  }
+  const eventId = live && live.state !== 'pre' ? live.espn_url.match(/\/gameId\/(\d+)/)?.[1] : undefined;
+  if (!eventId) return c.json({ box: null });
+  return c.json({ box: await getBoxScore(c.env, g, eventId, live!.state === 'in') });
 });
 
 games.get('/games/:id', async (c) => {

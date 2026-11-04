@@ -302,15 +302,29 @@ try {
   await reg.waitForSelector('.scorebox');
   const scoreText = await reg.textContent('.scorebox');
   const espnLinks = await reg.locator('a:has-text("ESPN")').count();
-  const boxHref = await reg.getAttribute('a:has-text("Box score")', 'href');
+  const boxHref = await reg.locator('.boxscore > summary').count();
   await reg.screenshot({ path: `${SHOTS}/iphone-chat-scoreboard.png` });
+  // Box score accordion (ESPN's summary simulated).
+  const fakeBox = { box: { teams: [
+    { name: 'NM State', nmsu: true, groups: [{ name: 'Players', labels: ['MIN', 'PTS', 'REB', 'AST'], players: [{ name: 'F. Starter', starter: true, stats: ['32', '21', '7', '5'] }, { name: 'B. Guy', starter: false, stats: ['10', '4', '1', '0'] }], totals: ['200', '78', '38', '16'] }], team_stats: [{ label: 'Field Goal %', value: '52.3' }] },
+    { name: 'Sample State', nmsu: false, groups: [{ name: 'Players', labels: ['MIN', 'PTS', 'REB', 'AST'], players: [{ name: 'O. Guard', starter: true, stats: ['30', '12', '3', '4'] }], totals: ['200', '60', '30', '11'] }], team_stats: [] },
+  ] } };
+  await reg.route('**/api/games/*/boxscore', (r) => r.fulfill({ contentType: 'application/json', body: JSON.stringify(fakeBox) }));
+  const boxBeforeOpen = await reg.locator('.box-table').count();
+  await reg.click('.boxscore > summary');
+  await reg.waitForSelector('.box-table');
+  const boxText = await reg.textContent('.boxscore');
+  await reg.screenshot({ path: `${SHOTS}/iphone-chat-boxscore.png`, fullPage: true });
+  check('Box score opens as a drop-down under the scoreboard with both teams, players, totals and team stats',
+    boxBeforeOpen === 0 && /NM State/.test(boxText) && /F\. Starter/.test(boxText) && /Sample State/.test(boxText) && /78/.test(boxText) && /Field Goal %/.test(boxText), boxText?.slice(0, 200));
+  await reg.unroute('**/api/games/*/boxscore');
   await reg.goto(BASE + `/games/${fbGame.id}`);
   await reg.waitForSelector('.scorebox');
   const espnOnGame = await reg.locator('a:has-text("ESPN Gamecast"), a:has-text("NM State on ESPN")').count();
   await reg.screenshot({ path: `${SHOTS}/iphone-game-scoreboard.png` });
   await reg.unroute('**/api/games/*/live');
   await reg.setViewportSize({ width: 1280, height: 900 });
-  check('Live scoreboard shows both teams, big scores and the clock, with a Box score link and no ESPN Gamecast link', /NM State/.test(scoreText) && /34/.test(scoreText) && /28/.test(scoreText) && /14:34/.test(scoreText) && espnLinks === 0 && espnOnGame === 0 && boxHref === fakeLive.box_url, JSON.stringify({ scoreText, espnLinks, espnOnGame, boxHref }));
+  check('Live scoreboard shows both teams, big scores and the clock, with a Box score drop-down and no ESPN Gamecast link', /NM State/.test(scoreText) && /34/.test(scoreText) && /28/.test(scoreText) && /14:34/.test(scoreText) && espnLinks === 0 && espnOnGame === 0 && boxHref === 1, JSON.stringify({ scoreText, espnLinks, espnOnGame, boxHref }));
 
   // ---------- Admin → Members: compact rows with an Actions menu ----------
   await admin.setViewportSize({ width: 390, height: 844 });

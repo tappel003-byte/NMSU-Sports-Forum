@@ -239,12 +239,61 @@ export function LiveScore({ game, compact = false, children }: { game: GameItem;
         <div className="mid">{l.state === 'in' && <span className="live-dot" aria-hidden="true" />}<span>{final ? 'Final' : l.detail}</span></div>
         <div className={`team away ${them > us ? 'lead' : ''}`}><span className="pts">{them}</span><span className="name">{game.opponent}</span></div>
       </div>
-      {(children || data?.box_url) && (
+      {children && (
         <div className="row" style={{ width: '100%', justifyContent: compact ? 'center' : undefined }}>
           {children}
-          {data?.box_url && <a href={data.box_url} target="_blank" rel="noopener noreferrer" className={compact ? 'btn ghost small' : 'btn on-crimson outline small'}>Box score ↗</a>}
         </div>
       )}
+      {data?.box_url && <BoxScoreAccordion gameId={game.id} live={l.state === 'in'} espnUrl={data.box_url} />}
     </div>
+  );
+}
+
+interface BoxGroup { name: string; labels: string[]; players: { name: string; starter: boolean; stats: string[] }[]; totals: string[] | null }
+interface BoxTeam { name: string; nmsu: boolean; groups: BoxGroup[]; team_stats: { label: string; value: string }[] }
+
+/** Drop-down box score under the scoreboard. Loads when opened; refreshes every minute while the game is live. */
+function BoxScoreAccordion({ gameId, live, espnUrl }: { gameId: number; live: boolean; espnUrl: string }) {
+  const [open, setOpen] = useState(false);
+  const [teams, setTeams] = useState<BoxTeam[] | null | undefined>(undefined);
+  useEffect(() => {
+    if (!open) return;
+    let stop = false;
+    let timer: number | undefined;
+    const load = async () => {
+      try {
+        const r = await api<{ box: { teams: BoxTeam[] } | null }>(`/games/${gameId}/boxscore`);
+        if (!stop) setTeams(r.box?.teams ?? null);
+      } catch { if (!stop) setTeams((t) => t ?? null); }
+      if (!stop && live) timer = window.setTimeout(load, 60_000);
+    };
+    load();
+    return () => { stop = true; window.clearTimeout(timer); };
+  }, [open, gameId, live]);
+  return (
+    <details className="boxscore" onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}>
+      <summary>Box score</summary>
+      {teams === undefined ? <div className="tiny muted" style={{ padding: 8 }}>Loading…</div>
+        : teams === null ? <div className="tiny muted" style={{ padding: 8 }}>The box score isn't available yet. <a href={espnUrl} target="_blank" rel="noopener noreferrer">See it on ESPN ↗</a></div>
+        : teams.map((t) => (
+          <div key={t.name} className="box-team">
+            <h4>{t.name}</h4>
+            {t.groups.map((g) => (
+              <div key={g.name} className="box-table-wrap">
+                <table className="box-table">
+                  <thead><tr><th>{g.name}</th>{g.labels.map((lb) => <th key={lb}>{lb}</th>)}</tr></thead>
+                  <tbody>
+                    {g.players.map((p, i) => <tr key={`${p.name}-${i}`} className={p.starter ? 'starter' : ''}><td>{p.name}</td>{p.stats.map((v, j) => <td key={j}>{v}</td>)}</tr>)}
+                    {g.totals && <tr className="totals"><td>Team</td>{g.totals.map((v, j) => <td key={j}>{v}</td>)}</tr>}
+                  </tbody>
+                </table>
+              </div>
+            ))}
+            {t.team_stats.length > 0 && (
+              <dl className="box-team-stats">{t.team_stats.map((st) => <div key={st.label}><dt>{st.label}</dt><dd>{st.value}</dd></div>)}</dl>
+            )}
+          </div>
+        ))}
+    </details>
   );
 }
