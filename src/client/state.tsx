@@ -28,7 +28,7 @@ export interface Prefs {
 
 export interface SiteInfo { signupMode: 'invite' | 'open'; publicRead: boolean; memberInvites: boolean; turnstileSiteKey: string | null; emailVerified: boolean }
 
-export interface Pulse { notifications: number; messages: number; unread_threads: number; open_reports: number }
+export interface Pulse { notifications: number; messages: number; unread_threads: number; open_reports: number; chat_live?: { kind: 'game' | 'active'; room: string } | null }
 
 interface AppState {
   me: Me | null;

@@ -676,6 +676,20 @@ try {
     /Facebook post/.test(fbText) && fbLink?.startsWith('https://www.facebook.com/share/p/1AbCdEfGh/') && noFrameYet
     && frameSrc?.startsWith('https://www.facebook.com/plugins/post.php?href=https%3A%2F%2Fwww.facebook.com%2Fshare%2Fp%2F1AbCdEfGh%2F'), JSON.stringify({ fbText, fbLink, frameSrc }));
 
+  // ---------- Chat lights up in the bottom bar when people are chatting ----------
+  await reg.setViewportSize({ width: 390, height: 844 });
+  await reg.goto(BASE + '/chat/lounge');
+  await reg.waitForSelector('#chat-text[placeholder="Message"]');
+  await reg.fill('#chat-text', 'Anyone around for the game?');
+  await reg.keyboard.press('Enter');
+  await reg.waitForSelector('text=Anyone around for the game?');
+  const pulseNow = (await api(reg, '/pulse')).body.chat_live;
+  await reg.goto(BASE + '/feed');
+  await reg.waitForSelector('.bottom-nav a.chat-live .live-pip', { timeout: 70_000 });
+  await reg.screenshot({ path: `${SHOTS}/iphone-chat-live-indicator.png` });
+  await reg.setViewportSize({ width: 1280, height: 900 });
+  check('The Chat button lights up when people are chatting (or a football/hoops game is on)', Boolean(pulseNow) && ['game', 'active'].includes(pulseNow.kind), JSON.stringify(pulseNow));
+
   // ---------- Notification on/off switches on the Notifications page ----------
   await reg.goto(BASE + '/notifications');
   await reg.click('button:has-text("Turn on/off")');

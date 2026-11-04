@@ -565,3 +565,8 @@ table.simple th { font-size: .72rem; text-transform: uppercase; letter-spacing: 
 .box-team-stats dt { color: var(--muted); }
 .box-team-stats dd { margin: 0; font-weight: 700; }
 .live-score.compact .boxscore[open] { max-height: 45vh; overflow-y: auto; }
+
+/* Chat lights up when a game chat is live or people are chatting. */
+.live-pip { position: absolute; top: 8px; right: calc(50% - 18px); width: 10px; height: 10px; border-radius: 50%; background: var(--crimson); border: 2px solid var(--white); animation: livepulse 1.6s infinite; }
+.live-pip.inline { position: relative; top: -6px; right: auto; display: inline-block; margin-left: 4px; width: 8px; height: 8px; background: var(--white); border-color: var(--crimson); }
+.bottom-nav a.chat-live { color: var(--crimson); font-weight: 900; }
