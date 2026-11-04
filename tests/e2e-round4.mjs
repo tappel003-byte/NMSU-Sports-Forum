@@ -307,6 +307,7 @@ try {
   await reg.screenshot({ path: `${SHOTS}/iphone-chat-scoreboard.png` });
   const noBottomBar = (await reg.locator('.bottom-nav').count()) === 1;
   const backArrow = await reg.locator('.chat-back').count();
+  const hideButtons = await reg.locator('button[aria-label="Hide scoreboard"]').count();
   await reg.click('button[aria-label="Hide scoreboard"]');
   await reg.waitForSelector('button[aria-label="Show scoreboard"]');
   const thinLine = await reg.textContent('.score-toggle');
@@ -317,7 +318,7 @@ try {
   await reg.click('button[aria-label="Show scoreboard"]');
   await reg.waitForSelector('.scorebox');
   check('Game chat keeps the bottom bar and has a back arrow; the scoreboard hides to a thin line and stays hidden until shown again',
-    noBottomBar && backArrow === 1 && /34/.test(thinLine ?? '') && /Show/.test(thinLine ?? '') && bigGone && stillHidden, JSON.stringify({ noBottomBar, backArrow, thinLine, bigGone, stillHidden }));
+    noBottomBar && backArrow === 1 && hideButtons === 1 && /34/.test(thinLine ?? '') && /Show/.test(thinLine ?? '') && bigGone && stillHidden, JSON.stringify({ hideButtons, noBottomBar, backArrow, thinLine, bigGone, stillHidden }));
   // Box score accordion (ESPN's summary simulated).
   const fakeBox = { box: { teams: [
     { name: 'NM State', nmsu: true, groups: [{ name: 'Players', labels: ['MIN', 'PTS', 'REB', 'AST'], players: [{ name: 'F. Starter', starter: true, stats: ['32', '21', '7', '5'] }, { name: 'B. Guy', starter: false, stats: ['10', '4', '1', '0'] }], totals: ['200', '78', '38', '16'] }], team_stats: [{ label: 'Field Goal %', value: '52.3' }] },

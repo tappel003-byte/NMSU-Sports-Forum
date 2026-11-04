@@ -246,7 +246,6 @@ export function LiveScore({ game, compact = false, children }: { game: GameItem;
   }
   return (
     <div className={`live-score ${compact ? 'compact' : ''} ${l.state === 'in' ? 'on' : ''}`}>
-      {compact && <button type="button" className="score-hide" onClick={() => setHiddenPref(true)} aria-label="Hide scoreboard">Hide ▴</button>}
       <div className="scorebox" aria-live="polite" aria-label={`NM State ${us}, ${game.opponent} ${them}, ${l.detail}`}>
         <div className={`team ${us > them ? 'lead' : ''}`}><span className="name">NM State</span><span className="pts">{us}</span></div>
         <div className="mid">{l.state === 'in' && <span className="live-dot" aria-hidden="true" />}<span>{final ? 'Final' : l.detail}</span></div>
