@@ -549,8 +549,9 @@ table.simple th { font-size: .72rem; text-transform: uppercase; letter-spacing: 
 .boxscore { width: 100%; margin-top: 4px; }
 .boxscore > summary { cursor: pointer; font-weight: 800; font-size: .9rem; padding: 6px 0; list-style: none; text-align: center; }
 .boxscore > summary::-webkit-details-marker { display: none; }
-.boxscore > summary::after { content: ' ▾'; }
-.boxscore[open] > summary::after { content: ' ▴'; }
+.boxscore > summary { position: relative; }
+.boxscore > summary .box-label::after { content: ' ▾'; }
+.boxscore[open] > summary .box-label::after { content: ' ▴'; }
 .box-team { background: var(--surface); color: var(--text); border-radius: var(--radius-sm); padding: 8px 10px; margin: 6px 0; text-align: left; }
 .box-team h4 { margin: 2px 0 6px; font-size: .95rem; color: var(--crimson); }
 :root[data-theme='dark'] .box-team h4 { color: var(--white); }
@@ -587,7 +588,7 @@ table.simple th { font-size: .72rem; text-transform: uppercase; letter-spacing: 
 
 /* Hide/show the scoreboard in game chat. */
 .live-score.compact { position: relative; }
-.score-hide { position: absolute; top: 4px; right: 8px; border: 0; background: none; color: var(--muted); font-size: .72rem; font-weight: 800; cursor: pointer; padding: 2px 4px; }
+.score-hide { position: absolute; top: 50%; transform: translateY(-50%); right: 4px; border: 0; background: none; color: var(--muted); font-size: .72rem; font-weight: 800; cursor: pointer; padding: 2px 4px; }
 .live-score.hidden-score { padding: 4px 12px; }
 .score-toggle { width: 100%; border: 0; background: none; color: var(--text); font-size: .8rem; font-weight: 700; cursor: pointer; padding: 2px 0; text-align: center; }
 .chat-back { margin-right: 8px; font-weight: 900; text-decoration: none; }
@@ -596,9 +597,12 @@ table.simple th { font-size: .72rem; text-transform: uppercase; letter-spacing: 
   .shell:has(.chat-wrap) { padding-bottom: calc(6px + env(safe-area-inset-bottom)); }
   .chat-wrap { height: calc(100dvh - var(--header-h) - 12px - env(safe-area-inset-bottom) - env(safe-area-inset-top)); }
 }
-.live-score.compact:not(.hidden-score) { padding-top: 18px; }
-.score-hide { top: 1px; }
 @media (max-width: 899px) {
   .chat-head .row { gap: 2px; flex-wrap: nowrap; }
   .chat-head .btn.small { padding: 0 8px; white-space: nowrap; }
+}
+.score-foot { position: relative; height: 26px; width: 100%; }
+@media (max-width: 899px) {
+  .shell:has(.chat-wrap) { padding-bottom: 0; }
+  .chat-wrap .chat-input { padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
 }
