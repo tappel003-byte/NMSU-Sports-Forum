@@ -211,6 +211,9 @@ interface LiveScoreData { live: { state: 'pre' | 'in' | 'post'; detail: string; 
 /** In-game score from ESPN (football and men's basketball), refreshed every 30 seconds while the game is on, plus a link to ESPN's box score for the game. */
 export function LiveScore({ game, compact = false, children }: { game: GameItem; compact?: boolean; children?: ReactNode }) {
   const [data, setData] = useState<LiveScoreData | null>(null);
+  // Chat only: members can collapse the scoreboard to a thin line (remembered on this device).
+  const [hidden, setHidden] = useState(() => { try { return localStorage.getItem('nsf-hide-score') === '1'; } catch { return false; } });
+  const setHiddenPref = (v: boolean) => { setHidden(v); try { localStorage.setItem('nsf-hide-score', v ? '1' : '0'); } catch { /* storage unavailable */ } };
   useEffect(() => {
     let stop = false;
     let timer: number | undefined;
@@ -232,8 +235,18 @@ export function LiveScore({ game, compact = false, children }: { game: GameItem;
   const us = l.nmsu_score ?? 0;
   const them = l.opp_score ?? 0;
   const final = l.state === 'post';
+  if (compact && hidden) {
+    return (
+      <div className="live-score compact hidden-score">
+        <button type="button" className="score-toggle" onClick={() => setHiddenPref(false)} aria-label="Show scoreboard">
+          NM State {us} – {them} {game.opponent} · {final ? 'Final' : l.detail} <span className="muted">· Show ▾</span>
+        </button>
+      </div>
+    );
+  }
   return (
     <div className={`live-score ${compact ? 'compact' : ''} ${l.state === 'in' ? 'on' : ''}`}>
+      {compact && <button type="button" className="score-hide" onClick={() => setHiddenPref(true)} aria-label="Hide scoreboard">Hide ▴</button>}
       <div className="scorebox" aria-live="polite" aria-label={`NM State ${us}, ${game.opponent} ${them}, ${l.detail}`}>
         <div className={`team ${us > them ? 'lead' : ''}`}><span className="name">NM State</span><span className="pts">{us}</span></div>
         <div className="mid">{l.state === 'in' && <span className="live-dot" aria-hidden="true" />}<span>{final ? 'Final' : l.detail}</span></div>

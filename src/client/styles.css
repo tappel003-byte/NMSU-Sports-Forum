@@ -584,3 +584,21 @@ table.simple th { font-size: .72rem; text-transform: uppercase; letter-spacing: 
   .chat-wrap { height: calc(100dvh - var(--header-h) - var(--bottom-h) - 12px - env(safe-area-inset-bottom) - env(safe-area-inset-top)); }
   .chat-head { padding: 8px 12px; }
 }
+
+/* Hide/show the scoreboard in game chat. */
+.live-score.compact { position: relative; }
+.score-hide { position: absolute; top: 4px; right: 8px; border: 0; background: none; color: var(--muted); font-size: .72rem; font-weight: 800; cursor: pointer; padding: 2px 4px; }
+.live-score.hidden-score { padding: 4px 12px; }
+.score-toggle { width: 100%; border: 0; background: none; color: var(--text); font-size: .8rem; font-weight: 700; cursor: pointer; padding: 2px 0; text-align: center; }
+.chat-back { margin-right: 8px; font-weight: 900; text-decoration: none; }
+/* Phones: no bottom bar inside a chat room, so the chat runs to the bottom of the screen. */
+@media (max-width: 899px) {
+  .shell:has(.chat-wrap) { padding-bottom: calc(6px + env(safe-area-inset-bottom)); }
+  .chat-wrap { height: calc(100dvh - var(--header-h) - 12px - env(safe-area-inset-bottom) - env(safe-area-inset-top)); }
+}
+.live-score.compact:not(.hidden-score) { padding-top: 18px; }
+.score-hide { top: 1px; }
+@media (max-width: 899px) {
+  .chat-head .row { gap: 2px; flex-wrap: nowrap; }
+  .chat-head .btn.small { padding: 0 8px; white-space: nowrap; }
+}
