@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { BADGES, isVenueForum } from '../../shared/sports';
 import { TAGS } from '../../shared/forum';
 import { useApp } from '../state';
@@ -144,6 +144,8 @@ export function ThreadList({ threads, showForum = true, empty }: { threads: Thre
 
 export interface GameItem {
   id: number;
+  /** Game chat button on the card: 'open' to join, 'can_start' to start one, null when outside the chat window. */
+  chat?: 'open' | 'can_start' | null;
   sport: string;
   opponent: string;
   home_away: string;
@@ -168,6 +170,16 @@ export interface GameItem {
 
 export function GameRow({ game, extra }: { game: GameItem; extra?: ReactNode }) {
   const d = dateParts(game.starts_at);
+  const nav = useNavigate();
+  const { toast } = useApp();
+  // Game chat straight from the card: join an open chat, or start one for any game (day before to day after).
+  const openChat = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (game.chat === 'open') { nav(`/chat/game-${game.id}`); return; }
+    try { const r = await api<{ room: string }>(`/chat/game-${game.id}/start`, { method: 'POST' }); nav(`/chat/${r.room}`); }
+    catch (err) { toast((err as Error).message); }
+  };
   return (
     <Link to={`/games/${game.id}`} className="game-row">
       <div className="game-date"><div className="m">{d.month}</div><div className="d">{d.day}</div></div>
@@ -177,8 +189,9 @@ export function GameRow({ game, extra }: { game: GameItem; extra?: ReactNode }) 
         <div className="small muted">{gameTime(game.starts_at, game.time_tba)}{game.tv ? ` · ${game.tv}` : ''}</div>
         {extra}
       </div>
-      <div style={{ textAlign: 'right' }}>
+      <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
         {game.live ? <span className="chip live">Game day</span> : <Score game={game} />}
+        {game.chat && <button type="button" className="btn small game-chat-btn" onClick={openChat}>{game.chat === 'open' ? '💬 Game chat' : '💬 Start chat'}</button>}
       </div>
     </Link>
   );
