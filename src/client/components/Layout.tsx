@@ -69,7 +69,7 @@ function Header() {
           <NavLink to="/feed">Board</NavLink>
           <NavLink to="/games">Game Center</NavLink>
           <NavLink to="/rosters">Rosters</NavLink>
-          <NavLink to="/chat">Live Chat</NavLink>
+          <NavLink to="/chat" className={pulse.chat_live ? 'chat-live' : undefined}>Live Chat{pulse.chat_live && <span className="live-pip inline" aria-hidden="true" />}</NavLink>
           <NavLink to="/members">Members</NavLink>
         </nav>
         {!me ? (
@@ -123,7 +123,7 @@ function LeftRail() {
           <NavLink to="/" end><Home size={17} /> Home</NavLink>
           <NavLink to="/feed"><MessagesSquare size={17} /> Board{pulse.unread_threads > 0 && <span className="count hot">{pulse.unread_threads}</span>}</NavLink>
           <NavLink to="/games"><TrophyIcon size={17} /> Game Center</NavLink>
-          <NavLink to="/chat"><MessageCircle size={17} /> Live chat</NavLink>
+          <NavLink to="/chat" className={pulse.chat_live ? 'chat-live' : undefined}><MessageCircle size={17} /> Live chat{pulse.chat_live && <span className="count hot">{pulse.chat_live.kind === 'game' ? 'LIVE' : 'now'}</span>}</NavLink>
           <NavLink to="/calendar"><CalendarDays size={17} /> Calendar</NavLink>
           <NavLink to="/members"><Users size={17} /> Members</NavLink>
           {me && (site.memberInvites || me.role === 'admin') && <NavLink to="/invite"><Send size={17} /> Invite friends</NavLink>}
@@ -211,7 +211,10 @@ function BottomNav() {
       <NavLink to="/" end><Home size={22} /> Home</NavLink>
       <NavLink to="/feed"><MessagesSquare size={22} /> Board{pulse.unread_threads > 0 && <span className="dot">{pulse.unread_threads > 99 ? '99+' : pulse.unread_threads}</span>}</NavLink>
       <NavLink to="/games"><Trophy size={22} /> Games</NavLink>
-      <NavLink to="/chat"><MessageCircle size={22} /> Chat</NavLink>
+      <NavLink to={pulse.chat_live?.kind === 'game' ? `/chat/${pulse.chat_live.room}` : '/chat'} className={pulse.chat_live ? 'chat-live' : undefined}
+        aria-label={pulse.chat_live ? (pulse.chat_live.kind === 'game' ? 'Chat, game chat is live' : 'Chat, people are chatting now') : undefined}>
+        <MessageCircle size={22} /> {pulse.chat_live?.kind === 'game' ? 'LIVE' : 'Chat'}{pulse.chat_live && <span className="live-pip" aria-hidden="true" />}
+      </NavLink>
       <NavLink to="/members"><Users size={22} /> Members</NavLink>
     </nav>
   );

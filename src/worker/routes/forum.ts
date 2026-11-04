@@ -607,7 +607,8 @@ forum.post('/notifications/read', async (c) => {
 /** Lightweight counters polled by the client for badges in the navigation. */
 forum.get('/pulse', async (c) => {
   const user = c.get('user');
-  const [n, dm, unread, reports] = await Promise.all([
+  const t = now();
+  const [n, dm, unread, reports, liveGame, recentChat] = await Promise.all([
     first<{ n: number }>(c.env, 'SELECT COUNT(*) AS n FROM notifications WHERE user_id = ? AND read_at IS NULL', user.id),
     first<{ n: number }>(c.env,
       `SELECT COUNT(*) AS n FROM dm_messages m JOIN dm_conversations cv ON cv.id = m.conversation_id
@@ -618,6 +619,12 @@ forum.get('/pulse', async (c) => {
         WHERE t.deleted = 0 AND t.pending = 0 AND t.last_post_at > ? AND (tr.last_read_post_id IS NULL OR tr.last_read_post_id < t.last_post_id)
           AND t.forum_id NOT IN (SELECT target_id FROM mutes WHERE user_id = ? AND target_type = 'forum')`, user.id, unreadBaseline(user), user.id),
     isModerator(user) ? first<{ n: number }>(c.env, "SELECT (SELECT COUNT(*) FROM reports WHERE status = 'open' AND kind = 'report') + (SELECT COUNT(*) FROM posts WHERE pending = 1 AND deleted = 0) + (SELECT COUNT(*) FROM posts WHERE hidden = 1 AND deleted = 0) + (SELECT COUNT(*) FROM appeals WHERE status = 'open') + (SELECT COUNT(*) FROM ban_proposals WHERE status = 'open') AS n") : Promise.resolve({ n: 0 }),
+    // Live chat indicator: a football/men's basketball game is on (from 30 minutes before until 4 hours after the start)…
+    first<{ id: number }>(c.env, `SELECT id FROM games WHERE removed = 0 AND sport IN ('fb', 'mbb') AND time_tba = 0 AND status NOT IN ('canceled', 'postponed')
+      AND starts_at <= ? AND starts_at > ? ORDER BY starts_at DESC LIMIT 1`, t + 30 * 60_000, t - 4 * 3_600_000),
+    // …or someone posted in any chat room in the last 15 minutes.
+    first<{ room: string }>(c.env, 'SELECT room FROM chat_messages WHERE deleted = 0 AND created_at > ? ORDER BY id DESC LIMIT 1', t - 15 * 60_000),
   ]);
-  return c.json({ notifications: n?.n ?? 0, messages: dm?.n ?? 0, unread_threads: unread?.n ?? 0, open_reports: reports?.n ?? 0 });
+  const chat_live = liveGame ? { kind: 'game', room: `game-${liveGame.id}` } : recentChat ? { kind: 'active', room: recentChat.room } : null;
+  return c.json({ notifications: n?.n ?? 0, messages: dm?.n ?? 0, unread_threads: unread?.n ?? 0, open_reports: reports?.n ?? 0, chat_live });
 });
