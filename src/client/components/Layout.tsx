@@ -206,6 +206,9 @@ function RightRail() {
 
 function BottomNav() {
   const { pulse } = useApp();
+  const loc = useLocation();
+  // Inside a chat room the bottom bar steps aside; the big ← Back button at the top leads out.
+  if (/^\/chat\/[^/]+$/.test(loc.pathname)) return null;
   return (
     <nav className="bottom-nav" aria-label="Main">
       <NavLink to="/" end><Home size={22} /> Home</NavLink>
