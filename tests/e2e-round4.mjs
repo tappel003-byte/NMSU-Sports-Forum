@@ -322,10 +322,14 @@ try {
   await reg.goto(BASE + `/games/${fbGame.id}`);
   await reg.waitForSelector('.scorebox');
   const espnOnGame = await reg.locator('a:has-text("ESPN Gamecast"), a:has-text("NM State on ESPN")').count();
+  const gameRoster = await reg.getAttribute('a.btn:has-text("Roster ↗")', 'href');
+  await reg.click('button[aria-label="Account menu"]');
+  const menuRoster = await reg.locator('.menu a[href="/rosters"]').count();
+  await reg.keyboard.press('Escape');
   await reg.screenshot({ path: `${SHOTS}/iphone-game-scoreboard.png` });
   await reg.unroute('**/api/games/*/live');
   await reg.setViewportSize({ width: 1280, height: 900 });
-  check('Live scoreboard shows both teams, big scores and the clock, with a Box score drop-down and no ESPN Gamecast link', /NM State/.test(scoreText) && /34/.test(scoreText) && /28/.test(scoreText) && /14:34/.test(scoreText) && espnLinks === 0 && espnOnGame === 0 && boxHref === 1 && /nmstatesports\.com\/sports\/football\/roster$/.test(rosterHref ?? ''), JSON.stringify({ scoreText, espnLinks, espnOnGame, boxHref, rosterHref }));
+  check('Live scoreboard shows both teams, big scores and the clock, with a Box score drop-down and no ESPN Gamecast link', /NM State/.test(scoreText) && /34/.test(scoreText) && /28/.test(scoreText) && /14:34/.test(scoreText) && espnLinks === 0 && espnOnGame === 0 && boxHref === 1 && menuRoster === 1 && /football\/roster$/.test(gameRoster ?? '') && /nmstatesports\.com\/sports\/football\/roster$/.test(rosterHref ?? ''), JSON.stringify({ scoreText, espnLinks, espnOnGame, boxHref, rosterHref, gameRoster, menuRoster }));
 
   // ---------- Admin → Members: compact rows with an Actions menu ----------
   await admin.setViewportSize({ width: 390, height: 844 });

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FEATURED_SPORTS } from '../../shared/sports';
+import { FEATURED_SPORTS, officialRosterUrl } from '../../shared/sports';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../api';
 import { useApi, useApp } from '../state';
@@ -103,6 +103,7 @@ export function GamePage() {
             {FEATURED_SPORTS.includes(g.sport) && <Link to={`/chat/${data.chat.room}`} className="btn on-crimson small">{g.live ? 'Join live chat' : 'Game chat'}</Link>}
             {g.audio_url && <a href={g.audio_url} target="_blank" rel="noopener noreferrer" className="btn on-crimson outline small">🎧 Listen ↗</a>}
             {g.video_url && <a href={g.video_url} target="_blank" rel="noopener noreferrer" className="btn on-crimson outline small">📺 Watch ↗</a>}
+            <a href={officialRosterUrl(g.sport)} target="_blank" rel="noopener noreferrer" className="btn on-crimson outline small">Roster ↗</a>
             <a href={g.schedule_url} target="_blank" rel="noopener noreferrer" className="btn on-crimson outline small">Schedule ↗</a>
           </LiveScore>
         </div>

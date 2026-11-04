@@ -68,6 +68,7 @@ function Header() {
           <NavLink to="/" end>Home</NavLink>
           <NavLink to="/feed">Board</NavLink>
           <NavLink to="/games">Game Center</NavLink>
+          <NavLink to="/rosters">Rosters</NavLink>
           <NavLink to="/chat">Live Chat</NavLink>
           <NavLink to="/members">Members</NavLink>
         </nav>
@@ -92,6 +93,7 @@ function Header() {
             {open && me && (
               <div className="menu" role="menu">
                 <Link to={`/members/${me.id}`}>My profile</Link>
+                <Link to="/rosters">Rosters &amp; links</Link>
                 <Link to="/settings">Settings &amp; profile</Link>
                 <Link to="/bookmarks">Bookmarks &amp; reminders</Link>
                 <Link to="/recruiting">Recruiting &amp; portal</Link>
