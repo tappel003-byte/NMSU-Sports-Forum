@@ -132,7 +132,7 @@ export async function runGameLifecycle(env: Env): Promise<void> {
   await sendGameReminders(env);
 }
 
-/** One thread per football / men's basketball game ("NM State vs. Liberty"), opened two days ahead; at the final it gets the score and the Player of the Game vote. */
+/** One thread per football / men's basketball game ("NM State vs. Liberty"), opened two days ahead; at the final it gets a short post with the final score. */
 async function createFeaturedGameThreads(env: Env): Promise<void> {
   const t = now();
   const upcoming = await all<GameRow>(env,
@@ -143,7 +143,7 @@ async function createFeaturedGameThreads(env: Env): Promise<void> {
       g.id, 'pregame');
     await run(env, 'UPDATE games SET pregame_thread_id = ? WHERE id = ?', id, g.id);
   }
-  // At the final: post the score in the same thread and open the Player of the Game vote there.
+  // At the final: post just the final score in the same thread (owner's choice: no vote, no commentary).
   const finals = await all<GameRow>(env,
     `SELECT * FROM games WHERE removed = 0 AND status = 'final' AND sport IN ${FEATURED_SQL} AND pregame_thread_id IS NOT NULL AND postgame_thread_id IS NULL AND starts_at > ?`, t - 7 * DAY);
   for (const g of finals) {
@@ -151,12 +151,8 @@ async function createFeaturedGameThreads(env: Env): Promise<void> {
     if (!thread || thread.deleted) continue;
     const score = g.result ? `${g.result} ${g.nmsu_score ?? ''}–${g.opp_score ?? ''}` : 'Final';
     const p = await run(env, 'INSERT INTO posts (thread_id, user_id, body, created_at) VALUES (?, NULL, ?, ?)', thread.id,
-      `Final: NM State ${score} ${matchup(g).replace(/^NM State /, '')}.\n\nWho was the Player of the Game? Vote above. Nominate anyone who isn't listed yet.`, t);
+      `Final: NM State ${score} ${matchup(g).replace(/^NM State /, '')}.`, t);
     await run(env, 'UPDATE threads SET last_post_at = ?, last_post_id = ?, last_post_user_id = NULL, reply_count = reply_count + 1 WHERE id = ?', t, p.meta.last_row_id, thread.id);
-    if (!(await first(env, 'SELECT id FROM polls WHERE thread_id = ?', thread.id))) {
-      await run(env, "INSERT INTO polls (thread_id, question, closes_at, created_at, allow_add, kind) VALUES (?, ?, ?, ?, 1, 'potg')",
-        thread.id, `Player of the Game: ${matchup(g)}`, t + 2 * DAY, t);
-    }
     // The game thread doubles as the postgame thread, so the game picker sends people here.
     await run(env, 'UPDATE games SET postgame_thread_id = ? WHERE id = ?', thread.id, g.id);
   }
