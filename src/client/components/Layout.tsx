@@ -206,6 +206,8 @@ function RightRail() {
 
 function BottomNav() {
   const { pulse } = useApp();
+  // Inside a chat room the bottom bar steps aside so the chat gets the whole screen (a back arrow leads out).
+  if (/^\/chat\/[^/]+$/.test(useLocation().pathname)) return null;
   return (
     <nav className="bottom-nav" aria-label="Main">
       <NavLink to="/" end><Home size={22} /> Home</NavLink>

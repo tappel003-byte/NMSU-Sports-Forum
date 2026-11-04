@@ -132,7 +132,7 @@ export function ChatRoomPage() {
     <div className="card chat-wrap">
       <div className="section-head chat-head">
         <div className="grow">
-          <h2 style={{ fontSize: '1rem' }}>{title}</h2>
+          <h2 style={{ fontSize: '1rem' }}><Link to="/chat" className="chat-back" aria-label="Back to chat rooms">←</Link>{title}</h2>
           <div className="tiny muted">
             <span className={`conn ${status === 'open' ? 'ok' : 'bad'}`}>{status === 'open' ? '● Connected' : status === 'connecting' ? '● Connecting…' : '● Reconnecting…'}</span>
             {' · '}{presence.length} here{presence.length ? `: ${presence.slice(0, 6).map((p) => p.username).join(', ')}${presence.length > 6 ? '…' : ''}` : ''}
