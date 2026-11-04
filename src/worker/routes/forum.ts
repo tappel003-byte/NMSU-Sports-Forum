@@ -619,13 +619,17 @@ forum.get('/pulse', async (c) => {
         WHERE t.deleted = 0 AND t.pending = 0 AND t.last_post_at > ? AND (tr.last_read_post_id IS NULL OR tr.last_read_post_id < t.last_post_id)
           AND t.forum_id NOT IN (SELECT target_id FROM mutes WHERE user_id = ? AND target_type = 'forum')`, user.id, unreadBaseline(user), user.id),
     isModerator(user) ? first<{ n: number }>(c.env, "SELECT (SELECT COUNT(*) FROM reports WHERE status = 'open' AND kind = 'report') + (SELECT COUNT(*) FROM posts WHERE pending = 1 AND deleted = 0) + (SELECT COUNT(*) FROM posts WHERE hidden = 1 AND deleted = 0) + (SELECT COUNT(*) FROM appeals WHERE status = 'open') + (SELECT COUNT(*) FROM ban_proposals WHERE status = 'open') AS n") : Promise.resolve({ n: 0 }),
-    // Live chat indicator: a football/men's basketball game is on (from 30 minutes before until 4 hours after the start)…
-    // (but not once the game is over: final in the schedule, or ESPN's last score says final).
+    // LIVE chat indicator for a football/men's basketball game. On from 30 minutes before tip-off while the game is on
+    // (until the scoreboard says final, or 4 hours at most), and for as long afterward as people keep chatting:
+    // it turns off once the game is over and its chat has been quiet for 30 minutes.
     first<{ id: number }>(c.env, `SELECT g.id FROM games g LEFT JOIN live_scores ls ON ls.game_id = g.id
-      WHERE g.removed = 0 AND g.sport IN ('fb', 'mbb') AND g.time_tba = 0 AND g.status NOT IN ('canceled', 'postponed', 'final')
+      WHERE g.removed = 0 AND g.sport IN ('fb', 'mbb') AND g.time_tba = 0 AND g.status NOT IN ('canceled', 'postponed')
         AND g.starts_at <= ? AND g.starts_at > ?
-        AND (ls.payload IS NULL OR ls.payload NOT LIKE '%"state":"post"%')
-      ORDER BY g.starts_at DESC LIMIT 1`, t + 30 * 60_000, t - 4 * 3_600_000),
+        AND (
+          (g.starts_at > ? AND g.status != 'final' AND (ls.payload IS NULL OR ls.payload NOT LIKE '%"state":"post"%'))
+          OR EXISTS (SELECT 1 FROM chat_messages m WHERE m.room = 'game-' || g.id AND m.deleted = 0 AND m.created_at > ?)
+        )
+      ORDER BY g.starts_at DESC LIMIT 1`, t + 30 * 60_000, t - 24 * 3_600_000, t - 4 * 3_600_000, t - 30 * 60_000),
     // …or someone posted in any chat room in the last 15 minutes.
     first<{ room: string }>(c.env, 'SELECT room FROM chat_messages WHERE deleted = 0 AND created_at > ? ORDER BY id DESC LIMIT 1', t - 15 * 60_000),
   ]);
