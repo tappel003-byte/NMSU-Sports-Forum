@@ -293,9 +293,23 @@ try {
   const fbGame = season.find((g) => g.sport === 'fb');
   const fbLive = fbGame ? (await api(reg, `/games/${fbGame.id}/live`)).body : null;
   const minorLive = minor ? (await api(reg, `/games/${minor.id}/live`)).body : null;
+  check('Football and men\'s basketball games look up the live score from ESPN; other sports don\'t', fbLive?.espn_url?.startsWith('https://www.espn.com/college-football/') && minorLive?.espn_url === null);
+  // Scoreboard during a game (ESPN's answer is simulated here; the build machine can't reach ESPN). No ESPN link (owner request).
+  const fakeLive = { active: true, espn_url: 'https://www.espn.com/', live: { state: 'in', nmsu_score: 34, opp_score: 28, detail: '14:34 - 2nd' } };
+  await reg.setViewportSize({ width: 390, height: 844 });
+  await reg.route('**/api/games/*/live', (r) => r.fulfill({ contentType: 'application/json', body: JSON.stringify(fakeLive) }));
+  await reg.goto(BASE + `/chat/game-${fbGame.id}`);
+  await reg.waitForSelector('.scorebox');
+  const scoreText = await reg.textContent('.scorebox');
+  const espnLinks = await reg.locator('a:has-text("ESPN")').count();
+  await reg.screenshot({ path: `${SHOTS}/iphone-chat-scoreboard.png` });
   await reg.goto(BASE + `/games/${fbGame.id}`);
-  const espnBtn = await reg.waitForSelector('a:has-text("ESPN")', { timeout: 8000 }).then(() => true, () => false);
-  check('Football and men\'s basketball games link to ESPN (live score bar during the game); other sports don\'t', espnBtn && fbLive?.espn_url?.startsWith('https://www.espn.com/college-football/') && minorLive?.espn_url === null);
+  await reg.waitForSelector('.scorebox');
+  const espnOnGame = await reg.locator('a:has-text("ESPN Gamecast"), a:has-text("NM State on ESPN")').count();
+  await reg.screenshot({ path: `${SHOTS}/iphone-game-scoreboard.png` });
+  await reg.unroute('**/api/games/*/live');
+  await reg.setViewportSize({ width: 1280, height: 900 });
+  check('Live scoreboard shows both teams, big scores and the clock, with no ESPN link', /NM State/.test(scoreText) && /34/.test(scoreText) && /28/.test(scoreText) && /14:34/.test(scoreText) && espnLinks === 0 && espnOnGame === 0, JSON.stringify({ scoreText, espnLinks, espnOnGame }));
 
   // ---------- Admin → Members: compact rows with an Actions menu ----------
   await admin.setViewportSize({ width: 390, height: 844 });

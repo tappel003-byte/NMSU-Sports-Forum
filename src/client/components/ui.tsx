@@ -225,25 +225,21 @@ export function LiveScore({ game, compact = false, children }: { game: GameItem;
     load();
     return () => { stop = true; window.clearTimeout(timer); };
   }, [game.id]);
-  // Other buttons passed as children share one wrapping row with the ESPN link.
-  if (!data?.espn_url) return children ? <div className="row">{children}</div> : null;
-  const l = data.live;
-  const showScore = l && l.state !== 'pre' && l.nmsu_score !== null;
+  // Scoreboard during and after the game (no score before tip-off). Buttons passed as children sit underneath.
+  const l = data?.live;
+  const showScore = Boolean(l && l.state !== 'pre' && l.nmsu_score !== null);
+  if (!l || !showScore) return children ? <div className="row">{children}</div> : null;
+  const us = l.nmsu_score ?? 0;
+  const them = l.opp_score ?? 0;
+  const final = l.state === 'post';
   return (
-    <div className={`live-score ${compact ? 'compact' : ''} ${l?.state === 'in' ? 'on' : ''}`}>
-      {showScore && (
-        <span className="live-line" aria-live="polite">
-          {l.state === 'in' && <span className="live-dot" aria-hidden="true" />}
-          <strong>NM State {l.nmsu_score}</strong> · {game.opponent} {l.opp_score}
-          <span className="live-detail">{l.detail}</span>
-        </span>
-      )}
-      {children ? (
-        <div className="row" style={{ width: '100%' }}>
-          {children}
-          <a href={data.espn_url} target="_blank" rel="noopener noreferrer" className="btn on-crimson outline small">{l ? 'ESPN Gamecast ↗' : 'ESPN ↗'}</a>
-        </div>
-      ) : <a href={data.espn_url} target="_blank" rel="noopener noreferrer" className={compact ? 'btn ghost small' : 'btn on-crimson outline small'}>{l ? 'ESPN Gamecast ↗' : 'NM State on ESPN ↗'}</a>}
+    <div className={`live-score ${compact ? 'compact' : ''} ${l.state === 'in' ? 'on' : ''}`}>
+      <div className="scorebox" aria-live="polite" aria-label={`NM State ${us}, ${game.opponent} ${them}, ${l.detail}`}>
+        <div className={`team ${us > them ? 'lead' : ''}`}><span className="name">NM State</span><span className="pts">{us}</span></div>
+        <div className="mid">{l.state === 'in' && <span className="live-dot" aria-hidden="true" />}<span>{final ? 'Final' : l.detail}</span></div>
+        <div className={`team away ${them > us ? 'lead' : ''}`}><span className="pts">{them}</span><span className="name">{game.opponent}</span></div>
+      </div>
+      {children && <div className="row" style={{ width: '100%' }}>{children}</div>}
     </div>
   );
 }
