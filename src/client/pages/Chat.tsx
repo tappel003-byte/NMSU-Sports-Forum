@@ -16,7 +16,7 @@ export function ChatRooms() {
   if (!data) return <Loading />;
   return (
     <div className="stack">
-      <div className="page-head"><div className="eyebrow">Live chat</div><h1>Talk it over in real time</h1><p className="muted small" style={{ margin: 0 }}>The Aggie Lounge is always open. A chat room opens automatically the day before every football and men's basketball game, and each one is archived permanently on its game page.</p></div>
+      <div className="page-head"><div className="eyebrow">Live chat</div><h1>Talk it over in real time</h1><p className="muted small" style={{ margin: 0 }}>The Aggie Lounge is always open. Football and men's basketball games get a chat automatically. For any other game, open it in Games and tap Start a game chat.</p></div>
       <section className="card">
         {data.rooms.map((r) => (
           <Link key={r.room} to={`/chat/${r.room}`} className="list-row">
