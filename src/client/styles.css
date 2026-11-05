@@ -615,3 +615,11 @@ table.simple th { font-size: .72rem; text-transform: uppercase; letter-spacing: 
 /* Big, obvious way out of a chat room. */
 .chat-title-row { display: flex; align-items: center; gap: 10px; }
 .chat-back { flex: none; font-weight: 800; }
+
+/* Home: a chat is going right now. */
+.live-chat-banner { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: var(--radius); background: var(--surface); border: 2px solid var(--crimson); color: var(--text); font-size: .95rem; }
+.live-chat-banner:hover { text-decoration: none; }
+.live-chat-banner.game { background: var(--crimson); color: var(--white); }
+.live-chat-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--crimson); flex: none; animation: livepulse 1.6s infinite; }
+.live-chat-banner.game .live-chat-dot { background: var(--white); }
+.live-chat-join { font-weight: 800; white-space: nowrap; }

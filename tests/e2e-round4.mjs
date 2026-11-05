@@ -726,6 +726,12 @@ try {
   await reg.goto(BASE + '/feed');
   await reg.waitForSelector('.bottom-nav a.chat-live .live-pip', { timeout: 70_000 });
   await reg.screenshot({ path: `${SHOTS}/iphone-chat-live-indicator.png` });
+  await reg.goto(BASE + '/');
+  await reg.waitForSelector('.live-chat-banner', { timeout: 70_000 });
+  const bannerText = await reg.textContent('.live-chat-banner');
+  const bannerHref = await reg.getAttribute('.live-chat-banner', 'href');
+  await reg.screenshot({ path: `${SHOTS}/iphone-home-live-chat-banner.png` });
+  check('Home shows a banner when a chat is going, linking straight into it', /Live chat happening now|Game day chat is live/.test(bannerText ?? '') && /^\/chat\//.test(bannerHref ?? ''), JSON.stringify({ bannerText, bannerHref }));
   await reg.setViewportSize({ width: 1280, height: 900 });
   check('The Chat button lights up when people are chatting (or a football/hoops game is on)', Boolean(pulseNow) && ['game', 'active'].includes(pulseNow.kind), JSON.stringify(pulseNow));
 
