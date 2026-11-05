@@ -369,6 +369,24 @@ try {
   await reg.setViewportSize({ width: 1280, height: 900 });
   check('Live scoreboard shows both teams, big scores and the clock, with a Box score drop-down and no ESPN Gamecast link', /NM State/.test(scoreText) && /34/.test(scoreText) && /28/.test(scoreText) && /14:34/.test(scoreText) && espnLinks === 0 && espnOnGame === 0 && boxHref === 1 && menuRoster === 1 && /football\/roster$/.test(gameRoster ?? '') && /nmstatesports\.com\/sports\/football\/roster$/.test(rosterHref ?? ''), JSON.stringify({ scoreText, espnLinks, espnOnGame, boxHref, rosterHref, gameRoster, menuRoster }));
 
+  // ---------- Schedule tile → "This week": every Aggie sport, Monday–Sunday, what's left; Back buttons on tile pages ----------
+  await reg.goto(BASE + '/');
+  await reg.click('.quick-links a:has-text("Schedule")');
+  await reg.waitForURL('**/games?sport=week');
+  await reg.waitForSelector('button.btn:not(.secondary):has-text("This week")');
+  const weekGames = (await api(reg, '/games?range=week')).body.games;
+  const nowMs = Date.now();
+  const weekOk = weekGames.length > 0 && weekGames.every((g) => g.starts_at >= nowMs - 86_400_000 && g.starts_at < nowMs + 8 * 86_400_000) && weekGames.some((g) => !['fb', 'mbb'].includes(g.sport));
+  const backOnGames = await reg.locator('button.page-back').count();
+  await reg.goto(BASE + '/rosters');
+  await reg.waitForSelector('h1:has-text("Rosters")');
+  const backOnRosters = await reg.locator('button.page-back').count();
+  await reg.goto(BASE + '/chat');
+  await reg.waitForSelector('text=Talk it over in real time');
+  const backOnChat = await reg.locator('button.page-back').count();
+  check('Schedule tile opens "This week" (all sports, rest of Mon–Sun); Games, Rosters and Chat have a Back button',
+    weekOk && backOnGames === 1 && backOnRosters === 1 && backOnChat === 1, JSON.stringify({ n: weekGames.length, sports: [...new Set(weekGames.map((g) => g.sport))], backOnGames, backOnRosters, backOnChat }));
+
   // ---------- Admin → Members: compact rows with an Actions menu ----------
   await admin.setViewportSize({ width: 390, height: 844 });
   await admin.goto(BASE + '/admin/members');

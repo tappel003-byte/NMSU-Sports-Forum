@@ -238,6 +238,13 @@ export function weekStartMT(t: number): number {
   return zonedToUtc(monday.getUTCFullYear(), monday.getUTCMonth() + 1, monday.getUTCDate(), 0, 0, 0, TIME_ZONE);
 }
 
+/** Midnight Mountain Time at the start of the day containing t. */
+export function dayStartMT(t: number): number {
+  const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: TIME_ZONE, year: 'numeric', month: 'numeric', day: 'numeric' })
+    .formatToParts(new Date(t)).map((x) => [x.type, x.value]));
+  return zonedToUtc(Number(p.year), Number(p.month), Number(p.day), 0, 0, 0, TIME_ZONE);
+}
+
 function weekLabel(start: number): string {
   const f = (t: number) => new Intl.DateTimeFormat('en-US', { timeZone: TIME_ZONE, month: 'short', day: 'numeric' }).format(new Date(t));
   return `${f(start)}–${f(start + 6 * DAY)}`;

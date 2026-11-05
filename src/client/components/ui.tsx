@@ -324,3 +324,9 @@ function BoxScoreAccordion({ gameId, live, espnUrl, extra }: { gameId: number; l
     </details>
   );
 }
+
+/** Obvious way back out of a page (to wherever the member came from, or Home). */
+export function BackButton() {
+  const nav = useNavigate();
+  return <button type="button" className="btn small chat-back page-back" onClick={() => (window.history.length > 1 ? nav(-1) : nav('/'))} aria-label="Go back">← Back</button>;
+}

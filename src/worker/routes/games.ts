@@ -6,7 +6,7 @@ import { HttpError, now, parse } from '../util';
 import { FEATURED_SPORTS, FEATURED_SQL, officialRosterUrl, officialScheduleUrl, parseHubLinks, SPORTS, SPORT_BY_KEY } from '../../shared/sports';
 import { memberSummaries } from '../lib/members';
 import { THREAD_SELECT, presentThreads, type ThreadRow } from '../lib/threads';
-import { seasonOf, seasonRange, type GameRow } from '../lib/sports';
+import { dayStartMT, seasonOf, seasonRange, weekStartMT, type GameRow } from '../lib/sports';
 import { espnTeamUrl, getLiveScore, inLiveWindow, type LiveScore } from '../lib/livescore';
 import { getBoxScore } from '../lib/boxscore';
 
@@ -33,6 +33,10 @@ games.get('/games', async (c) => {
   else if (sport && sport in SPORT_BY_KEY) { where += ' AND sport = ?'; params.push(sport); }
   let order = 'starts_at ASC';
   if (range === 'upcoming') { where += ' AND starts_at > ?'; params.push(t - 6 * 3_600_000); }
+  else if (range === 'week') {
+    // This week (Monday–Sunday, Mountain Time): what's left, from the start of today through Sunday night.
+    where += ' AND starts_at >= ? AND starts_at < ?'; params.push(dayStartMT(t), weekStartMT(weekStartMT(t) + 7 * 86_400_000 + 12 * 3_600_000));
+  }
   else if (range === 'past') { where += ' AND starts_at <= ?'; params.push(t); order = 'starts_at DESC'; }
   else if (range === 'season') {
     const [a, b] = seasonRange(c.req.query('season') ?? seasonOf(t));
