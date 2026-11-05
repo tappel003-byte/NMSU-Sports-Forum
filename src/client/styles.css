@@ -631,3 +631,4 @@ table.simple th { font-size: .72rem; text-transform: uppercase; letter-spacing: 
 .quick-links .stat span { font-size: .85rem; font-weight: 800; color: var(--text); }
 .quick-links .stat.live { border: 2px solid var(--crimson); }
 .quick-links .stat.live span { color: var(--crimson); }
+.tile-pip { display: inline-block; width: 8px; height: 8px; margin-left: 6px; border-radius: 50%; background: var(--crimson); vertical-align: 1px; animation: livepulse 1.6s infinite; }

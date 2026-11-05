@@ -167,7 +167,7 @@ export function Home() {
       <div className="stat-grid quick-links">
         <Link to="/rosters" className="stat"><b aria-hidden="true">📋</b><span>Rosters</span></Link>
         <Link to="/games" className="stat"><b aria-hidden="true">📅</b><span>Schedule</span></Link>
-        <Link to="/chat" className={`stat ${pulse.chat_live ? 'live' : ''}`}><b aria-hidden="true">💬</b><span>{pulse.chat_live ? 'Chat · live now' : 'Chat'}</span></Link>
+        <Link to="/chat" className={`stat ${pulse.chat_live ? 'live' : ''}`}><b aria-hidden="true">💬</b><span>Chat{pulse.chat_live && <span className="tile-pip" aria-label="live now" />}</span></Link>
       </div>
 
       {data && data.birthdays.length > 0 && (
