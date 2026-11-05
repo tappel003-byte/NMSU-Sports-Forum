@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { api } from '../api';
 import { useApi, useApp } from '../state';
 import { Score, fullTime, gameTime, matchup, sportIcon, sportName } from '../format';
-import { ErrorState, GameRow, JoinCta, Loading, ThreadList, type GameItem, type ThreadItem, LiveScore } from '../components/ui';
+import { BackButton, ErrorState, GameRow, JoinCta, Loading, ThreadList, type GameItem, type ThreadItem, LiveScore } from '../components/ui';
 import { SPORTS, SPORT_BY_KEY } from '../../shared/sports';
 
 export function Games() {
@@ -12,24 +12,27 @@ export function Games() {
   // Football by default, men's basketball one tap away; "all" or any other single sport on request.
   const sport = params.get('sport') ?? 'fb';
   const range = params.get('range') ?? 'upcoming';
-  const { data, error, loading, reload } = useApi<{ games: GameItem[]; feedsConfigured: boolean; feedsSynced: boolean }>(`/games?range=${range}${sport !== 'all' ? `&sport=${sport}` : ''}`);
+  // "This week": every Aggie sport, Monday–Sunday, what's left from today on.
+  const { data, error, loading, reload } = useApi<{ games: GameItem[]; feedsConfigured: boolean; feedsSynced: boolean }>(sport === 'week' ? '/games?range=week' : `/games?range=${range}${sport !== 'all' ? `&sport=${sport}` : ''}`);
   const [shown, setShown] = useState(15);
   const set = (k: string, v: string) => { setShown(15); setParams((p) => { if (v) p.set(k, v); else p.delete(k); return p; }, { replace: true }); };
-  const single = !['fb', 'mbb', 'all', 'featured'].includes(sport) ? sport : '';
+  const single = !['fb', 'mbb', 'all', 'featured', 'week'].includes(sport) ? sport : '';
   return (
     <div className="stack">
       <div className="page-head">
-        <div className="eyebrow">Game Center</div>
+        <BackButton />
+        <div className="eyebrow" style={{ marginTop: 8 }}>Game Center</div>
         <h1>NM State schedules &amp; game day</h1>
         <p className="muted small" style={{ margin: 0 }}>Schedules and results update automatically from the official NMSU Athletics calendar. During games, follow live stats on the official site and talk it over in game chat.</p>
       </div>
       <section className="card">
         <div className="tabs" role="tablist">
           {[['upcoming', 'Upcoming'], ['past', 'Results'], ['season', 'Full season']].map(([k, l]) => (
-            <button key={k} role="tab" aria-selected={range === k} className={`tab ${range === k ? 'active' : ''}`} onClick={() => set('range', k === 'upcoming' ? '' : k)}>{l}</button>
+            <button key={k} role="tab" aria-selected={sport !== 'week' && range === k} className={`tab ${sport !== 'week' && range === k ? 'active' : ''}`} onClick={() => { set('range', k === 'upcoming' ? '' : k); if (sport === 'week') set('sport', ''); }}>{l}</button>
           ))}
         </div>
         <div className="filter-row">
+          <button className={`btn small ${sport === 'week' ? '' : 'secondary'}`} onClick={() => set('sport', 'week')}>📅 This week</button>
           <button className={`btn small ${sport === 'fb' ? '' : 'secondary'}`} onClick={() => set('sport', '')}>🏈 Football</button>
           <button className={`btn small ${sport === 'mbb' ? '' : 'secondary'}`} onClick={() => set('sport', 'mbb')}>🏀 Men's Hoops</button>
           <button className={`btn small ${sport === 'all' ? '' : 'secondary'}`} onClick={() => set('sport', 'all')}>All sports</button>
@@ -47,7 +50,7 @@ export function Games() {
           <div className="empty">
             {!data?.feedsConfigured
               ? 'The official schedule feeds have not been connected yet. Once an administrator connects them, every NM State game appears here automatically.'
-              : !data.feedsSynced ? 'Waiting for the first schedule sync from the official athletics calendar.' : 'No games in this view.'}
+              : !data.feedsSynced ? 'Waiting for the first schedule sync from the official athletics calendar.' : sport === 'week' ? 'No Aggie games left this week.' : 'No games in this view.'}
             <div style={{ marginTop: 10 }}><a href="https://nmstatesports.com/calendar" target="_blank" rel="noopener noreferrer">Official NMSU Athletics calendar ↗</a></div>
           </div>
         )}

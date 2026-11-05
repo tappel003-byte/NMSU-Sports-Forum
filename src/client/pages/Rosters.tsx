@@ -1,6 +1,6 @@
 import { ExternalLink, Radio } from 'lucide-react';
 import { useApi, useApp } from '../state';
-import { ErrorState, Loading } from '../components/ui';
+import { BackButton, ErrorState, Loading } from '../components/ui';
 import { Link } from 'react-router-dom';
 
 export interface HubData {
@@ -18,7 +18,8 @@ export function Rosters() {
   return (
     <div className="stack">
       <div className="page-head">
-        <div className="eyebrow">One place for everything Aggie</div>
+        <BackButton />
+        <div className="eyebrow" style={{ marginTop: 8 }}>One place for everything Aggie</div>
         <h1>Rosters &amp; links</h1>
         <div className="muted small">Rosters and schedules open on the official athletics site, so they're always current.</div>
       </div>
