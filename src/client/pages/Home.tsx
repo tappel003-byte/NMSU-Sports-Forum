@@ -163,11 +163,12 @@ export function Home() {
         <img src="/brand/crest-480.webp" alt="" className="hero-crest" width={92} height={92} />
       </section>
 
-      {me && <div className="stat-grid">
-        <Link to="/?tab=unread" className="stat"><b>{data?.stats.unread ?? '–'}</b><span>Unread discussions</span></Link>
-        <Link to="/notifications" className="stat"><b>{data?.stats.replies ?? '–'}</b><span>Replies to you</span></Link>
-        <Link to="/chat" className="stat"><b>{data?.stats.chatting ?? '–'}</b><span>Chatting now</span></Link>
-      </div>}
+      {/* Quick links: the places members come for (rosters, schedules, chat). */}
+      <div className="stat-grid quick-links">
+        <Link to="/rosters" className="stat"><b aria-hidden="true">📋</b><span>Rosters</span></Link>
+        <Link to="/games" className="stat"><b aria-hidden="true">📅</b><span>Schedule</span></Link>
+        <Link to="/chat" className={`stat ${pulse.chat_live ? 'live' : ''}`}><b aria-hidden="true">💬</b><span>Chat{pulse.chat_live && <span className="tile-pip" aria-label="live now" />}</span></Link>
+      </div>
 
       {data && data.birthdays.length > 0 && (
         <div className="note-box small">🎂 Happy birthday to {data.birthdays.map((b, i) => <span key={b.id}>{i > 0 && ', '}<Link to={`/members/${b.id}`}>{b.username}</Link></span>)}!</div>

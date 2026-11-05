@@ -623,3 +623,12 @@ table.simple th { font-size: .72rem; text-transform: uppercase; letter-spacing: 
 .live-chat-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--crimson); flex: none; animation: livepulse 1.6s infinite; }
 .live-chat-banner.game .live-chat-dot { background: var(--white); }
 .live-chat-join { font-weight: 800; white-space: nowrap; }
+
+/* Home quick links (reuse the tile row). */
+.quick-links .stat { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-align: center; padding: 12px 8px; }
+.quick-links .stat:hover { text-decoration: none; border-color: var(--crimson); }
+.quick-links .stat b { font-size: 1.5rem; line-height: 1; }
+.quick-links .stat span { font-size: .85rem; font-weight: 800; color: var(--text); }
+.quick-links .stat.live { border: 2px solid var(--crimson); }
+.quick-links .stat.live span { color: var(--crimson); }
+.tile-pip { display: inline-block; width: 8px; height: 8px; margin-left: 6px; border-radius: 50%; background: var(--crimson); vertical-align: 1px; animation: livepulse 1.6s infinite; }
