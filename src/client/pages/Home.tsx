@@ -110,7 +110,7 @@ export function Feed({ initialTab = 'latest', compact = false }: { initialTab?: 
 }
 
 export function Home() {
-  const { me } = useApp();
+  const { me, pulse } = useApp();
   const nav = useNavigate();
   const { data, error, reload } = useApi<HomeData>('/home');
   const { data: forums } = useApi<{ forums: { slug: string; name: string; sport_label: string; icon: string; kind: string; unread: number }[] }>('/forums');
@@ -126,6 +126,16 @@ export function Home() {
 
       {!me && <JoinCta text="Free, no ads. Join to post, react, chat on game day and track recruits." />}
       {data?.announcement && <div className="note-box"><strong>Announcement:</strong> {data.announcement}</div>}
+
+      {me && pulse.chat_live && (
+        <Link to={`/chat/${pulse.chat_live.room}`} className={`live-chat-banner ${pulse.chat_live.kind === 'game' ? 'game' : ''}`}>
+          <span className="live-chat-dot" aria-hidden="true" />
+          <span className="grow">{pulse.chat_live.kind === 'game'
+            ? <><strong>Game day chat is live:</strong> NM State {pulse.chat_live.title}</>
+            : <><strong>Live chat happening now</strong> in {(pulse.chat_live.title ?? 'the Aggie Lounge').startsWith('the ') ? (pulse.chat_live.title ?? 'the Aggie Lounge') : `NM State ${pulse.chat_live.title}`}</>}</span>
+          <span className="live-chat-join">Join →</span>
+        </Link>
+      )}
 
       <section className="hero" aria-label="Next game">
         <div className="grow">
@@ -174,12 +184,6 @@ export function Home() {
       )}
 
 
-      {data && data.followed.length > 0 && (
-        <section className="card">
-          <div className="section-head"><h2>Discussions you follow</h2><Link to="/?tab=following" className="small">All</Link></div>
-          <ThreadList threads={data.followed} />
-        </section>
-      )}
 
       {data && data.events.length > 0 && (
         <section className="card desktop-only">
