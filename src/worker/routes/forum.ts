@@ -4,6 +4,7 @@ import { z } from 'zod';
 import type { AppEnv } from '../env';
 import { all, first, getSetting, logMod, notify, run, stmt, userPrefs } from '../db';
 import { HttpError, now, parse } from '../util';
+import { matchup } from '../lib/sports';
 import { TAGS, cleanTags } from '../../shared/forum';
 import { SPORT_BY_KEY } from '../../shared/sports';
 import { starterPrompts } from '../lib/topics';
@@ -622,7 +623,7 @@ forum.get('/pulse', async (c) => {
     // LIVE chat indicator for a football/men's basketball game. On from 30 minutes before tip-off while the game is on
     // (until the scoreboard says final, or 4 hours at most), and for as long afterward as people keep chatting:
     // it turns off once the game is over and its chat has been quiet for 30 minutes.
-    first<{ id: number }>(c.env, `SELECT g.id FROM games g LEFT JOIN live_scores ls ON ls.game_id = g.id
+    first<{ id: number; opponent: string; home_away: string }>(c.env, `SELECT g.id, g.opponent, g.home_away FROM games g LEFT JOIN live_scores ls ON ls.game_id = g.id
       WHERE g.removed = 0 AND g.sport IN ('fb', 'mbb') AND g.time_tba = 0 AND g.status NOT IN ('canceled', 'postponed')
         AND g.starts_at <= ? AND g.starts_at > ?
         AND (
@@ -633,6 +634,13 @@ forum.get('/pulse', async (c) => {
     // …or someone posted in any chat room in the last 15 minutes.
     first<{ room: string }>(c.env, 'SELECT room FROM chat_messages WHERE deleted = 0 AND created_at > ? ORDER BY id DESC LIMIT 1', t - 15 * 60_000),
   ]);
-  const chat_live = liveGame ? { kind: 'game', room: `game-${liveGame.id}` } : recentChat ? { kind: 'active', room: recentChat.room } : null;
+  // Room name for the Home banner ("Game day chat is live: NM State vs. X" / "Live chat in the Aggie Lounge").
+  let chat_live: { kind: 'game' | 'active'; room: string; title: string } | null = null;
+  if (liveGame) chat_live = { kind: 'game', room: `game-${liveGame.id}`, title: matchup(liveGame) };
+  else if (recentChat) {
+    const gm = recentChat.room.match(/^game-(\d+)$/);
+    const g = gm ? await first<{ opponent: string; home_away: string }>(c.env, 'SELECT opponent, home_away FROM games WHERE id = ?', Number(gm[1])) : null;
+    chat_live = { kind: 'active', room: recentChat.room, title: g ? matchup(g) : 'the Aggie Lounge' };
+  }
   return c.json({ notifications: n?.n ?? 0, messages: dm?.n ?? 0, unread_threads: unread?.n ?? 0, open_reports: reports?.n ?? 0, chat_live });
 });
