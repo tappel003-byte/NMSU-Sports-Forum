@@ -42,7 +42,7 @@ export async function memberSummaries(env: Env, ids: (number | null | undefined)
         WHERE r.value = 1 AND p.deleted = 0 AND p.user_id IN (${ph}) GROUP BY p.user_id`, ...unique),
     all<{ user_id: number; n: number }>(env, `SELECT user_id, COUNT(*) AS n FROM posts WHERE deleted = 0 AND user_id IN (${ph}) GROUP BY user_id`, ...unique),
     all<{ user_id: number; badge: string; reason: string; awarded_at: number }>(env,
-      `SELECT user_id, badge, reason, awarded_at FROM badges WHERE revoked = 0 AND user_id IN (${ph}) ORDER BY awarded_at`, ...unique),
+      `SELECT user_id, badge, reason, awarded_at FROM badges WHERE revoked = 0 AND badge != 'nostradamus' AND user_id IN (${ph}) ORDER BY awarded_at`, ...unique),
     foundingMembers(env),
   ]);
   const deadline = new Date(`${cutoff.until}T12:00:00Z`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' });

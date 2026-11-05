@@ -238,7 +238,7 @@ community.get('/map', async (c) => {
 community.get('/contributions', async (c) => {
   const rows = await all(c.env,
     `SELECT b.id, b.badge, b.reason, b.awarded_at, u.id AS user_id, u.username, u.display_name, a.username AS awarded_by
-       FROM badges b JOIN users u ON u.id = b.user_id LEFT JOIN users a ON a.id = b.awarded_by WHERE b.revoked = 0 ORDER BY b.awarded_at DESC`);
+       FROM badges b JOIN users u ON u.id = b.user_id LEFT JOIN users a ON a.id = b.awarded_by WHERE b.revoked = 0 AND b.badge != 'nostradamus' ORDER BY b.awarded_at DESC`);
   return c.json({ contributions: rows });
 });
 
@@ -435,7 +435,7 @@ community.get('/year-in-review', async (c) => {
     all<ThreadRow>(c.env, `${THREAD_SELECT} WHERE t.deleted = 0 AND t.created_at >= ? AND t.created_at < ? ORDER BY t.reply_count DESC LIMIT 10`, c.get('user').id, a, b),
     all<{ user_id: number; n: number }>(c.env, 'SELECT user_id, COUNT(*) AS n FROM posts WHERE deleted = 0 AND user_id IS NOT NULL AND created_at >= ? AND created_at < ? GROUP BY user_id ORDER BY n DESC LIMIT 10', a, b),
     all(c.env, `SELECT b.badge, b.reason, b.awarded_at, u.id AS user_id, u.username FROM badges b JOIN users u ON u.id = b.user_id
-                 WHERE b.revoked = 0 AND b.awarded_at >= ? AND b.awarded_at < ? ORDER BY b.awarded_at`, a, b),
+                 WHERE b.revoked = 0 AND b.badge != 'nostradamus' AND b.awarded_at >= ? AND b.awarded_at < ? ORDER BY b.awarded_at`, a, b),
     all<GameRow & { chats: number }>(c.env,
       `SELECT g.*, COUNT(m.id) AS chats FROM games g JOIN chat_messages m ON m.room = 'game-' || g.id AND m.deleted = 0
         WHERE g.starts_at >= ? AND g.starts_at < ? GROUP BY g.id ORDER BY chats DESC LIMIT 5`, a, b),

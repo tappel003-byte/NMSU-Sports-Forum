@@ -518,23 +518,24 @@ try {
   check('The Board opens with the latest score', sb.recent.length > 0 && (await reg.textContent('.scoreboard')).includes('–'));
   await reg.screenshot({ path: `${SHOTS}/iphone-board-scores.png` });
 
-  // ---------- Nostradamus of the Week ----------
-  // Move a game with a correct pick (CrimsonFan's exact score in the first suite) into last week, then run the daily job.
+  // ---------- Predictions stay on game pages only (Nostradamus retired) ----------
+  // A game with a correct pick moved into last week no longer produces an award; Home and profiles show nothing about it.
   const scoredGame = (await api(admin, '/games?range=season')).body.games.find((g) => g.status === 'final' && g.sport === 'fb');
   await api(admin, `/admin/games/${scoredGame.id}`, { method: 'PATCH', body: { starts_at: Date.now() - 8 * 86_400_000 } });
   await fetch(`${BASE}/__scheduled?cron=17+9+*+*+*`);
   await new Promise((r) => setTimeout(r, 1500));
-  await fetch(`${BASE}/__scheduled?cron=17+9+*+*+*`);
-  await new Promise((r) => setTimeout(r, 1500));
   const crimsonId = (await api(admin, '/admin/members')).body.members.find((m) => m.username === 'CrimsonFan').id;
   const crimsonBadges = (await api(admin, `/members/${crimsonId}`)).body.member.badges.filter((b) => b.badge === 'nostradamus');
-  const champsHome = (await api(admin, '/home')).body.nostradamus;
   await admin.goto(BASE + `/members/${crimsonId}`);
-  await admin.waitForSelector('text=Nostradamus wins');
-  const winsShown = await admin.$eval('.stat-row, .stats', (el) => el.textContent || '').catch(async () => admin.textContent('main'));
-  check('The member page shows how many Nostradamus awards they have won', /1\s*🏆 Nostradamus wins/.test(winsShown.replace(/\s+/g, ' ')) || /1🏆 Nostradamus wins/.test(winsShown));
-  check('When the week ends, the top predictor becomes Nostradamus of the Week once: award on the member card, announced on Home',
-    crimsonBadges.length === 1 && champsHome.some((n) => n.member?.username === 'CrimsonFan'));
+  await admin.waitForSelector('text=Aggie Reputation');
+  const profileText = await admin.textContent('main');
+  await admin.goto(BASE + '/');
+  await admin.waitForSelector('text=Latest discussions');
+  const homeText = await admin.textContent('main');
+  await admin.goto(BASE + `/games/${scoredGame.id}`);
+  await admin.waitForSelector('text=Predictions');
+  check('Predictions live on game pages only: no weekly award, no Home box, nothing on member profiles',
+    crimsonBadges.length === 0 && !/Nostradamus/.test(profileText) && !/Predictions this week/.test(homeText), JSON.stringify({ badges: crimsonBadges.length }));
 
   // ---------- Automatic game threads: football & men's basketball (default) ----------
   // A tiny local calendar feed with one men's basketball game tomorrow (fictional opponent).
