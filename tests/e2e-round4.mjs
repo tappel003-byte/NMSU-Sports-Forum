@@ -766,6 +766,23 @@ try {
   const onPref = (await api(reg, '/me')).body.me.prefs.notify_replies;
   check('Members can turn each kind of notification on or off right from the Notifications page', offPref === false && onPref === true, JSON.stringify({ offPref, onPref }));
 
+  // ---------- Smaller iPhones: iPhone SE / mini (375 wide) and original SE (320 wide) ----------
+  for (const [label, w, h] of [['se', 375, 667], ['se1', 320, 568]]) {
+    await reg.setViewportSize({ width: w, height: h });
+    await reg.goto(BASE + '/');
+    await reg.waitForSelector('.quick-links');
+    await reg.screenshot({ path: `${SHOTS}/small-${label}-home.png` });
+    await reg.goto(BASE + '/games?sport=week');
+    await reg.waitForSelector('button.page-back');
+    await reg.screenshot({ path: `${SHOTS}/small-${label}-week.png` });
+    await reg.goto(BASE + `/chat/game-${fbGame.id}`);
+    await reg.waitForSelector('.chat-head');
+    await reg.screenshot({ path: `${SHOTS}/small-${label}-chat.png` });
+    const overflow = await reg.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
+    check(`No sideways scrolling on a ${w}-wide phone (game chat)`, !overflow);
+  }
+  await reg.setViewportSize({ width: 1280, height: 900 });
+
   // ---------- Audit history ----------
   const log = (await api(admin, '/admin/log')).body.log;
   const actions = new Set(log.map((l) => l.action));
