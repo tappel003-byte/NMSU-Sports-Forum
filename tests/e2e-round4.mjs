@@ -776,6 +776,12 @@ try {
   await crimson.goto(BASE + `/members/${regId}`);
   await crimson.click('a:has-text("Message")');
   await crimson.waitForURL(`**/messages/${regId}`);
+  await crimson.setViewportSize({ width: 390, height: 844 });
+  await crimson.waitForSelector('#dm');
+  const dmBox = await crimson.locator('#dm').boundingBox();
+  const navBox = await crimson.locator('.bottom-nav').boundingBox();
+  await crimson.screenshot({ path: `${SHOTS}/iphone-private-message.png` });
+  check('On a phone, the private message box sits above the bottom bar (not hidden behind it)', Boolean(dmBox && navBox && dmBox.y + dmBox.height <= navBox.y), JSON.stringify({ dmBottom: dmBox && dmBox.y + dmBox.height, navTop: navBox?.y }));
   await crimson.fill('#dm', 'Private hello from a regular member.');
   await crimson.keyboard.press('Enter');
   await crimson.waitForSelector('text=Private hello from a regular member.');
