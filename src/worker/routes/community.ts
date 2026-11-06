@@ -299,7 +299,7 @@ community.get('/messages', async (c) => {
   return c.json({ conversations: out });
 });
 
-community.get('/messages/:userId', async (c) => {
+community.get('/messages/:userId{[0-9]+}', async (c) => {
   const me = c.get('user').id;
   const other = num(c.req.param('userId'));
   const otherSummary = (await memberSummaries(c.env, [other])).get(other);
@@ -315,7 +315,7 @@ community.get('/messages/:userId', async (c) => {
   return c.json({ other: otherSummary, messages, blocked: await blockedBetween(c.env, me, other) });
 });
 
-community.post('/messages/:userId', async (c) => {
+community.post('/messages/:userId{[0-9]+}', async (c) => {
   const user = c.get('user');
   const other = num(c.req.param('userId'));
   if (other === user.id) throw new HttpError(400, "You can't message yourself.");

@@ -770,6 +770,24 @@ try {
   await reg.setViewportSize({ width: 1280, height: 900 });
   check('The Chat button lights up when people are chatting (or a football/hoops game is on)', Boolean(pulseNow) && ['game', 'active'].includes(pulseNow.kind), JSON.stringify(pulseNow));
 
+  // ---------- Private messages: any member can message any other; the recipient can report one message ----------
+  const regId = (await api(reg, '/me')).body.me.id;
+  const crimsonMeId = (await api(crimson, '/me')).body.me.id;
+  await crimson.goto(BASE + `/members/${regId}`);
+  await crimson.click('a:has-text("Message")');
+  await crimson.waitForURL(`**/messages/${regId}`);
+  await crimson.fill('#dm', 'Private hello from a regular member.');
+  await crimson.keyboard.press('Enter');
+  await crimson.waitForSelector('text=Private hello from a regular member.');
+  const inbox = (await api(reg, '/messages')).body.conversations;
+  const thread = (await api(reg, `/messages/${crimsonMeId}`)).body.messages;
+  const dmId = thread.find((m) => m.body === 'Private hello from a regular member.')?.id;
+  const reported = await api(reg, '/messages/report', { body: { message_id: dmId, reason: 'Testing the report button.' } });
+  const reports = (await api(admin, '/admin/reports')).body;
+  check('Any member can send a private message from a profile, and the recipient can report a message',
+    inbox.some((cv) => cv.other?.id === crimsonMeId) && reported.status === 200 && JSON.stringify(reports).includes('Private hello from a regular member.'),
+    JSON.stringify({ inbox: inbox.length, reportStatus: reported.status, reportBody: reported.body }));
+
   // ---------- Notification on/off switches on the Notifications page ----------
   await reg.goto(BASE + '/notifications');
   await reg.click('button:has-text("Turn on/off")');
