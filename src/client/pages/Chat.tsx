@@ -35,6 +35,12 @@ export function ChatRoomPage() {
   const { room = '' } = useParams();
   const { me, toast } = useApp();
   const nav = useNavigate();
+  // Full-screen chat: hides the site header, chat header, scoreboard and bottom bar (thin score line stays). Not remembered.
+  const [focus, setFocus] = useState(false);
+  useEffect(() => {
+    document.body.classList.toggle('chat-focus', focus);
+    return () => document.body.classList.remove('chat-focus');
+  }, [focus]);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [game, setGame] = useState<GameItem | null>(null);
   const [presence, setPresence] = useState<{ id: number; username: string }[]>([]);
@@ -129,7 +135,8 @@ export function ChatRoomPage() {
 
   if (error) return <ErrorState error={error} />;
   return (
-    <div className="card chat-wrap">
+    <div className={`card chat-wrap ${focus ? 'focus' : ''}`}>
+      {focus && <button type="button" className="btn small focus-exit" onClick={() => setFocus(false)} aria-label="Exit full screen">✕ Exit</button>}
       <div className="section-head chat-head">
         <div className="grow">
           <h2 style={{ fontSize: '1rem' }}>{title}</h2>
@@ -143,9 +150,10 @@ export function ChatRoomPage() {
           {game && <Link to={`/games/${game.id}`} className="btn ghost small">Game</Link>}
           {game && <a href={officialRosterUrl(game.sport)} target="_blank" rel="noopener noreferrer" className="btn ghost small">Roster ↗</a>}
           <Link to={`/chat/${room}/archive`} className="btn ghost small">Archive</Link>
+          <button type="button" className="btn ghost small focus-enter" onClick={() => setFocus(true)} aria-label="Full screen chat" title="Full screen">⛶</button>
         </div>
       </div>
-      {game && <LiveScore game={game} compact />}
+      {game && <LiveScore game={game} compact thin={focus} />}
       {selecting && (
         <div className="note-box small" style={{ margin: 8 }}>
           Tap messages to select them, then save them as a permanent discussion thread.

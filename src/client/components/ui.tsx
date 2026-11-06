@@ -222,7 +222,7 @@ export function JoinCta({ text = 'Join free to post, react and chat.' }: { text?
 interface LiveScoreData { live: { state: 'pre' | 'in' | 'post'; detail: string; nmsu_score: number | null; opp_score: number | null; espn_url: string } | null; espn_url: string | null; box_url?: string | null; active: boolean }
 
 /** In-game score from ESPN (football and men's basketball), refreshed every 30 seconds while the game is on, plus a link to ESPN's box score for the game. */
-export function LiveScore({ game, compact = false, children }: { game: GameItem; compact?: boolean; children?: ReactNode }) {
+export function LiveScore({ game, compact = false, thin = false, children }: { game: GameItem; compact?: boolean; thin?: boolean; children?: ReactNode }) {
   const [data, setData] = useState<LiveScoreData | null>(null);
   // Chat only: members can collapse the scoreboard to a thin line (remembered on this device).
   const [hidden, setHidden] = useState(() => { try { return localStorage.getItem('nsf-hide-score') === '1'; } catch { return false; } });
@@ -248,6 +248,10 @@ export function LiveScore({ game, compact = false, children }: { game: GameItem;
   const us = l.nmsu_score ?? 0;
   const them = l.opp_score ?? 0;
   const final = l.state === 'post';
+  if (compact && thin) {
+    // Full-screen chat: just one line with the score.
+    return <div className="live-score compact hidden-score"><div className="score-toggle" role="status">NM State {us} – {them} {game.opponent} · {final ? 'Final' : l.detail}</div></div>;
+  }
   if (compact && hidden) {
     return (
       <div className="live-score compact hidden-score">

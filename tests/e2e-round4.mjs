@@ -365,6 +365,23 @@ try {
   const menuRoster = await reg.locator('.menu a[href="/rosters"]').count();
   await reg.keyboard.press('Escape');
   await reg.screenshot({ path: `${SHOTS}/iphone-game-scoreboard.png` });
+  // Full-screen chat: one tap hides everything but the conversation and a one-line score; Exit brings it back.
+  await reg.goto(BASE + `/chat/game-${fbGame.id}`);
+  await reg.waitForSelector('.scorebox, .score-toggle');
+  await reg.click('button[aria-label="Full screen chat"]');
+  await reg.waitForSelector('button[aria-label="Exit full screen"]');
+  const focusState = await reg.evaluate(() => ({
+    header: getComputedStyle(document.querySelector('.site-header')).display,
+    chatHead: getComputedStyle(document.querySelector('.chat-head')).display,
+    bigScore: document.querySelectorAll('.scorebox').length,
+    thin: document.querySelector('.score-toggle')?.textContent ?? '',
+    input: Boolean(document.querySelector('#chat-text')),
+  }));
+  await reg.screenshot({ path: `${SHOTS}/iphone-chat-fullscreen.png` });
+  await reg.click('button[aria-label="Exit full screen"]');
+  await reg.waitForSelector('.chat-head', { state: 'visible' });
+  check('Full-screen chat hides the site header, chat header and big scoreboard (one-line score stays); Exit restores them',
+    focusState.header === 'none' && focusState.chatHead === 'none' && focusState.bigScore === 0 && /34/.test(focusState.thin) && focusState.input, JSON.stringify(focusState));
   await reg.unroute('**/api/games/*/live');
   await reg.setViewportSize({ width: 1280, height: 900 });
   check('Live scoreboard shows both teams, big scores and the clock, with a Box score drop-down and no ESPN Gamecast link', /NM State/.test(scoreText) && /34/.test(scoreText) && /28/.test(scoreText) && /14:34/.test(scoreText) && espnLinks === 0 && espnOnGame === 0 && boxHref === 1 && menuRoster === 1 && /football\/roster$/.test(gameRoster ?? '') && /nmstatesports\.com\/sports\/football\/roster$/.test(rosterHref ?? ''), JSON.stringify({ scoreText, espnLinks, espnOnGame, boxHref, rosterHref, gameRoster, menuRoster }));
