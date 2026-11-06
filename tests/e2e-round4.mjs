@@ -365,6 +365,23 @@ try {
   const menuRoster = await reg.locator('.menu a[href="/rosters"]').count();
   await reg.keyboard.press('Escape');
   await reg.screenshot({ path: `${SHOTS}/iphone-game-scoreboard.png` });
+  // Full-screen chat: one tap hides everything but the conversation and a one-line score; Exit brings it back.
+  await reg.goto(BASE + `/chat/game-${fbGame.id}`);
+  await reg.waitForSelector('.scorebox, .score-toggle');
+  await reg.click('button[aria-label="Full screen chat"]');
+  await reg.waitForSelector('button[aria-label="Exit full screen"]');
+  const focusState = await reg.evaluate(() => ({
+    header: getComputedStyle(document.querySelector('.site-header')).display,
+    chatHead: getComputedStyle(document.querySelector('.chat-head')).display,
+    bigScore: document.querySelectorAll('.scorebox').length,
+    thin: document.querySelector('.score-toggle')?.textContent ?? '',
+    input: Boolean(document.querySelector('#chat-text')),
+  }));
+  await reg.screenshot({ path: `${SHOTS}/iphone-chat-fullscreen.png` });
+  await reg.click('button[aria-label="Exit full screen"]');
+  await reg.waitForSelector('.chat-head', { state: 'visible' });
+  check('Full-screen chat hides the site header, chat header and big scoreboard (one-line score stays); Exit restores them',
+    focusState.header === 'none' && focusState.chatHead === 'none' && focusState.bigScore === 0 && /34/.test(focusState.thin) && focusState.input, JSON.stringify(focusState));
   await reg.unroute('**/api/games/*/live');
   await reg.setViewportSize({ width: 1280, height: 900 });
   check('Live scoreboard shows both teams, big scores and the clock, with a Box score drop-down and no ESPN Gamecast link', /NM State/.test(scoreText) && /34/.test(scoreText) && /28/.test(scoreText) && /14:34/.test(scoreText) && espnLinks === 0 && espnOnGame === 0 && boxHref === 1 && menuRoster === 1 && /football\/roster$/.test(gameRoster ?? '') && /nmstatesports\.com\/sports\/football\/roster$/.test(rosterHref ?? ''), JSON.stringify({ scoreText, espnLinks, espnOnGame, boxHref, rosterHref, gameRoster, menuRoster }));
@@ -765,6 +782,23 @@ try {
   await reg.waitForSelector('text=Turned on');
   const onPref = (await api(reg, '/me')).body.me.prefs.notify_replies;
   check('Members can turn each kind of notification on or off right from the Notifications page', offPref === false && onPref === true, JSON.stringify({ offPref, onPref }));
+
+  // ---------- Smaller iPhones: iPhone SE / mini (375 wide) and original SE (320 wide) ----------
+  for (const [label, w, h] of [['se', 375, 667], ['se1', 320, 568]]) {
+    await reg.setViewportSize({ width: w, height: h });
+    await reg.goto(BASE + '/');
+    await reg.waitForSelector('.quick-links');
+    await reg.screenshot({ path: `${SHOTS}/small-${label}-home.png` });
+    await reg.goto(BASE + '/games?sport=week');
+    await reg.waitForSelector('button.page-back');
+    await reg.screenshot({ path: `${SHOTS}/small-${label}-week.png` });
+    await reg.goto(BASE + `/chat/game-${fbGame.id}`);
+    await reg.waitForSelector('.chat-head');
+    await reg.screenshot({ path: `${SHOTS}/small-${label}-chat.png` });
+    const overflow = await reg.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
+    check(`No sideways scrolling on a ${w}-wide phone (game chat)`, !overflow);
+  }
+  await reg.setViewportSize({ width: 1280, height: 900 });
 
   // ---------- Audit history ----------
   const log = (await api(admin, '/admin/log')).body.log;
