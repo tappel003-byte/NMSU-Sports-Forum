@@ -135,7 +135,7 @@ export function ChatRoomPage() {
 
   if (error) return <ErrorState error={error} />;
   return (
-    <div className={`card chat-wrap ${focus ? 'focus' : ''}`}>
+    <div className={`card chat-wrap chat-room ${focus ? 'focus' : ''}`}>
       {focus && <button type="button" className="btn small focus-exit" onClick={() => setFocus(false)} aria-label="Exit full screen">✕ Exit</button>}
       <div className="section-head chat-head">
         <div className="grow">

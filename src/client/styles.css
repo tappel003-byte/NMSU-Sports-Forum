@@ -593,8 +593,8 @@ table.simple th { font-size: .72rem; text-transform: uppercase; letter-spacing: 
 .score-toggle { width: 100%; border: 0; background: none; color: var(--text); font-size: .8rem; font-weight: 700; cursor: pointer; padding: 2px 0; text-align: center; }
 /* Phones: no bottom bar inside a chat room, so the chat runs to the bottom of the screen. */
 @media (max-width: 899px) {
-  .shell:has(.chat-wrap) { padding-bottom: calc(6px + env(safe-area-inset-bottom)); }
-  .chat-wrap { height: calc(100dvh - var(--header-h) - 12px - env(safe-area-inset-bottom) - env(safe-area-inset-top)); }
+  .shell:has(.chat-room) { padding-bottom: calc(6px + env(safe-area-inset-bottom)); }
+  .chat-wrap.chat-room { height: calc(100dvh - var(--header-h) - 12px - env(safe-area-inset-bottom) - env(safe-area-inset-top)); }
 }
 @media (max-width: 899px) {
   .chat-head .row { gap: 2px; flex-wrap: nowrap; }
@@ -602,7 +602,7 @@ table.simple th { font-size: .72rem; text-transform: uppercase; letter-spacing: 
 }
 .score-foot { position: relative; height: 26px; width: 100%; }
 @media (max-width: 899px) {
-  .shell:has(.chat-wrap) { padding-bottom: calc(6px + env(safe-area-inset-bottom)); }
+  .shell:has(.chat-room) { padding-bottom: calc(6px + env(safe-area-inset-bottom)); }
 }
 /* Big, obvious way out of a chat room. */
 .chat-title-row { display: flex; align-items: center; gap: 10px; }
