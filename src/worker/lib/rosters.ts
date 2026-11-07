@@ -6,6 +6,7 @@
 import type { Env } from '../env';
 import { getSetting, setSetting, stmt } from '../db';
 import { now } from '../util';
+import { saveSeason, type HistoryGame } from './history';
 
 export interface RosterRow {
   name: string; jersey: string | null; position: string | null; class_year: string | null;
@@ -184,6 +185,11 @@ export async function runRosterImport(env: Env, budget: number): Promise<number>
           const url = `https://en.wikipedia.org/wiki/${encodeURIComponent((json.parse.title ?? title).replace(/ /g, '_'))}`;
           const rows = parseWikiRoster(json.parse.wikitext).map((r) => ({ ...r, key: r.name.toLowerCase() }));
           await save(env, team.sport, y, 'wikipedia', url, rows);
+          // Older seasons: the same page also has every game, which ESPN doesn't.
+          if (y < (WIKI_GAMES_BEFORE[team.sport] ?? 0)) {
+            const games = parseWikiSchedule(json.parse.wikitext, team.sport);
+            if (games.length) await saveSeason(env, games);
+          }
         } else if (json.error?.code !== 'missingtitle') break;
       } catch { break; }
       y--;
@@ -218,3 +224,43 @@ export function parsePastedRoster(text: string): RosterRow[] {
   }
   return out;
 }
+
+/** Games in a Wikipedia basketball season article ({{CBB schedule entry|date=…|opponent=…|score=…|record=…}}).
+ *  Scores are written NM State first; the running record confirms each win or loss. Dates only (no tip times). Pure. */
+export function parseWikiSchedule(wikitext: string, sport: string): HistoryGame[] {
+  const out: HistoryGame[] = [];
+  let prev: [number, number] = [0, 0];
+  for (const m of wikitext.matchAll(/\{\{\s*CBB schedule entry((?:[^{}]|\{\{[^{}]*\}\})*)\}\}/gi)) {
+    const f: Record<string, string> = {};
+    for (const line of m[1].split('\n')) {
+      const mm = /^\s*\|\s*(\w+)\s*=\s*(.*)$/.exec(line);
+      if (mm) f[mm[1].toLowerCase()] = mm[2].trim();
+    }
+    const rec = /(\d+)\s*[–-]\s*(\d+)/.exec(f.record ?? '');
+    const sc = /(\d+)\s*[–-]\s*(\d+)/.exec(f.score ?? '');
+    const date = Date.parse(`${f.date ?? ''} 19:00:00 UTC`);
+    const opp = /title\s*=\s*([^|}]+)/.exec(f.opponent ?? '')?.[1] ?? plain(f.opponent);
+    if (!sc || !Number.isFinite(date) || !opp) continue;
+    let a = Number(sc[1]), b = Number(sc[2]);
+    if (rec) {
+      const r: [number, number] = [Number(rec[1]), Number(rec[2])];
+      const won = r[0] > prev[0], lost = r[1] > prev[1];
+      // Trust the running record if the score was written the other way round.
+      if ((won && a < b) || (lost && a > b)) [a, b] = [b, a];
+      prev = r;
+    }
+    if (a === b) continue;
+    const opponent = opp.replace(/^(No\.\s*)?#?\d+\s+/, '').trim();
+    out.push({
+      uid: `wiki:${sport}:${new Date(date).toISOString().slice(0, 10)}:${opponent.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+      sport, opponent,
+      home_away: /yes/i.test(f.neutral ?? '') ? 'neutral' : /yes/i.test(f.away ?? '') ? 'away' : 'home',
+      venue: plain(f.site_stadium) ?? null,
+      starts_at: date, time_tba: 1, result: a > b ? 'W' : 'L', nmsu_score: a, opp_score: b,
+    });
+  }
+  return out;
+}
+
+/** Seasons before ESPN's game records begin (ESPN: men's from 2001-02, women's from 2000-01). */
+const WIKI_GAMES_BEFORE: Record<string, number> = { mbb: 2001, wbb: 2000 };

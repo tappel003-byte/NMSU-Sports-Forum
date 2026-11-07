@@ -81,3 +81,22 @@ describe('Official season pages on nmstatesports.com', () => {
     expect(officialSeasonUrls('fb', 1999)).toBeNull();
   });
 });
+
+import { readFileSync as readFixture } from 'node:fs';
+import { parseWikiSchedule } from '../../src/worker/lib/rosters';
+describe('Wikipedia season schedules (basketball before ESPN)', () => {
+  const games = parseWikiSchedule(readFixture(new URL('../fixtures/wiki-mbb-1992-93-schedule.txt', import.meta.url), 'utf8'), 'mbb');
+  it('reads every 1992–93 game: 26–8', () => {
+    expect(games).toHaveLength(34);
+    expect(games.filter((g) => g.result === 'W')).toHaveLength(26);
+    expect(games.filter((g) => g.result === 'L')).toHaveLength(8);
+  });
+  it('gets opponent, site, score and result right, NM State first', () => {
+    expect(games[0]).toMatchObject({ opponent: 'Chattanooga', home_away: 'neutral', nmsu_score: 75, opp_score: 65, result: 'W', time_tba: 1 });
+    expect(games[1]).toMatchObject({ opponent: 'Oregon', result: 'W' });
+    const utep = games.filter((g) => g.opponent === 'UTEP');
+    expect(utep.map((g) => [g.home_away, g.nmsu_score, g.opp_score, g.result])).toEqual([['home', 63, 64, 'L'], ['away', 75, 69, 'W']]);
+    expect(games[games.length - 1]).toMatchObject({ opponent: 'Cincinnati', nmsu_score: 55, opp_score: 92, result: 'L' });
+    expect(new Set(games.map((g) => g.uid)).size).toBe(34);
+  });
+});
