@@ -701,3 +701,7 @@ input[type='checkbox']:disabled { opacity: .5; cursor: not-allowed; }
 .sport-img { width: 1.2em; height: 1.2em; object-fit: contain; vertical-align: -0.25em; display: inline-block; }
 
 .nowrap { white-space: nowrap; }
+/* Time Machine: group headings (Men's / Women's / Men's & women's) shaded so they read as headings, not as rows. */
+.tm-group-head { background: var(--crimson-tint); }
+.tm-group-head h2 { color: var(--crimson); }
+:root[data-theme='dark'] .tm-group-head h2 { color: var(--text); }

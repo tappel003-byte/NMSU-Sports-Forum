@@ -849,12 +849,19 @@ try {
   await admin.click('button[aria-label="How to add a video"]');
   const helpText = await admin.textContent('.note-box');
   await admin.click('a:has-text("Add a clip")');
-  await admin.waitForSelector('h1:has-text("Add to the Aggie Vault")');
-  await admin.fill('#title', '1960 Sun Bowl team');
-  await admin.fill('#body', 'Warren Woodson\'s unbeaten Aggies. https://www.youtube.com/watch?v=dQw4w9WgXcQ');
-  await admin.click('button:has-text("Post discussion")');
-  await admin.waitForURL(/\/t\/\d+/);
-  const clipThread = admin.url();
+  await admin.waitForSelector('h1:has-text("Add a clip")');
+  // Just title, link and note: none of the discussion extras (tags, polls, random topic, photos).
+  const clipFormExtras = (await Promise.all(['text=Random topic', 'text=Add a poll', 'text=Tags (optional', 'button:has-text("Photo")'].map((q) => admin.locator(q).count()))).reduce((a, b) => a + b, 0);
+  await admin.fill('#vt', '1960 Sun Bowl team');
+  await admin.fill('#vu', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+  await admin.fill('#vn', 'Warren Woodson\'s unbeaten Aggies.');
+  await admin.click('button:has-text("Add to the Vault")');
+  await admin.waitForURL('**/vault');
+  await admin.waitForSelector('.history-card');
+  const clipThread = BASE + (await admin.getAttribute('.history-card', 'href'));
+  // Old "post to the Vault" links land on the clip form.
+  await admin.goto(BASE + '/new?forum=aggie-vault');
+  await admin.waitForURL('**/vault/add');
   await reg.goto(BASE + '/vault');
   await reg.waitForSelector('.history-card');
   const card = await reg.textContent('.history-card');
@@ -868,9 +875,9 @@ try {
   await reg.click('.bottom-nav button:has-text("More")');
   await reg.click('.more-sheet a:has-text("Aggie Vault")');
   await reg.waitForURL('**/vault');
-  check('Aggie Vault: admins add clips (with a how-to info circle); members see the cards and can open them but cannot add',
+  check('Aggie Vault: admins add clips on a simple form (title, link, note) with a how-to info circle; members see the cards and can open them but cannot add',
     /1960 Sun Bowl team/.test(card ?? '') && /unbeaten/.test(card ?? '') && thumb === 'https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg'
-    && /Copy link/.test(helpText ?? '') && memberAdd === 0 && memberPost.status === 403, JSON.stringify({ card, thumb, memberAdd, memberPost: memberPost.status }));
+    && /Copy link/.test(helpText ?? '') && memberAdd === 0 && memberPost.status === 403 && clipFormExtras === 0, JSON.stringify({ card, thumb, memberAdd, memberPost: memberPost.status, clipFormExtras }));
 
   // ---------- Time Machine: pick a sport, then a season, then the games (RockAuto style); old scores always show ----------
   await api(reg, '/me/prefs', { method: 'PATCH', body: { spoiler_free: true } });
