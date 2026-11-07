@@ -244,7 +244,7 @@ function TmSports() {
     <>
       {TM_GROUPS.map((grp) => (
         <section key={grp.title} className="card">
-          <div className="section-head"><h2>{grp.title}</h2></div>
+          <div className="section-head tm-group-head"><h2>{grp.title}</h2></div>
           {grp.sports.map((k) => (
             <Link key={k} to={`/time-machine?sport=${k}`} className="list-row tm-row">
               <span className="grow"><strong>{SPORT_BY_KEY[k]?.label ?? k}</strong></span>

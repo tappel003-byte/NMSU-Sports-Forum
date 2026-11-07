@@ -10,6 +10,7 @@ import { TagPicker } from './Thread';
 import { TAGS } from '../../shared/forum';
 import { FEATURED_SPORTS, isVenueForum } from '../../shared/sports';
 import { timeAgo } from '../format';
+import { parseYouTubeId } from '../../shared/forum';
 
 interface ForumInfo { id: number; slug: string; name: string; sport_label: string; description: string; icon: string; sports: string[]; kind: string; muted: boolean; threads?: number; unread?: number; last_post_at?: number | null }
 
@@ -198,6 +199,8 @@ export function NewThread() {
     }
   };
 
+  // Clips have their own simple form (title, video link, note) — not the discussion composer.
+  if (forum === 'aggie-vault') return <Navigate to="/vault/add" replace />;
   return (
     <div className="card card-pad">
       <h1>{f?.kind === 'suggestions' ? 'Suggest an improvement' : f?.slug === 'aggie-vault' ? 'Add to the Aggie Vault' : 'Start a discussion'}</h1>
@@ -256,7 +259,7 @@ export function VaultPage() {
         <p className="muted small" style={{ margin: 0 }}>Great Aggie moments on video, all in one place. Tap a card to watch right here and share your memories. Never archived.</p>
         {me?.role === 'admin' && (
           <div className="row" style={{ marginTop: 10, alignItems: 'center' }}>
-            <Link to="/new?forum=aggie-vault" className="btn"><Plus size={16} /> Add a clip</Link>
+            <Link to="/vault/add" className="btn"><Plus size={16} /> Add a clip</Link>
             <button type="button" className="info-circle" onClick={() => setHelp(!help)} aria-expanded={help} aria-label="How to add a video">i</button>
           </div>
         )}
@@ -265,11 +268,10 @@ export function VaultPage() {
             <strong>How to add a video</strong>
             <ol style={{ margin: '6px 0 0', paddingLeft: 18 }}>
               <li>In YouTube, open the video and tap <strong>Share → Copy link</strong>.</li>
-              <li>Here, tap <strong>Add a clip</strong> and give it a title (e.g. “1960 Sun Bowl team”).</li>
-              <li>Paste the link into the message and add a few words about it.</li>
-              <li>Post it. It shows as a video card here, and it plays on the site.</li>
+              <li>Here, tap <strong>Add a clip</strong>, give it a title (e.g. “1960 Sun Bowl team”) and paste the link.</li>
+              <li>Add a short note if you like, then <strong>Add to the Vault</strong>. It shows as a video card here and plays on the site.</li>
             </ol>
-            <div className="tiny muted" style={{ marginTop: 6 }}>Single videos work (not whole channels or playlists). Up to three videos per post.</div>
+            <div className="tiny muted" style={{ marginTop: 6 }}>Single videos work (not whole channels or playlists).</div>
           </div>
         )}
       </div>
@@ -291,6 +293,50 @@ export function VaultPage() {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+/** Add a clip to the Aggie Vault: just a title, the video link and an optional note. Admins only. */
+export function VaultAdd() {
+  const { me } = useApp();
+  const nav = useNavigate();
+  const [title, setTitle] = useState('');
+  const [url, setUrl] = useState('');
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  if (me?.role !== 'admin') return <ErrorState error="Only admins can add clips to the Aggie Vault." />;
+  const validLink = Boolean(parseYouTubeId(url.trim()));
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validLink) { setError('Paste a YouTube video link (in YouTube: Share → Copy link).'); return; }
+    setBusy(true);
+    setError(null);
+    try {
+      await api<{ id: number }>('/threads', { body: { forum: 'aggie-vault', title: title.trim(), body: `${url.trim()}${note.trim() ? `\n\n${note.trim()}` : ''}`, attachments: [], tags: [] } });
+      nav('/vault');
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="stack">
+      <div className="page-head">
+        <BackButton />
+        <h1 style={{ marginTop: 8 }}>Add a clip</h1>
+        <p className="small muted" style={{ margin: 0 }}>It shows as a video card in the Aggie Vault and plays on the site.</p>
+      </div>
+      <form className="card card-pad stack" onSubmit={submit}>
+        <div className="field"><label htmlFor="vt">Title</label><input id="vt" className="input" value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={150} placeholder="e.g. 1960 Sun Bowl team" /></div>
+        <div className="field"><label htmlFor="vu">YouTube link</label><input id="vu" className="input" type="url" value={url} onChange={(e) => setUrl(e.target.value)} required placeholder="https://youtu.be/…" />
+          {url && !validLink && <span className="hint">That doesn't look like a YouTube video link. In YouTube: Share → Copy link.</span>}</div>
+        <div className="field"><label htmlFor="vn">Note <span className="muted">(optional)</span></label><textarea id="vn" className="input" rows={3} value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} placeholder="A few words about the game or team" /></div>
+        {error && <div className="error-box">{error}</div>}
+        <div className="row"><button className="btn" disabled={busy || !title.trim() || !validLink}>{busy ? 'Adding…' : 'Add to the Vault'}</button><Link to="/vault" className="btn ghost">Cancel</Link></div>
+      </form>
     </div>
   );
 }

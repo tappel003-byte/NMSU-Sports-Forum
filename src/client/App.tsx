@@ -5,7 +5,7 @@ import { Layout } from './components/Layout';
 import { Loading } from './components/ui';
 import { Forgot, Join, Login, Reset, Setup, SignUp, Verify } from './pages/Auth';
 import { Feed, Home } from './pages/Home';
-import { ForumPage, NewThread, VaultPage } from './pages/Forums';
+import { ForumPage, NewThread, VaultAdd, VaultPage } from './pages/Forums';
 import { Rosters } from './pages/Rosters';
 import { InviteFriends } from './components/Invite';
 import { ThreadPage } from './pages/Thread';
@@ -42,6 +42,7 @@ export function App() {
       <Route path="/forums" element={<Navigate to="/feed" replace />} />
       <Route path="/f/:slug" element={<Private publicOk><ForumPage /></Private>} />
       <Route path="/vault" element={<Private publicOk><VaultPage /></Private>} />
+      <Route path="/vault/add" element={<Private><VaultAdd /></Private>} />
       <Route path="/new" element={<Private><NewThread /></Private>} />
       <Route path="/t/:id" element={<Private publicOk><ThreadPage /></Private>} />
       <Route path="/games" element={<Private publicOk><Games /></Private>} />
