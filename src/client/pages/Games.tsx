@@ -260,7 +260,7 @@ function TmSports() {
 }
 
 function TmSeasons({ sport }: { sport: string }) {
-  const { data, error, reload } = useApi<{ seasons: string[] }>(`/time-machine?sport=${sport}`);
+  const { data, error, reload } = useApi<{ seasons: string[]; records?: Record<string, string> }>(`/time-machine?sport=${sport}`);
   if (error) return <ErrorState error={error} retry={reload} />;
   if (!data) return <Loading />;
   return (
@@ -269,6 +269,7 @@ function TmSeasons({ sport }: { sport: string }) {
       {data.seasons.length ? data.seasons.map((s) => (
         <Link key={s} to={`/time-machine?sport=${sport}&season=${s}`} className="list-row tm-row">
           <span className="grow"><strong>{seasonLabel(sport, s)} season</strong></span>
+          {data.records?.[s] && <span className="small muted">{data.records[s]}</span>}
           <span aria-hidden="true">›</span>
         </Link>
       )) : <div className="empty">No past games on record for this sport yet. Seasons appear here as games are played.</div>}
@@ -298,11 +299,30 @@ function AddSeasonRoster({ sport }: { sport: string }) {
 }
 
 function TmGames({ sport, season }: { sport: string; season: string }) {
-  const { data, error, reload } = useApi<{ games: (GameItem & { posts: number; chats: number })[] }>(`/time-machine?sport=${sport}&season=${season}`);
+  const { data, error, reload } = useApi<{ games: (GameItem & { posts: number; chats: number })[]; summary: SeasonSummary | null;
+    official: { roster: string; schedule: string; label: string } | null; media_guides: string }>(`/time-machine?sport=${sport}&season=${season}`);
   if (error) return <ErrorState error={error} retry={reload} />;
   if (!data) return <Loading />;
+  const sm = data.summary;
   return (
     <>
+    {sm && (
+      <section className="card card-pad season-summary">
+        <div className="season-record">{sm.record}</div>
+        <div className="small">
+          {[sm.conf_record && `${sm.conf_record} conference`, sm.conf_standing && `${sm.conf_standing} ${sm.conference ? `in the ${sm.conference.replace(/ Conference$/, '')}` : ''}`.trim(),
+            !sm.conf_record && !sm.conf_standing && sm.conference].filter(Boolean).join(' · ')}
+        </div>
+        {sm.coach && <div className="small">Coach: <strong>{sm.coach}</strong></div>}
+        {sm.postseason && <div className="small">Postseason: {sm.postseason}</div>}
+        {sm.source === 'wikipedia' && sm.source_url && <div className="tiny muted" style={{ marginTop: 4 }}>Season record from <a href={sm.source_url} target="_blank" rel="noopener noreferrer">Wikipedia</a> (CC BY-SA).</div>}
+      </section>
+    )}
+    <div className="row tm-links small" style={{ flexWrap: 'wrap', gap: 14 }}>
+      {data.official && <a href={data.official.roster} target="_blank" rel="noopener noreferrer">Official {data.official.label} roster ↗</a>}
+      {data.official && <a href={data.official.schedule} target="_blank" rel="noopener noreferrer">Official {data.official.label} schedule ↗</a>}
+      <a href={data.media_guides} target="_blank" rel="noopener noreferrer">NM State media guides ↗</a>
+    </div>
     <section className="card">
       <div className="section-head"><h2>Games</h2><span className="small muted">{data.games.length} played</span></div>
       {data.games.length ? data.games.map((g) => (
@@ -317,20 +337,22 @@ function TmGames({ sport, season }: { sport: string; season: string }) {
           </span>
           <Score game={g} />
         </Link>
-      )) : <div className="empty">No games on record for this season.</div>}
+      )) : <div className="empty">No games on file for this season{data.official ? ' yet. The official schedule link above has them.' : '.'}</div>}
     </section>
     <TmRoster sport={sport} season={season} />
     </>
   );
 }
 
+type SeasonSummary = { season: number; record: string | null; conf_record: string | null; conf_standing: string | null; conference: string | null;
+  postseason: string | null; coach: string | null; source: string; source_url: string | null };
 type RosterPlayer = { id: number; name: string; jersey: string | null; position: string | null; class_year: string | null; height: string | null; weight: number | null; hometown: string | null; edited: boolean };
 const EMPTY_PLAYER = { name: '', jersey: '', position: '', class_year: '', height: '', weight: '', hometown: '' };
 
 /** Season roster as an accordion: imported players plus anything members add or fix (e.g. from media guides). */
 function TmRoster({ sport, season }: { sport: string; season: string }) {
   const { me, toast } = useApp();
-  const { data, reload } = useApi<{ players: RosterPlayer[]; sources: { cfbd: boolean; espn: boolean; wikipedia: string | null; members: boolean }; official_url: string }>(`/time-machine/roster?sport=${sport}&season=${season}`);
+  const { data, reload } = useApi<{ players: RosterPlayer[]; sources: { cfbd: boolean; espn: boolean; wikipedia: string | null; members: boolean }; official_url: string; official_label: string | null }>(`/time-machine/roster?sport=${sport}&season=${season}`);
   const [editing, setEditing] = useState<number | 'new' | null>(null);
   const [f, setF] = useState(EMPTY_PLAYER);
   const [busy, setBusy] = useState(false);
@@ -398,7 +420,7 @@ function TmRoster({ sport, season }: { sport: string; season: string }) {
             {isMod && <button className="btn small ghost" onClick={() => remove(p)} aria-label={`Remove ${p.name}`}>✕</button>}
           </div>
         ))}
-        {!data.players.length && editing !== 'new' && <div className="empty">No roster on file for this season yet.{me ? ' Have a media guide? Add players below.' : ''}</div>}
+        {!data.players.length && editing !== 'new' && <div className="empty">No roster on file for this season yet.{me ? ' Have a media guide or yearbook? Add players below, or send a photo of the page.' : ''}</div>}
         {editing === 'new' ? form : me && (
           <div className="card-pad stack" style={{ gap: 6 }}>
             <div className="row" style={{ flexWrap: 'wrap', gap: 8 }}>
@@ -411,7 +433,7 @@ function TmRoster({ sport, season }: { sport: string; season: string }) {
             <span className="tiny muted">Send a media guide page: we'll add the players as soon as we can.</span>
           </div>
         )}
-        <div className="card-pad small"><a href={data.official_url} target="_blank" rel="noopener noreferrer">Official roster on nmstatesports.com ↗</a><span className="tiny muted"> (pick the season there)</span></div>
+        <div className="card-pad small"><a href={data.official_url} target="_blank" rel="noopener noreferrer">Official {data.official_label ? `${data.official_label} ` : ''}roster on nmstatesports.com ↗</a>{!data.official_label && <span className="tiny muted"> (pick the season there)</span>}</div>
         <div className="card-pad tiny muted" style={{ paddingTop: 0 }}>
           {[data.sources.espn && 'This season\'s roster from ESPN.', data.sources.cfbd && 'Football rosters from CollegeFootballData.com.',
             data.sources.wikipedia && <>From <a href={data.sources.wikipedia} target="_blank" rel="noopener noreferrer">Wikipedia</a> (CC BY-SA).</>,

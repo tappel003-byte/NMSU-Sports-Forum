@@ -53,6 +53,25 @@ export function officialRosterUrl(key: string): string {
   return s ? `${OFFICIAL_SITE}/sports/${s.schedulePath}/roster` : `${OFFICIAL_SITE}/`;
 }
 
+/** NM State's media guide directory (guides for every sport, many with history tables). */
+export const MEDIA_GUIDES_URL = `${OFFICIAL_SITE}/sports/2015/8/5/GEN_0805154707.aspx?id=162`;
+
+/** nmstatesports.com names a season's pages by its fall year for fall sports (football 2004, volleyball 2003, soccer 2009),
+ *  by its spring year for baseball and softball (2004), and "2003-04" for everything else, cross country included
+ *  (checked against the site's own season pages, Nov 2026). Track's season pages live under indoor-track. */
+const SEASON_STYLE: Record<string, 'fall' | 'spring' | 'span'> = { fb: 'fall', vb: 'fall', wsoc: 'fall', base: 'spring', soft: 'spring' };
+const SEASON_PATH: Record<string, string> = { track: 'indoor-track' };
+
+/** Official roster and schedule pages for one season (season = fall start year). Null before 2000, when the site has none. */
+export function officialSeasonUrls(key: string, season: number): { roster: string; schedule: string; label: string } | null {
+  const s = SPORT_BY_KEY[key];
+  if (!s || season < 2000) return null;
+  const style = SEASON_STYLE[key] ?? 'span';
+  const label = style === 'fall' ? String(season) : style === 'spring' ? String(season + 1) : `${season}-${String((season + 1) % 100).padStart(2, '0')}`;
+  const base = `${OFFICIAL_SITE}/sports/${SEASON_PATH[key] ?? s.schedulePath}`;
+  return { roster: `${base}/roster/${label}`, schedule: `${base}/schedule/${label}`, label };
+}
+
 /** Parses the admin-maintained hub links: one "Label | https://url" per line; anything else is ignored. */
 export function parseHubLinks(raw: string): { label: string; url: string }[] {
   return raw.split('\n').map((line) => {

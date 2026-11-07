@@ -718,3 +718,7 @@ input[type='checkbox']:disabled { opacity: .5; cursor: not-allowed; }
 .side-nav .nav-sub { font-size: .74rem; font-weight: 500; color: var(--muted); margin-top: 1px; }
 .roster-photo-img { max-width: 100%; max-height: 420px; border-radius: var(--radius-sm); border: 1px solid var(--line); display: block; }
 label.btn.disabled { opacity: .6; pointer-events: none; }
+.season-summary { display: flex; flex-direction: column; gap: 2px; }
+.season-record { font-size: 1.6rem; font-weight: 900; color: var(--crimson); line-height: 1.1; }
+:root[data-theme='dark'] .season-record { color: var(--text); }
+.tm-links { padding: 0 4px; }
