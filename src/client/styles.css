@@ -648,3 +648,14 @@ body.chat-focus .shell { padding: 0 !important; max-width: none; display: block;
 .chat-wrap.focus .hidden-score { min-height: 32px; display: flex; align-items: center; }
 .chat-wrap.focus .score-toggle { text-align: left; padding-left: 4px; }
 .chat-head .btn.ghost.focus-enter { border: 1.5px solid var(--crimson); border-radius: 8px; min-width: 34px; font-weight: 900; color: var(--crimson); }
+
+/* Full screen v2: a slim top strip holds the one-line score and Exit (nothing covers messages);
+   the page behind matches the chat so no gray band shows in the iPhone's home-bar area. */
+.focus-bar { display: flex; align-items: center; gap: 8px; padding: 4px 8px; border-bottom: 1px solid var(--line); background: var(--crimson-tint); min-height: 40px; }
+.focus-bar .live-score.compact.hidden-score { padding: 0; background: none; border: 0; }
+.focus-bar .score-toggle { text-align: left; font-size: .82rem; }
+.focus-title { font-weight: 800; font-size: .9rem; }
+.chat-wrap.focus .focus-exit { position: static; box-shadow: none; flex: none; }
+html:has(body.chat-focus), body.chat-focus { background: var(--surface); }
+:root[data-theme='dark'] .focus-bar { background: #2A262B; }
+.focus-bar .hidden-score { padding-right: 0 !important; min-height: 0 !important; }

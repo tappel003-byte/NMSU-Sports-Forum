@@ -41,6 +41,25 @@ export function ChatRoomPage() {
     document.body.classList.toggle('chat-focus', focus);
     return () => document.body.classList.remove('chat-focus');
   }, [focus]);
+  // Full screen only: when the iPhone keyboard opens, keep the conversation in the visible area above it
+  // (the chat is pinned to the screen, so it follows the visible area rather than measuring the page).
+  const wrapRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const vv = window.visualViewport;
+    const el = wrapRef.current;
+    if (!focus || !vv || !el) return;
+    const fit = () => {
+      el.style.setProperty('top', `${vv.offsetTop}px`, 'important');
+      el.style.setProperty('height', `${vv.height}px`, 'important');
+      el.style.setProperty('bottom', 'auto', 'important');
+      const lg = el.querySelector('.chat-log');
+      if (lg) lg.scrollTop = lg.scrollHeight;
+    };
+    fit();
+    vv.addEventListener('resize', fit);
+    vv.addEventListener('scroll', fit);
+    return () => { vv.removeEventListener('resize', fit); vv.removeEventListener('scroll', fit); el.style.removeProperty('top'); el.style.removeProperty('height'); el.style.removeProperty('bottom'); };
+  }, [focus]);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [game, setGame] = useState<GameItem | null>(null);
   const [presence, setPresence] = useState<{ id: number; username: string }[]>([]);
@@ -135,8 +154,13 @@ export function ChatRoomPage() {
 
   if (error) return <ErrorState error={error} />;
   return (
-    <div className={`card chat-wrap chat-room ${focus ? 'focus' : ''}`}>
-      {focus && <button type="button" className="btn small focus-exit" onClick={() => setFocus(false)} aria-label="Exit full screen">✕ Exit</button>}
+    <div ref={wrapRef} className={`card chat-wrap chat-room ${focus ? 'focus' : ''}`}>
+      {focus && (
+        <div className="focus-bar">
+          <div className="grow">{game ? <LiveScore game={game} compact thin /> : <span className="focus-title">{title}</span>}</div>
+          <button type="button" className="btn small focus-exit" onClick={() => setFocus(false)} aria-label="Exit full screen">✕ Exit</button>
+        </div>
+      )}
       <div className="section-head chat-head">
         <div className="grow">
           <h2 style={{ fontSize: '1rem' }}>{title}</h2>
@@ -153,7 +177,7 @@ export function ChatRoomPage() {
           <button type="button" className="btn ghost small focus-enter" onClick={() => setFocus(true)} aria-label="Full screen chat" title="Full screen">⛶</button>
         </div>
       </div>
-      {game && <LiveScore game={game} compact thin={focus} />}
+      {game && !focus && <LiveScore game={game} compact />}
       {selecting && (
         <div className="note-box small" style={{ margin: 8 }}>
           Tap messages to select them, then save them as a permanent discussion thread.
