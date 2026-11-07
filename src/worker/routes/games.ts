@@ -265,7 +265,7 @@ games.get('/time-machine/roster', async (c) => {
       WHERE sport = ? AND season = ? AND removed = 0 ORDER BY CASE WHEN jersey GLOB '[0-9]*' THEN CAST(jersey AS INTEGER) ELSE 999 END, name`, sport, season);
   const wiki = rows.find((r) => r.source === 'wikipedia' && r.source_url)?.source_url ?? null;
   return c.json({
-    players: rows.map(({ source_url: _u, updated_by, added_by, ...r }) => ({ ...r, edited: Boolean(updated_by || added_by) })),
+    players: rows.map(({ source_url: _u, updated_by, added_by, ...r }) => ({ ...r, edited: Boolean(updated_by || added_by), locked: r.source !== 'member' })),
     sources: { cfbd: rows.some((r) => r.source === 'cfbd'), espn: rows.some((r) => r.source === 'espn'), wikipedia: wiki, members: rows.some((r) => r.source === 'member' || r.updated_by) },
     official_url: officialSeasonUrls(sport, season)?.roster ?? officialRosterUrl(sport),
     official_label: officialSeasonUrls(sport, season)?.label ?? null,
@@ -300,6 +300,9 @@ games.patch('/rosters/:id{[0-9]+}', async (c) => {
   const user = c.get('user');
   if (!user?.id) throw new HttpError(401, 'Sign in to fix players.');
   const body = parse(rosterFields, await c.req.json());
+  // Rosters from trusted sources (ESPN, CollegeFootballData, Wikipedia) are locked; only member-entered players can be fixed.
+  const row = await first<{ source: string }>(c.env, 'SELECT source FROM roster_players WHERE id = ? AND removed = 0', Number(c.req.param('id')));
+  if (row && row.source !== 'member') throw new HttpError(403, 'This roster comes from an official source and can\'t be edited.');
   const r = await run(c.env, `UPDATE roster_players SET name = ?, jersey = ?, position = ?, class_year = ?, height = ?, weight = ?, hometown = ?, updated_by = ?, updated_at = ?
     WHERE id = ? AND removed = 0`, body.name, orNull(body.jersey), orNull(body.position), orNull(body.class_year), orNull(body.height), body.weight ?? null,
     orNull(body.hometown), user.id, now(), Number(c.req.param('id')));

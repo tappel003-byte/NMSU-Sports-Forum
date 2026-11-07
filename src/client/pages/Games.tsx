@@ -346,7 +346,7 @@ function TmGames({ sport, season }: { sport: string; season: string }) {
 
 type SeasonSummary = { season: number; record: string | null; conf_record: string | null; conf_standing: string | null; conference: string | null;
   postseason: string | null; coach: string | null; source: string; source_url: string | null };
-type RosterPlayer = { id: number; name: string; jersey: string | null; position: string | null; class_year: string | null; height: string | null; weight: number | null; hometown: string | null; edited: boolean };
+type RosterPlayer = { id: number; name: string; jersey: string | null; position: string | null; class_year: string | null; height: string | null; weight: number | null; hometown: string | null; edited: boolean; locked: boolean };
 const EMPTY_PLAYER = { name: '', jersey: '', position: '', class_year: '', height: '', weight: '', hometown: '' };
 
 /** Season roster as an accordion: imported players plus anything members add or fix (e.g. from media guides). */
@@ -416,8 +416,9 @@ function TmRoster({ sport, season }: { sport: string; season: string }) {
             <span className="grow"><strong>{p.name}</strong>
               <span className="tiny muted" style={{ display: 'block' }}>{[p.position, p.class_year, p.height, p.weight ? `${p.weight} lb` : null, p.hometown].filter(Boolean).join(' · ')}</span>
             </span>
-            {me && <button className="btn small ghost" onClick={() => open(p)}>Fix</button>}
-            {isMod && <button className="btn small ghost" onClick={() => remove(p)} aria-label={`Remove ${p.name}`}>✕</button>}
+            {/* Imported rosters (ESPN, CollegeFootballData, Wikipedia) are locked: no editing. */}
+            {me && !p.locked && <button className="btn small ghost" onClick={() => open(p)}>Fix</button>}
+            {isMod && !p.locked && <button className="btn small ghost" onClick={() => remove(p)} aria-label={`Remove ${p.name}`}>✕</button>}
           </div>
         ))}
         {!data.players.length && editing !== 'new' && <div className="empty">No roster on file for this season yet.{me ? ' Have a media guide or yearbook? Add players below, or send a photo of the page.' : ''}</div>}
