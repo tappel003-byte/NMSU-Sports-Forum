@@ -832,6 +832,12 @@ try {
   await reg.goto(BASE + '/');
   await reg.waitForSelector('.quick-links');
   const darkOn = await reg.evaluate(() => document.documentElement.getAttribute('data-theme'));
+  await reg.goto(BASE + '/settings');
+  await reg.waitForSelector('input[type="checkbox"]:checked');
+  const checkedColor = await reg.$eval('input[type="checkbox"]:checked', (el) => getComputedStyle(el).backgroundColor);
+  await reg.screenshot({ path: `${SHOTS}/desktop-dark-settings.png` });
+  check('Checked boxes are Aggie crimson in dark mode (not pink)', checkedColor === 'rgb(140, 11, 66)', checkedColor);
+  await reg.goto(BASE + '/');
   await reg.screenshot({ path: `${SHOTS}/desktop-dark-home.png` });
   await reg.goto(BASE + '/games?sport=week');
   await reg.waitForSelector('button.page-back');

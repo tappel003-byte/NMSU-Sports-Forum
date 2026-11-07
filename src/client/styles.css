@@ -659,3 +659,11 @@ body.chat-focus .shell { padding: 0 !important; max-width: none; display: block;
 html:has(body.chat-focus), body.chat-focus { background: var(--surface); }
 :root[data-theme='dark'] .focus-bar { background: #2A262B; }
 .focus-bar .hidden-score { padding-right: 0 !important; min-height: 0 !important; }
+/* Checkboxes drawn by the site so they stay Aggie crimson in dark mode
+   (browsers lighten accent-color on dark backgrounds, which turned them pink). */
+input[type='checkbox'] { appearance: none; -webkit-appearance: none; width: 20px; height: 20px; margin: 2px 0 0; flex: none;
+  border: 2px solid var(--monsoon); border-radius: 5px; background: var(--surface); display: inline-grid; place-content: center; cursor: pointer; }
+input[type='checkbox']:checked { background: var(--crimson); border-color: var(--crimson); }
+input[type='checkbox']:checked::after { content: ''; width: 5px; height: 10px; border: solid var(--white); border-width: 0 2.5px 2.5px 0; transform: translateY(-1px) rotate(45deg); }
+input[type='checkbox']:focus-visible { outline: 3px solid color-mix(in srgb, var(--azure) 70%, var(--white)); outline-offset: 2px; }
+input[type='checkbox']:disabled { opacity: .5; cursor: not-allowed; }
