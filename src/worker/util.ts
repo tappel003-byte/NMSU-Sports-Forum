@@ -90,3 +90,10 @@ export function excerpt(s: string, n = 140): string {
   const flat = hideSpoilers(s).replace(/^>.*$/gm, '').replace(/\*\*/g, '').replace(/\s+/g, ' ').trim();
   return flat.length > n ? flat.slice(0, n - 1) + '…' : flat;
 }
+
+/** Where to send a plain-http request on the real site (null: already https, or local development). */
+export function httpsRedirectUrl(requestUrl: string): string | null {
+  const u = new URL(requestUrl);
+  if (u.protocol !== 'http:' || ['localhost', '127.0.0.1'].includes(u.hostname)) return null;
+  return `https://${u.host}${u.pathname}${u.search}`;
+}

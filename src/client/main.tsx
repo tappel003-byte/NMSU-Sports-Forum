@@ -5,6 +5,11 @@ import { AppProvider } from './state';
 import { App } from './App';
 import './styles.css';
 
+// Always HTTPS: pages are served as files, so the switch from http:// happens here, before the app starts.
+if (location.protocol === 'http:' && !['localhost', '127.0.0.1'].includes(location.hostname)) {
+  location.replace(`https://${location.host}${location.pathname}${location.search}${location.hash}`);
+}
+
 // After a new release, a page opened earlier can ask for code files that no longer exist (the map, for example).
 // Reload once to pick up the current release; the timestamp guard prevents a reload loop.
 window.addEventListener('vite:preloadError', (e) => {
