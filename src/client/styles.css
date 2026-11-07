@@ -713,3 +713,6 @@ input[type='checkbox']:disabled { opacity: .5; cursor: not-allowed; }
 .roster-num { width: 2.6em; color: var(--muted); font-weight: 700; font-size: .9rem; }
 .roster-form-grid { display: grid; grid-template-columns: 2fr 0.6fr 0.8fr 1fr 0.8fr 0.7fr 1.6fr; gap: 6px; }
 @media (max-width: 640px) { .roster-form-grid { grid-template-columns: 1fr 1fr 1fr; } .roster-form-grid > :first-child, .roster-form-grid > :last-child { grid-column: 1 / -1; } }
+/* Short description under a menu item (Aggie Vault, Time Machine) */
+.side-nav .nav-text { display: flex; flex-direction: column; line-height: 1.2; }
+.side-nav .nav-sub { font-size: .74rem; font-weight: 500; color: var(--muted); margin-top: 1px; }
