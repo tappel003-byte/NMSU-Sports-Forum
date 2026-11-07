@@ -667,3 +667,13 @@ input[type='checkbox']:checked { background: var(--crimson); border-color: var(-
 input[type='checkbox']:checked::after { content: ''; width: 5px; height: 10px; border: solid var(--white); border-width: 0 2.5px 2.5px 0; transform: translateY(-1px) rotate(45deg); }
 input[type='checkbox']:focus-visible { outline: 3px solid color-mix(in srgb, var(--azure) 70%, var(--white)); outline-offset: 2px; }
 input[type='checkbox']:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Phones: "More" in the bottom bar opens the full menu (the side menu is hidden on narrow screens). */
+.bottom-nav .more-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; height: var(--bottom-h); color: var(--muted); font-size: .7rem; font-weight: 700; position: relative; background: none; border: 0; cursor: pointer; font-family: inherit; }
+.bottom-nav .more-btn.active { color: var(--crimson); }
+.more-backdrop { position: fixed; inset: 0; z-index: 29; background: rgb(0 0 0 / .35); }
+.more-sheet { position: fixed; left: 8px; right: 8px; bottom: calc(var(--bottom-h) + env(safe-area-inset-bottom) + 8px); max-height: calc(100dvh - var(--header-h) - var(--bottom-h) - 40px); overflow-y: auto;
+  background: var(--page); border-radius: var(--radius); box-shadow: 0 10px 30px rgb(0 0 0 / .3); padding: 10px; }
+.more-head { display: flex; align-items: center; justify-content: space-between; padding: 2px 4px 8px; }
+.left-rail.in-sheet { display: block; position: static; max-height: none; overflow: visible; }
+.left-rail.in-sheet .rail-card + .rail-card { margin-top: 10px; }
