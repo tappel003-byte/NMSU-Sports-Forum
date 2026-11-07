@@ -283,7 +283,17 @@ function TmGames({ sport, season }: { sport: string; season: string }) {
     <section className="card">
       <div className="section-head"><h2>Games</h2><span className="small muted">{data.games.length} played</span></div>
       {data.games.length ? data.games.map((g) => (
-        <GameRow key={g.id} game={g} extra={(g.posts || g.chats) ? <div className="tiny muted">{g.posts} posts · {g.chats} chat messages</div> : undefined} />
+        // History is a plain results list: date, opponent, score. No calendar block or sport label (it reads like an upcoming game).
+        <Link key={g.id} to={`/games/${g.id}`} className="list-row tm-row tm-game">
+          <span className="grow">
+            <strong>{matchup(g)}</strong>
+            <span className="tiny muted" style={{ display: 'block' }}>
+              {new Date(g.starts_at).toLocaleDateString('en-US', { timeZone: 'America/Denver', month: 'short', day: 'numeric', year: 'numeric' })}
+              {(g.posts || g.chats) ? ` · ${g.posts} posts · ${g.chats} chat messages` : ''}
+            </span>
+          </span>
+          <Score game={g} />
+        </Link>
       )) : <div className="empty">No games on record for this season.</div>}
     </section>
   );
