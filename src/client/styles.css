@@ -688,3 +688,4 @@ input[type='checkbox']:disabled { opacity: .5; cursor: not-allowed; }
 .history-noclip { font-size: 2.4rem; }
 .history-body { padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; }
 .history-note { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.info-circle { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--crimson); background: var(--surface); color: var(--crimson); font-weight: 900; font-style: italic; font-family: Georgia, serif; cursor: pointer; display: inline-grid; place-items: center; padding: 0; }

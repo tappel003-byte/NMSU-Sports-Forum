@@ -822,28 +822,33 @@ try {
   check('On a phone, More opens the full menu (Aggie History, Calendar, Members…) and closes after picking',
     /Aggie History/.test(sheetText ?? '') && /Calendar/.test(sheetText ?? '') && /Members/.test(sheetText ?? '') && sheetClosed, JSON.stringify({ sheetClosed }));
 
-  // ---------- Aggie Vault: its own gallery page of YouTube clips ----------
-  await reg.goto(BASE + '/vault');
-  await reg.click('a:has-text("Add a clip")');
-  await reg.waitForSelector('h1:has-text("Add to the Aggie Vault")');
-  await reg.fill('#title', '1960 Sun Bowl team');
-  await reg.fill('#body', 'Warren Woodson\'s unbeaten Aggies. https://www.youtube.com/watch?v=dQw4w9WgXcQ');
-  await reg.click('button:has-text("Post discussion")');
-  await reg.waitForURL(/\/t\/\d+/);
-  const clipThread = reg.url();
+  // ---------- Aggie Vault: its own gallery page of YouTube clips; admins add, everyone watches and comments ----------
+  await admin.goto(BASE + '/vault');
+  await admin.click('button[aria-label="How to add a video"]');
+  const helpText = await admin.textContent('.note-box');
+  await admin.click('a:has-text("Add a clip")');
+  await admin.waitForSelector('h1:has-text("Add to the Aggie Vault")');
+  await admin.fill('#title', '1960 Sun Bowl team');
+  await admin.fill('#body', 'Warren Woodson\'s unbeaten Aggies. https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+  await admin.click('button:has-text("Post discussion")');
+  await admin.waitForURL(/\/t\/\d+/);
+  const clipThread = admin.url();
   await reg.goto(BASE + '/vault');
   await reg.waitForSelector('.history-card');
   const card = await reg.textContent('.history-card');
   const thumb = await reg.getAttribute('.history-card img', 'src');
+  const memberAdd = await reg.locator('a:has-text("Add a clip")').count();
+  const memberPost = await api(reg, '/threads', { body: { forum: 'aggie-vault', title: 'Member clip try', body: 'https://youtu.be/dQw4w9WgXcQ' } });
   await reg.screenshot({ path: `${SHOTS}/iphone-aggie-vault.png` });
   await reg.click('.history-card');
-  await reg.waitForURL(clipThread);
+  await reg.waitForURL(clipThread.replace(BASE, '**'));
   await reg.goto(BASE + '/');
   await reg.click('.bottom-nav button:has-text("More")');
   await reg.click('.more-sheet a:has-text("Aggie Vault")');
   await reg.waitForURL('**/vault');
-  check('Aggie Vault is its own page (in More): "Add a clip" posts a video card that opens the clip page',
-    /1960 Sun Bowl team/.test(card ?? '') && /unbeaten/.test(card ?? '') && thumb === 'https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg', JSON.stringify({ card, thumb }));
+  check('Aggie Vault: admins add clips (with a how-to info circle); members see the cards and can open them but cannot add',
+    /1960 Sun Bowl team/.test(card ?? '') && /unbeaten/.test(card ?? '') && thumb === 'https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg'
+    && /Copy link/.test(helpText ?? '') && memberAdd === 0 && memberPost.status === 403, JSON.stringify({ card, thumb, memberAdd, memberPost: memberPost.status }));
 
   // ---------- Smaller iPhones: iPhone SE / mini (375 wide) and original SE (320 wide) ----------
   for (const [label, w, h] of [['se', 375, 667], ['se1', 320, 568]]) {
