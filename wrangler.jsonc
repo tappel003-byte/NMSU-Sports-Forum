@@ -22,6 +22,8 @@
   // R2 is optional. Without it, photos are stored in D1 (see src/worker/storage.ts).
   // Uncomment after enabling R2 and running `wrangler r2 bucket create nmsu-sports-forum-uploads`.
   // "r2_buckets": [{ "binding": "UPLOADS", "bucket_name": "nmsu-sports-forum-uploads" }],
+  // Workers AI: reads media guide photos into a draft roster for an admin to check (free daily allowance).
+  "ai": { "binding": "AI" },
   "durable_objects": {
     "bindings": [{ "name": "CHAT", "class_name": "ChatRoom" }]
   },

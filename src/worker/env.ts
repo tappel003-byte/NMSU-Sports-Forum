@@ -5,6 +5,8 @@ export interface Env {
   ASSETS: Fetcher;
   CHAT: DurableObjectNamespace;
   UPLOADS?: R2Bucket;
+  /** Workers AI (live site only): reads media guide photos into a draft roster. */
+  AI?: { run(model: string, input: Record<string, unknown>): Promise<unknown> };
   SITE_NAME: string;
   MAIL_FROM: string;
   RESEND_API_KEY?: string;

@@ -578,6 +578,7 @@ function RosterPhotos() {
   const { toast } = useApp();
   const { data, reload } = useApi<{ photos: RosterPhoto[] }>('/roster-photos');
   const [text, setText] = useState<Record<number, string>>({});
+  const [reading, setReading] = useState<number | null>(null);
   if (!data) return <Loading />;
   const add = async (p: RosterPhoto) => {
     try {
@@ -586,6 +587,14 @@ function RosterPhotos() {
       setText({ ...text, [p.id]: '' });
     } catch (err) { toast((err as Error).message); }
   };
+  const read = async (p: RosterPhoto) => {
+    setReading(p.id);
+    try {
+      const r = await api<{ text: string }>(`/roster-photos/${p.id}/read`, { method: 'POST' });
+      setText((t) => ({ ...t, [p.id]: r.text }));
+      toast('Draft filled in. Check it against the photo before adding.');
+    } catch (err) { toast((err as Error).message); } finally { setReading(null); }
+  };
   const done = async (p: RosterPhoto) => {
     try { await api(`/roster-photos/${p.id}/done`, { method: 'POST' }); toast('Done. The sender has been thanked.'); reload(); } catch (err) { toast((err as Error).message); }
   };
@@ -593,14 +602,15 @@ function RosterPhotos() {
   return (
     <section className="card">
       <div className="section-head"><h2>Roster photos to enter</h2><span className="small muted">{data.photos.length} waiting</span></div>
-      <div className="card-pad small muted" style={{ paddingTop: 0 }}>Tip: give the photo to Claude and ask for one player per line: <code>#, Name, Pos, Yr, Ht, Wt, Hometown</code>. Paste the list below, then Mark done.</div>
+      <div className="card-pad small muted" style={{ paddingTop: 0 }}>Two ways to fill the box: tap <strong>Read this page</strong> (Cloudflare reads the photo), or give the photo to Claude and ask for one player per line: <code>#, Name, Pos, Yr, Ht, Wt, Hometown</code>. Check the list against the photo, Add players, then Mark done.</div>
       {data.photos.length ? data.photos.map((p) => (
         <div key={p.id} className="card-pad stack roster-photo" style={{ borderTop: '1px solid var(--line)' }}>
           <div><strong>{label(p)}</strong> <span className="small muted">from {p.username} · {timeAgo(p.created_at)}</span></div>
           {p.note && <div className="small">{p.note}</div>}
           <a href={`/api/roster-photos/${p.id}/image`} target="_blank" rel="noopener noreferrer"><img src={`/api/roster-photos/${p.id}/image`} alt={`Media guide page for ${label(p)}`} className="roster-photo-img" /></a>
           <textarea className="input" rows={5} placeholder={'12, John Smith, QB, Jr, 6-2, 205, Tyler, TX'} value={text[p.id] ?? ''} onChange={(e) => setText({ ...text, [p.id]: e.target.value })} aria-label="Paste players" />
-          <div className="row"><button className="btn small" disabled={!(text[p.id] ?? '').trim()} onClick={() => add(p)}>Add players</button>
+          <div className="row" style={{ flexWrap: 'wrap', gap: 8 }}><button className="btn small secondary" disabled={reading === p.id} onClick={() => read(p)}>{reading === p.id ? 'Reading…' : '🔎 Read this page'}</button>
+            <button className="btn small" disabled={!(text[p.id] ?? '').trim()} onClick={() => add(p)}>Add players</button>
             <Link className="btn small ghost" to={`/time-machine?sport=${p.sport}&season=${p.season}-${String((p.season + 1) % 100).padStart(2, '0')}`}>Open roster</Link>
             <button className="btn small secondary" onClick={() => done(p)}>Mark done</button></div>
         </div>
