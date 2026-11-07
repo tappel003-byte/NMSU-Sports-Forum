@@ -246,14 +246,32 @@ interface VaultItem { id: number; title: string; youtube_id: string | null; note
 export function VaultPage() {
   const { me } = useApp();
   const { data, error, reload } = useApi<{ items: VaultItem[] }>('/vault');
+  const [help, setHelp] = useState(false);
   return (
     <div className="stack">
       <div className="page-head">
         <BackButton />
         <div className="eyebrow" style={{ marginTop: 8 }}>🎬 Classic games · upsets · teams</div>
         <h1>Aggie Vault</h1>
-        <p className="muted small" style={{ margin: 0 }}>Great Aggie moments on video, all in one place. Tap a card to watch right here. Never archived.</p>
-        {me && <div style={{ marginTop: 10 }}><Link to="/new?forum=aggie-vault" className="btn"><Plus size={16} /> Add a clip</Link></div>}
+        <p className="muted small" style={{ margin: 0 }}>Great Aggie moments on video, all in one place. Tap a card to watch right here and share your memories. Never archived.</p>
+        {me?.role === 'admin' && (
+          <div className="row" style={{ marginTop: 10, alignItems: 'center' }}>
+            <Link to="/new?forum=aggie-vault" className="btn"><Plus size={16} /> Add a clip</Link>
+            <button type="button" className="info-circle" onClick={() => setHelp(!help)} aria-expanded={help} aria-label="How to add a video">i</button>
+          </div>
+        )}
+        {me?.role === 'admin' && help && (
+          <div className="note-box small" style={{ marginTop: 8 }}>
+            <strong>How to add a video</strong>
+            <ol style={{ margin: '6px 0 0', paddingLeft: 18 }}>
+              <li>In YouTube, open the video and tap <strong>Share → Copy link</strong>.</li>
+              <li>Here, tap <strong>Add a clip</strong> and give it a title (e.g. “1960 Sun Bowl team”).</li>
+              <li>Paste the link into the message and add a few words about it.</li>
+              <li>Post it. It shows as a video card here, and it plays on the site.</li>
+            </ol>
+            <div className="tiny muted" style={{ marginTop: 6 }}>Single videos work (not whole channels or playlists). Up to three videos per post.</div>
+          </div>
+        )}
       </div>
       {error ? <ErrorState error={error} retry={reload} /> : !data ? <Loading /> : data.items.length === 0 ? (
         <div className="card empty">The vault is empty. Add the first classic clip: paste a YouTube link and a few words about the game or team.</div>

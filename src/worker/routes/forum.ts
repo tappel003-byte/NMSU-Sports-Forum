@@ -174,6 +174,8 @@ forum.post('/threads', async (c) => {
   const forumSlug = game ? SPORT_BY_KEY[game.sport]?.forum ?? 'other-sports' : body.forum || 'general';
   const f = await first<{ id: number; sports: string; kind: string }>(c.env, 'SELECT id, sports, kind FROM forums WHERE slug = ?', forumSlug);
   if (!f) throw new HttpError(400, 'Choose a forum.');
+  // Aggie Vault: admins add the clips; members watch and comment.
+  if (forumSlug === 'aggie-vault' && user.role !== 'admin') throw new HttpError(403, 'Only admins can add videos to the Aggie Vault. Comments are open to everyone.');
   const sports = f.sports ? f.sports.split(',') : [];
   const sport = game ? game.sport : body.sport && sports.includes(body.sport) ? body.sport : sports.length === 1 ? sports[0] : null;
   const t = now();
