@@ -1,0 +1,609 @@
+<!-- Excerpt of Wikipedia: 1992–93 New Mexico State Aggies basketball team (CC BY-SA), for tests -->
+==Schedule and results==
+{{CBB schedule start |attend=yes}}
+|-
+!colspan=9 style={{CollegePrimaryStyle|New Mexico State Aggies}}| Regular season
+{{CBB schedule entry
+| date         = Nov 26, 1992
+| time         = 
+| nonconf      = yes
+| away         = 
+| neutral      = yes
+| rank         = 
+| opponent     = [[1992–93 Chattanooga Mocs basketball team|Chattanooga]]
+| opprank      = 
+| site_stadium = [[Sullivan Arena]]
+| site_cityst  = [[Anchorage, Alaska]]
+| gamename     = [[Great Alaska Shootout]]
+| score        = 75–65
+| overtime     = 
+| attend       = 6,658
+| record       = 1–0
+}}
+{{CBB schedule entry
+| date         = Nov 27, 1992
+| time         = 
+| nonconf      = yes
+| away         = 
+| neutral      = yes
+| rank         = 
+| opponent     = {{cbb link|year=1992|sex=men|team=Oregon Ducks|title=Oregon}}
+| opprank      = 
+| site_stadium = Sullivan Arena
+| site_cityst  = Anchorage, Alaska
+| gamename     = Great Alaska Shootout
+| score        = 86–75
+| overtime     = 
+| attend       = 6,183
+| record       = 2–0
+}}
+{{CBB schedule entry
+| date         = Nov 28, 1992
+| time         = 
+| nonconf      = yes
+| away         = 
+| neutral      = yes
+| rank         = 
+| opponent     = [[1992–93 Illinois Fighting Illini men's basketball team|Illinois]]
+| opprank      = 
+| site_stadium = Sullivan Arena
+| site_cityst  = Anchorage, Alaska
+| gamename     = Great Alaska Shootout
+| score        = 95–94
+| overtime     = 
+| attend       = 6,687
+| record       = 3–0
+}}
+{{CBB schedule entry
+| date         = Dec 1, 1992
+| time         = 
+| nonconf      = yes
+| away         = 
+| neutral      = 
+| rank         = 21
+| opponent     = {{cbb link|year=1992|sex=men|team=Eastern New Mexico Greyhounds|title=Eastern New Mexico}}
+| opprank      = 
+| site_stadium = [[Pan American Center]]
+| site_cityst  = [[Las Cruces, New Mexico]]
+| gamename     = 
+| score        = 73–64
+| overtime     = 
+| attend       = 8,216
+| record       = 4–0
+}}
+{{CBB schedule entry
+| date         = Dec 4, 1992
+| time         = 
+| nonconf      = yes
+| away         = 
+| neutral      = 
+| rank         = 21
+| opponent     = {{cbb link|year=1992|sex=men|team=UTEP Miners|title=UTEP}}
+| opprank      = 
+| site_stadium = Pan American Center
+| site_cityst  = Las Cruces, New Mexico
+| gamename     = 
+| score        = 63–64
+| overtime     = 
+| attend       = 12,313
+| record       = 4–1
+}}
+{{CBB schedule entry
+| date         = Dec 7, 1992
+| time         = 
+| nonconf      = yes
+| away         = yes
+| neutral      = 
+| rank         = 
+| opponent     = UTEP
+| opprank      = 
+| site_stadium = [[Don Haskins Center|Special Events Center]]
+| site_cityst  = [[El Paso, Texas]]
+| gamename     = 
+| score        = 75–69
+| overtime     = 
+| attend       = 12,007
+| record       = 5–1
+}}
+{{CBB schedule entry
+| date         = Dec 12, 1992
+| time         = 
+| nonconf      = yes
+| away         = 
+| neutral      = 
+| rank         = 
+| opponent     = [[1992–93 New Mexico Lobos men's basketball team|New Mexico]]
+| opprank      = 
+| site_stadium = Pan American Center
+| site_cityst  = Las Cruces, New Mexico
+| gamename     = 
+| score        = 62–69
+| overtime     = 
+| attend       = 12,923
+| record       = 5–2
+}}
+{{CBB schedule entry
+| date         = Dec 21, 1992
+| time         = 
+| nonconf      = yes
+| away         = 
+| neutral      = 
+| rank         = 
+| opponent     = {{cbb link|year=1992|sex=men|team=Sam Houston State Bearkats|title=Sam Houston State}}
+| opprank      = 
+| site_stadium = Pan American Center
+| site_cityst  = Las Cruces, New Mexico
+| gamename     = 
+| score        = 104–76
+| overtime     = 
+| attend       = 7,921
+| record       = 6–2
+}}
+{{CBB schedule entry
+| date         = Dec 23, 1992
+| time         = 
+| nonconf      = yes
+| away         = yes
+| neutral      = 
+| rank         = 
+| opponent     = New Mexico
+| opprank      = 
+| site_stadium = [[The Pit (arena)|The Pit]]
+| site_cityst  = [[Albuquerque, New Mexico]]
+| gamename     = 
+| score        = 66–71
+| overtime     = 
+| attend       = 18,100
+| record       = 6–3
+}}
+{{CBB schedule entry
+| date         = Dec 21, 1992
+| time         = 
+| nonconf      = yes
+| away         = 
+| neutral      = 
+| rank         = 
+| opponent     = {{cbb link|year=1992|sex=men|team=East Texas State Lions|title=East Texas State}}
+| opprank      = 
+| site_stadium = Pan American Center
+| site_cityst  = Las Cruces, New Mexico
+| gamename     = 
+| score        = 83–69
+| overtime     = 
+| attend       = 6,349
+| record       = 7–3
+}}
+{{CBB schedule entry
+| date         = Jan 4, 1993
+| time         = 
+| nonconf      = 
+| away         = 
+| neutral      = 
+| rank         = 
+| opponent     = {{cbb link|year=1992|sex=men|team=Cal State Fullerton Titans|title=Cal State Fullerton}}
+| opprank      = 
+| site_stadium = Pan American Center
+| site_cityst  = Las Cruces, New Mexico
+| gamename     = 
+| score        = 78–67
+| overtime     = 
+| attend       = 7,629
+| record       = 8–3
+| conference   = 1–0
+}}
+{{CBB schedule entry
+| date         = Jan 7, 1993
+| time         = 
+| nonconf      = 
+| away         = yes
+| neutral      = 
+| rank         = 
+| opponent     = {{cbb link|year=1992|sex=men|team=UC Santa Barbara Gauchos|title=UC Santa Barbara}}
+| opprank      = 
+| site_stadium = [[UC Santa Barbara Events Center|The Thunderdome]]
+| site_cityst  = [[Santa Barbara, California]]
+| gamename     = 
+| score        = 71–69
+| overtime     = 
+| attend       = 6,000
+| record       = 9–3
+| conference   = 2–0
+}}
+{{CBB schedule entry
+| date         = Jan 9, 1993
+| time         = 
+| nonconf      = 
+| away         = yes
+| neutral      = 
+| rank         = 
+| opponent     = [[1992–93 Long Beach State 49ers men's basketball team|Long Beach State]]
+| opprank      = 
+| site_stadium = [[Gold Mine (Long Beach)|The Gold Mine]]
+| site_cityst  = [[Long Beach, California]]
+| gamename     = 
+| score        = 71–97
+| overtime     = 
+| attend       = 1,987
+| record       = 9–4
+| conference   = 2–1
+}}
+{{CBB schedule entry
+| date         = Jan 14, 1993
+| time         = 
+| nonconf      = 
+| away         = 
+| neutral      = 
+| rank         = 
+| opponent     = {{cbb link|year=1992|sex=men|team=San Jose State Spartans|title=San Jose State}}
+| opprank      = 
+| site_stadium = Pan American Center
+| site_cityst  = Las Cruces, New Mexico
+| gamename     = 
+| score        = 87–72
+| overtime     = 
+| attend       = 8,416
+| record       = 10–4
+| conference   = 3–1
+}}
+{{CBB schedule entry
+| date         = Jan 16, 1993
+| time         = 
+| nonconf      = 
+| away         = 
+| neutral      = 
+| rank         = 
+| opponent     = {{cbb link|year=1992|sex=men|team=Pacific Tigers|title=Pacific}}
+| opprank      = 
+| site_stadium = Pan American Center
+| site_cityst  = Las Cruces, New Mexico
+| gamename     = 
+| score        = 53–48
+| overtime     = 
+| attend       = 8,654
+| record       = 11–4
+| conference   = 4–1
+}}
+{{CBB schedule entry
+| date         = Jan 21, 1993
+| time         = 
+| nonconf      = yes
+| away         = 
+| neutral      = 
+| rank         = 
+| opponent     = {{cbb link|year=1992|sex=men|team=Midwestern State Mustangs|title=Midwestern State}}
+| opprank      = 
+| site_stadium = Pan American Center
+| site_cityst  = Las Cruces, New Mexico
+| gamename     = 
+| score        = 83–69
+| overtime     = 
+| attend       = 6,560
+| record       = 12–4
+}}
+{{CBB schedule entry
+| date         = Jan 23, 1993
+| time         = 
+| nonconf      = 
+| away         = 
+| neutral      = 
+| rank         = 
+| opponent     = [[1992–93 UC Irvine Anteaters men's basketball team|UC Irvine]]
+| opprank      = 
+| site_stadium = Pan American Center
+| site_cityst  = Las Cruces, New Mexico
+| gamename     = 
+| score        = 72–67
+| overtime     = 
+| attend       = 8,919
+| record       = 13–4
+| conference   = 5–1
+}}
+{{CBB schedule entry
+| date         = Jan 25, 1993
+| time         = 
+| nonconf      = 
+| away         = 
+| neutral      = 
+| rank         = 
+| opponent     = UC Santa Barbara
+| opprank      = 
+| site_stadium = Pan American Center
+| site_cityst  = Las Cruces, New Mexico
+| gamename     = 
+| score        = 75–64
+| overtime     = 
+| attend       = 8,344
+| record       = 14–4
+| conference   = 6–1
+}}
+{{CBB schedule entry
+| date         = Jan 30, 1993
+| time         = 
+| nonconf      = 
+| away         = yes
+| neutral      = 
+| rank         = 
+| opponent     = {{cbb link|year=1992|sex=men|team=Nevada Wolf Pack|title=Nevada}}
+| opprank      = 
+| site_stadium = [[Lawlor Events Center]]
+| site_cityst  = [[Reno, Nevada]]
+| gamename     = 
+| score        = 96–89
+| overtime     = 
+| attend       = 5,825
+| record       = 15–4
+| conference   = 7–1
+}}
+{{CBB schedule entry
+| date         = Feb 1, 1993
+| time         = 
+| nonconf      = 
+| away         = yes
+| neutral      = 
+| rank         = 
+| opponent     = {{cbb link|year=1992|sex=men|team=Utah State Aggies|title=Utah State}}
+| opprank      = 
+| site_stadium = [[Dee Glen Smith Spectrum]]
+| site_cityst  = [[Logan, Utah]]
+| gamename     = 
+| score        = 76–64
+| overtime     = 
+| attend       = 7,128
+| record       = 16–4
+| conference   = 8–1
+}}
+{{CBB schedule entry
+| date         = Feb 6, 1993
+| time         = 
+| nonconf      = 
+| away         = 
+| neutral      = 
+| rank         = 
+| opponent     = Long Beach State
+| opprank      = 
+| site_stadium = Pan American Center
+| site_cityst  = Las Cruces, New Mexico
+| gamename     = 
+| score        = 77–65
+| overtime     = 
+| attend       = 12,249
+| record       = 17–4
+| conference   = 9–1
+}}
+{{CBB schedule entry
+| date         = Feb 11, 1993
+| time         = 
+| nonconf      = 
+| away         = yes
+| neutral      = 
+| rank         = 
+| opponent     = Pacific
+| opprank      = 
+| site_stadium = [[Alex G. Spanos Center]]
+| site_cityst  = [[Stockton, California]]
+| gamename     = 
+| score        = 68–71
+| overtime     = 
+| attend       = 3,604
+| record       = 17–5
+| conference   = 9–2
+}}
+{{CBB schedule entry
+| date         = Feb 13, 1993
+| time         = 
+| nonconf      = 
+| away         = yes
+| neutral      = 
+| rank         = 
+| opponent     = San Jose State
+| opprank      = 
+| site_stadium = [[The Event Center]]
+| site_cityst  = [[San Jose, California]]
+| gamename     = 
+| score        = 60–55
+| overtime     = 
+| attend       = 2,550
+| record       = 18–5
+| conference   = 10–2
+}}
+{{CBB schedule entry
+| date         = Feb 20, 1993
+| time         = 
+| nonconf      = 
+| away         = yes
+| neutral      = 
+| rank         = 
+| opponent     = {{cbb link|year=1992|sex=men|team=UNLV Runnin' Rebels|title=UNLV}}
+| opprank      = 15
+| site_stadium = [[Thomas & Mack Center]]
+| site_cityst  = [[Las Vegas, Nevada]]
+| gamename     = 
+| score        = 81–97
+| overtime     = 
+| attend       = 18,125
+| record       = 18–6
+| conference   = 10–3
+}}
+{{CBB schedule entry
+| date         = Feb 25, 1993
+| time         = 
+| nonconf      = 
+| away         = 
+| neutral      = 
+| rank         = 
+| opponent     = Utah State
+| opprank      = 
+| site_stadium = Pan American Center
+| site_cityst  = Las Cruces, New Mexico
+| gamename     = 
+| score        = 82–60
+| overtime     = 
+| attend       = 7,612
+| record       = 19–6
+| conference   = 11–3
+}}
+{{CBB schedule entry
+| date         = Feb 27, 1993
+| time         = 
+| nonconf      = 
+| away         = 
+| neutral      = 
+| rank         = 
+| opponent     = Nevada
+| opprank      = 
+| site_stadium = Pan American Center
+| site_cityst  = Las Cruces, New Mexico
+| gamename     = 
+| score        = 87–66
+| overtime     = 
+| attend       = 9,348
+| record       = 20–6
+| conference   = 12–3
+}}
+{{CBB schedule entry
+| date         = Mar 1, 1993
+| time         = 
+| nonconf      = 
+| away         = 
+| neutral      = 
+| rank         = 
+| opponent     = UNLV
+| opprank      = 16
+| site_stadium = Pan American Center
+| site_cityst  = Las Cruces, New Mexico
+| gamename     = 
+| score        = 90–88
+| overtime     = 
+| attend       = 13,007
+| record       = 21–6
+| conference   = 13–3
+}}
+{{CBB schedule entry
+| date         = Mar 4, 1993
+| time         = 
+| nonconf      = 
+| away         = yes
+| neutral      = 
+| rank         = 
+| opponent     = Cal State Fullerton
+| opprank      = 
+| site_stadium = [[Titan Gym]]
+| site_cityst  = [[Fullerton, California]]
+| gamename     = 
+| score        = 78–70
+| overtime     = 
+| attend       = 2,279
+| record       = 22–6
+| conference   = 14–3
+}}
+{{CBB schedule entry
+| date         = Mar 6, 1993
+| time         = 
+| nonconf      = 
+| away         = yes
+| neutral      = 
+| rank         = 
+| opponent     = UC Irvine
+| opprank      = 
+| site_stadium = [[Bren Events Center]]
+| site_cityst  = [[Irvine, California]]
+| gamename     = 
+| score        = 76–74
+| overtime     = 
+| attend       = 2,660
+| record       = 23–6
+| conference   = 15–3
+}}
+|-
+!colspan=9 style={{CollegePrimaryStyle|New Mexico State Aggies}}|[[1993 Big West Conference men's basketball tournament|<span style="{{CollegePrimaryStyle|New Mexico State Aggies|border=none}}">Big West tournament</span>]]
+{{CBB schedule entry
+| date         = Mar 12, 1993
+| time         = 
+| nonconf      = yes
+| away         = 
+| neutral      = yes
+| rank         = 24
+| opponent     = UC Irvine
+| opprank      = 
+| site_stadium = Long Beach Arena
+| site_cityst  = Long Beach, California
+| gamename     = Quarterfinals
+| score        = 87–76
+| overtime     = 
+| attend       = 2,500
+| record       = 24–6
+}}
+{{CBB schedule entry
+| date         = Mar 13, 1993
+| time         = 
+| nonconf      = yes
+| away         = 
+| neutral      = yes
+| rank         = 24
+| opponent     = UC Santa Barbara
+| opprank      = 
+| site_stadium = Long Beach Arena
+| site_cityst  = Long Beach, California
+| gamename     = Semifinals
+| score        = 82–77
+| overtime     = 
+| attend       = 7,515
+| record       = 25–6
+}}
+{{CBB schedule entry
+| date         = Mar 14, 1993
+| time         = 
+| nonconf      = yes
+| away         = yes
+| neutral      = 
+| rank         = 24
+| opponent     = Long Beach State
+| opprank      = 
+| site_stadium = Long Beach Arena
+| site_cityst  = Long Beach, California
+| gamename     = Championship game
+| score        = 62–70
+| overtime     = 
+| attend       = 4,543
+| record       = 25–7
+}}
+|-
+!colspan=9 style={{CollegePrimaryStyle|New Mexico State Aggies}}|[[1993 NCAA Division I men's basketball tournament|<span style="{{CollegePrimaryStyle|New Mexico State Aggies|border=none}}">NCAA tournament</span>]]
+{{CBB schedule entry
+| date         = Mar 19, 1993
+| time         = 
+| nonconf      = yes
+| away         = 
+| neutral      = yes
+| rank         = 24
+| seed         = 7 E
+| opponent     = [[1992–93 Nebraska Cornhuskers men's basketball team|Nebraska]]
+| opprank      = 
+| oppseed      = 10 E
+| site_stadium = [[Carrier Dome]]
+| site_cityst  = [[Syracuse, New York]]
+| gamename     = First Round
+| score        = 93–79
+| overtime     = 
+| attend       = 14,287
+| record       = 26–7
+}}
+{{CBB schedule entry
+| date         = Mar 21, 1993
+| time         = 
+| nonconf      = yes
+| away         = 
+| neutral      = yes
+| rank         = 24
+| seed         = 7 E
+| opponent     = [[1992–93 Cincinnati Bearcats men's basketball team|Cincinnati]]
+| opprank      = 7
+| oppseed      = 2 E
+| site_stadium = Carrier Dome
+| site_cityst  = Syracuse, New York
+| gamename     = Second Round
+| score        = 55–92
+| overtime     = 
+| attend       = 15,904
+| record       = 26–8
+}}
