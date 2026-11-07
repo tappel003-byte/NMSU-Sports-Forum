@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   Award, Bell, Bookmark, CalendarDays, ClipboardList, History, Home, Lightbulb, LogOut, Mail, Map as MapIcon, MessageCircle, MessagesSquare,
-  Search, Send, Settings, Shield, Sparkles, Trophy, Trophy as TrophyIcon, UserPlus, Users,
+  Moon, Search, Sun, Send, Settings, Shield, Sparkles, Trophy, Trophy as TrophyIcon, UserPlus, Users,
 } from 'lucide-react';
 import { FEATURED_SPORTS } from '../../shared/sports';
 import { gameTime, matchup, sportIcon, sportName } from '../format';
@@ -38,6 +38,16 @@ function Header() {
   const [open, setOpen] = useState(false);
   const [crest, setCrest] = useState(false);
   const nav = useNavigate();
+  // Moon/sun: one tap picks dark or light on purpose, saved to the account so it follows the member to every device.
+  const isDark = () => document.documentElement.dataset.theme === 'dark';
+  const [dark, setDark] = useState(isDark);
+  useEffect(() => { setDark(isDark()); }, [me?.prefs?.theme]);
+  const toggleTheme = async () => {
+    const next = isDark() ? 'light' : 'dark';
+    document.documentElement.dataset.theme = next;
+    setDark(next === 'dark');
+    try { await api('/me/prefs', { method: 'PATCH', body: { theme: next } }); await refresh(); } catch { /* the look already changed; it will be saved next time */ }
+  };
   const loc = useLocation();
   const menuRef = useRef<HTMLDivElement>(null);
   useEffect(() => setOpen(false), [loc.pathname]);
@@ -79,6 +89,7 @@ function Header() {
           </div>
         ) : (
         <div className="header-actions">
+          <button type="button" className="icon-btn" onClick={toggleTheme} aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'} title={dark ? 'Light mode' : 'Dark mode'}>{dark ? <Sun size={20} /> : <Moon size={20} />}</button>
           <Link to="/search" className="icon-btn" aria-label="Search"><Search size={20} /></Link>
           <Link to="/messages" className="icon-btn" aria-label={`Private messages${pulse.messages ? `, ${pulse.messages} unread` : ''}`}>
             <Mail size={20} />{pulse.messages > 0 && <span className="dot">{pulse.messages}</span>}
