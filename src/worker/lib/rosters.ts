@@ -157,8 +157,10 @@ export async function runRosterImport(env: Env, budget: number): Promise<number>
       used++;
       try {
         const res = await fetch(`${base}/roster?team=New%20Mexico%20State&year=${y}`, { headers: { Authorization: `Bearer ${env.CFBD_API_KEY}`, Accept: 'application/json' }, signal: AbortSignal.timeout(20_000) });
-        if (!res.ok) break; // try again next run
-        await save(env, 'fb', y, 'cfbd', null, parseCfbdRoster(await res.json()));
+        if (!res.ok) {
+          await setSetting(env, 'cfbd_last_error', `${new Date().toISOString()} roster ${y}: ${res.status} ${(await res.text()).slice(0, 200)}`);
+          if (res.status !== 400 && res.status !== 404) break; // outage or limit: try again next run
+        } else await save(env, 'fb', y, 'cfbd', null, parseCfbdRoster(await res.json()));
       } catch { break; }
       y--;
     }

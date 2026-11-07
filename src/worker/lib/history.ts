@@ -240,8 +240,10 @@ export async function runCfbdFootballHistory(env: Env, budget: number): Promise<
     try {
       const res = await fetch(`${base}/games?year=${y}&team=New%20Mexico%20State&seasonType=both`,
         { headers: { Authorization: `Bearer ${env.CFBD_API_KEY}`, Accept: 'application/json' }, signal: AbortSignal.timeout(20_000) });
-      if (!res.ok) break; // try this season again next run
-      await saveSeason(env, parseCfbdGames(await res.json()));
+      if (!res.ok) {
+        await setSetting(env, 'cfbd_last_error', `${new Date().toISOString()} games ${y}: ${res.status} ${(await res.text()).slice(0, 200)}`);
+        if (res.status !== 400 && res.status !== 404) break; // outage or limit: try this season again next run
+      } else await saveSeason(env, parseCfbdGames(await res.json()));
     } catch { break; }
     y--;
   }
