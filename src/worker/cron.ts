@@ -7,12 +7,15 @@ import { runGameLifecycle, syncAllFeeds } from './lib/sports';
 import { syncRecruiting } from './lib/recruiting';
 import { expireBanProposals } from './lib/moderation';
 import { runAutoTopics } from './lib/topics';
+import { refreshRecentSeasons, runHistoryImport } from './lib/history';
 
 /** Every 30 minutes: sync schedules, run the game-day lifecycle and deliver bookmark reminders. */
 export async function frequentJobs(env: Env): Promise<void> {
   await syncAllFeeds(env);
   await runGameLifecycle(env);
   await runAutoTopics(env);
+  // Time Machine history: a few past seasons per run from ESPN until every season on file is in.
+  await runHistoryImport(env).catch((e) => console.error('history import', e));
   const due = await all<{ id: number; user_id: number; post_id: number; note: string | null; thread_id: number; title: string }>(env,
     `SELECT b.id, b.user_id, b.post_id, b.note, p.thread_id, t.title FROM bookmarks b JOIN posts p ON p.id = b.post_id JOIN threads t ON t.id = p.thread_id
       WHERE b.reminded = 0 AND b.remind_at IS NOT NULL AND b.remind_at <= ?`, now());
@@ -41,6 +44,7 @@ export async function dailyJobs(env: Env): Promise<void> {
   await run(env, 'DELETE FROM password_resets WHERE expires_at < ?', t - 7 * DAY);
   await run(env, 'DELETE FROM notifications WHERE read_at IS NOT NULL AND created_at < ?', t - 90 * DAY);
   await syncRecruiting(env);
+  await refreshRecentSeasons(env).catch((e) => console.error('recent seasons', e));
   await expireBanProposals(env);
   // Weekly Nostradamus award retired (owner, Nov 2026): predictions stay on game pages only.
   if (new Date(t).getUTCDay() === 1) await weeklyDigest(env);
