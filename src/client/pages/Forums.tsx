@@ -4,7 +4,7 @@ import { BellOff, Plus } from 'lucide-react';
 import { api } from '../api';
 import { useApi, useApp } from '../state';
 import { gameTime, matchup, sportIcon, sportName } from '../format';
-import { ErrorState, GameRow, Loading, SUGGESTION_LABELS, ThreadList, type GameItem, type ThreadItem } from '../components/ui';
+import { BackButton, ErrorState, GameRow, Loading, SUGGESTION_LABELS, ThreadList, type GameItem, type ThreadItem } from '../components/ui';
 import { ComposerTools, MentionTextarea, PhotoPicker, PhotoThumbs, useDraft } from '../components/Composer';
 import { TagPicker } from './Thread';
 import { TAGS } from '../../shared/forum';
@@ -17,6 +17,8 @@ export function ForumPage() {
   const { slug = '' } = useParams();
   // Venue forums are retired: old links land on the Board. Aggie History and Suggestions keep their pages.
   if (isVenueForum(slug)) return <Navigate to="/feed" replace />;
+  // The Aggie Vault has its own gallery page.
+  if (slug === 'aggie-vault') return <Navigate to="/vault" replace />;
   return <ForumView slug={slug} />;
 }
 
@@ -198,7 +200,8 @@ export function NewThread() {
 
   return (
     <div className="card card-pad">
-      <h1>{f?.kind === 'suggestions' ? 'Suggest an improvement' : 'Start a discussion'}</h1>
+      <h1>{f?.kind === 'suggestions' ? 'Suggest an improvement' : f?.slug === 'aggie-vault' ? 'Add to the Aggie Vault' : 'Start a discussion'}</h1>
+      {f?.slug === 'aggie-vault' && <p className="small muted" style={{ marginTop: -4 }}>Title it (e.g. “1960 Sun Bowl team”), paste the YouTube link in the message with a few words about it, and post. It shows as a video card in the Aggie Vault.</p>}
       {gameId && <div className="note-box small" style={{ marginBottom: 12 }}>{game ? <>{sportIcon(game.sport)} <strong>{sportName(game.sport)}: NM State {matchup(game)}</strong> · {gameTime(game.starts_at, game.time_tba)}<br /></> : null}This thread will be linked to the game page{phase ? ` as the ${phase} discussion` : ''}.</div>}
       {!gameId && !forum && <GameThreadPicker />}
       <form onSubmit={submit}>
@@ -233,6 +236,43 @@ export function NewThread() {
         {error && <div className="error-box" style={{ marginBottom: 12 }}>{error}</div>}
         <div className="row"><button className="btn" disabled={busy}>{busy ? 'Posting…' : 'Post discussion'}</button><button type="button" className="btn ghost" onClick={() => nav(-1)}>Cancel</button></div>
       </form>
+    </div>
+  );
+}
+
+interface VaultItem { id: number; title: string; youtube_id: string | null; note: string; replies: number; created_at: number; author: { id: number; username: string } | null }
+
+/** Aggie Vault: its own page, a gallery of classic Aggie clips. Each card opens its page (video + comments). */
+export function VaultPage() {
+  const { me } = useApp();
+  const { data, error, reload } = useApi<{ items: VaultItem[] }>('/vault');
+  return (
+    <div className="stack">
+      <div className="page-head">
+        <BackButton />
+        <div className="eyebrow" style={{ marginTop: 8 }}>🎬 Classic games · upsets · teams</div>
+        <h1>Aggie Vault</h1>
+        <p className="muted small" style={{ margin: 0 }}>Great Aggie moments on video, all in one place. Tap a card to watch right here. Never archived.</p>
+        {me && <div style={{ marginTop: 10 }}><Link to="/new?forum=aggie-vault" className="btn"><Plus size={16} /> Add a clip</Link></div>}
+      </div>
+      {error ? <ErrorState error={error} retry={reload} /> : !data ? <Loading /> : data.items.length === 0 ? (
+        <div className="card empty">The vault is empty. Add the first classic clip: paste a YouTube link and a few words about the game or team.</div>
+      ) : (
+        <div className="history-grid">
+          {data.items.map((h) => (
+            <Link key={h.id} to={`/t/${h.id}`} className="history-card">
+              <div className="history-thumb">
+                {h.youtube_id ? <><img src={`https://i.ytimg.com/vi/${h.youtube_id}/hqdefault.jpg`} alt="" loading="lazy" /><span className="history-play" aria-hidden="true">▶</span></> : <span className="history-noclip" aria-hidden="true">📜</span>}
+              </div>
+              <div className="history-body">
+                <strong>{h.title}</strong>
+                {h.note && <div className="small muted history-note">{h.note}</div>}
+                <div className="tiny muted">{h.author ? h.author.username : 'NMSU Sports Forum'} · {timeAgo(h.created_at)}{h.replies ? ` · 💬 ${h.replies}` : ''}</div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

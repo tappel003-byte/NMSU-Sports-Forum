@@ -822,6 +822,29 @@ try {
   check('On a phone, More opens the full menu (Aggie History, Calendar, Members…) and closes after picking',
     /Aggie History/.test(sheetText ?? '') && /Calendar/.test(sheetText ?? '') && /Members/.test(sheetText ?? '') && sheetClosed, JSON.stringify({ sheetClosed }));
 
+  // ---------- Aggie Vault: its own gallery page of YouTube clips ----------
+  await reg.goto(BASE + '/vault');
+  await reg.click('a:has-text("Add a clip")');
+  await reg.waitForSelector('h1:has-text("Add to the Aggie Vault")');
+  await reg.fill('#title', '1960 Sun Bowl team');
+  await reg.fill('#body', 'Warren Woodson\'s unbeaten Aggies. https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+  await reg.click('button:has-text("Post discussion")');
+  await reg.waitForURL(/\/t\/\d+/);
+  const clipThread = reg.url();
+  await reg.goto(BASE + '/vault');
+  await reg.waitForSelector('.history-card');
+  const card = await reg.textContent('.history-card');
+  const thumb = await reg.getAttribute('.history-card img', 'src');
+  await reg.screenshot({ path: `${SHOTS}/iphone-aggie-vault.png` });
+  await reg.click('.history-card');
+  await reg.waitForURL(clipThread);
+  await reg.goto(BASE + '/');
+  await reg.click('.bottom-nav button:has-text("More")');
+  await reg.click('.more-sheet a:has-text("Aggie Vault")');
+  await reg.waitForURL('**/vault');
+  check('Aggie Vault is its own page (in More): "Add a clip" posts a video card that opens the clip page',
+    /1960 Sun Bowl team/.test(card ?? '') && /unbeaten/.test(card ?? '') && thumb === 'https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg', JSON.stringify({ card, thumb }));
+
   // ---------- Smaller iPhones: iPhone SE / mini (375 wide) and original SE (320 wide) ----------
   for (const [label, w, h] of [['se', 375, 667], ['se1', 320, 568]]) {
     await reg.setViewportSize({ width: w, height: h });
