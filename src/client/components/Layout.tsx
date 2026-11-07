@@ -166,7 +166,7 @@ function RostersCard() {
     <div className="rail-card">
       <p className="rail-title">Rosters</p>
       <div className="chip-row">
-        {data.sports.filter((s) => FEATURED_SPORTS.includes(s.key)).map((s) => <a key={s.key} href={s.roster_url} target="_blank" rel="noopener noreferrer" className="chip gray">{s.icon} {s.label}</a>)}
+        {data.sports.filter((s) => FEATURED_SPORTS.includes(s.key)).map((s) => <a key={s.key} href={s.roster_url} target="_blank" rel="noopener noreferrer" className="chip gray">{sportIcon(s.key)} {s.label}</a>)}
       </div>
       <Link to="/rosters" className="row small" style={{ marginTop: 10 }}><ClipboardList size={16} /> All rosters, radio &amp; links</Link>
     </div>

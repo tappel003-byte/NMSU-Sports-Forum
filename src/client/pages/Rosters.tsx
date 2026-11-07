@@ -2,6 +2,7 @@ import { ExternalLink, Radio } from 'lucide-react';
 import { useApi, useApp } from '../state';
 import { BackButton, ErrorState, Loading } from '../components/ui';
 import { Link } from 'react-router-dom';
+import { sportIcon } from '../format';
 
 export interface HubData {
   sports: { key: string; label: string; icon: string; roster_url: string; schedule_url: string }[];
@@ -28,7 +29,7 @@ export function Rosters() {
         <ul className="hub-list">
           {data.sports.map((s) => (
             <li key={s.key}>
-              <span aria-hidden="true">{s.icon}</span>
+              <span aria-hidden="true">{sportIcon(s.key)}</span>
               <strong className="grow">{s.label}</strong>
               <a href={s.roster_url} {...ext} className="btn small">Roster <ExternalLink size={14} /></a>
               <a href={s.schedule_url} {...ext} className="btn secondary small">Schedule</a>

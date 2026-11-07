@@ -896,6 +896,10 @@ try {
   const checkedColor = await reg.$eval('input[type="checkbox"]:checked', (el) => getComputedStyle(el).backgroundColor);
   await reg.screenshot({ path: `${SHOTS}/desktop-dark-settings.png` });
   check('Checked boxes are Aggie crimson in dark mode (not pink)', checkedColor === 'rgb(140, 11, 66)', checkedColor);
+  const goggles = await reg.locator('button:has-text("Swimming & Diving") img[src="/brand/swim-goggles.png"]').count();
+  const trackBtn = await reg.textContent('button:has-text("Track & Field")');
+  const xcBtn = await reg.textContent('button:has-text("Cross Country")');
+  check('Sport icons: no people (track 👟, cross country ⏱️, swimming uses the racing-goggles drawing)', goggles === 1 && trackBtn.includes('👟') && xcBtn.includes('⏱️'), JSON.stringify({ goggles, trackBtn, xcBtn }));
   await reg.goto(BASE + '/');
   await reg.screenshot({ path: `${SHOTS}/desktop-dark-home.png` });
   await reg.goto(BASE + '/games?sport=week');
