@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import type { AppEnv, Env } from './env';
 import { loadSession, requireMemberOrPublicRead } from './auth';
-import { HttpError } from './util';
+import { HttpError, httpsRedirectUrl } from './util';
 import { auth } from './routes/auth';
 import { forum } from './routes/forum';
 import { games } from './routes/games';
@@ -16,6 +16,10 @@ export { ChatRoom } from './chat';
 const app = new Hono<AppEnv>().basePath('/api');
 
 app.use('*', async (c, next) => {
+  // Always HTTPS: anything arriving on plain http:// is sent to the secure address (local development excepted).
+  const url = new URL(c.req.url);
+  const secure = httpsRedirectUrl(c.req.url);
+  if (secure) return c.redirect(secure, 308);
   const method = c.req.method;
   // CSRF: state-changing requests must carry a header that cross-site forms cannot send.
   if (!['GET', 'HEAD', 'OPTIONS'].includes(method) && c.req.header('x-nsf') !== '1') throw new HttpError(403, 'Request blocked.');
@@ -29,6 +33,8 @@ app.use('*', async (c, next) => {
     c.res.headers.set('Cache-Control', c.res.headers.get('Cache-Control') ?? 'no-store');
     c.res.headers.set('X-Content-Type-Options', 'nosniff');
     c.res.headers.set('Referrer-Policy', 'same-origin');
+    // Tell browsers to use HTTPS for this site from now on.
+    if (url.protocol === 'https:') c.res.headers.set('Strict-Transport-Security', 'max-age=31536000');
   }
 });
 
