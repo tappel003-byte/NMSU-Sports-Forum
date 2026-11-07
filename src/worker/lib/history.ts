@@ -1,4 +1,5 @@
 // Past seasons for the Time Machine: final scores from ESPN's public team-schedule feed.
+// Requests send no custom User-Agent, same as the live-score lookups: ESPN refuses unfamiliar agent names (403).
 // Runs a few seasons at a time from the 30-minute cron until every season ESPN has is on file.
 // Only completed games older than 8 days are added, so nothing here touches game-day features
 // (no game threads, chats, reminders or prediction scoring). Recent games keep coming from the NM State calendar.
@@ -142,10 +143,10 @@ export async function saveSeason(env: Env, games: HistoryGame[], t = now()): Pro
 async function fetchSeason(base: string, hs: HistorySport, season: number, min: number): Promise<HistoryGame[] | null> {
   try {
     const get = (type: number) => fetch(`${base}/apis/site/v2/sports/${hs.path}/teams/${hs.team}/schedule?season=${season}&seasontype=${type}`,
-      { headers: { 'User-Agent': 'NMSUSportsForum/1.0 (+https://nmsusportsforum.com)', Accept: 'application/json' }, signal: AbortSignal.timeout(15_000) });
+      { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(15_000) });
     if (hs.currentOnly) {
       const r = await fetch(`${base}/apis/site/v2/sports/${hs.path}/teams/${hs.team}/schedule`,
-        { headers: { 'User-Agent': 'NMSUSportsForum/1.0 (+https://nmsusportsforum.com)', Accept: 'application/json' }, signal: AbortSignal.timeout(15_000) });
+        { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(15_000) });
       if (!r.ok) return r.status === 400 || r.status === 404 ? [] : null;
       return parseTeamSchedule(await r.json(), hs);
     }
