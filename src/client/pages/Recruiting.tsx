@@ -55,7 +55,7 @@ export function Recruiting() {
         </div>
         <div className="filter-row">
           <button className={`btn small ${sport ? 'secondary' : ''}`} onClick={() => set('sport', '')}>All sports</button>
-          {SPORTS.map((s) => <button key={s.key} className={`btn small ${sport === s.key ? '' : 'secondary'}`} onClick={() => set('sport', s.key)}>{s.icon} {s.short}</button>)}
+          {SPORTS.map((s) => <button key={s.key} className={`btn small ${sport === s.key ? '' : 'secondary'}`} onClick={() => set('sport', s.key)}>{sportIcon(s.key)} {s.short}</button>)}
         </div>
         {!data ? <Loading /> : data.players.length ? data.players.map((p) => (
           <Link key={p.id} to={`/recruiting/${p.id}`} className="player-card">

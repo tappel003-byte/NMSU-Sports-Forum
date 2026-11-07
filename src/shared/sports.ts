@@ -20,12 +20,12 @@ export const SPORTS: Sport[] = [
   { key: 'base', label: 'Baseball', short: 'Baseball', forum: 'presley-askew-field', icon: '⚾', schedulePath: 'baseball' },
   { key: 'soft', label: 'Softball', short: 'Softball', forum: 'softball-complex', icon: '🥎', schedulePath: 'softball' },
   { key: 'wsoc', label: "Women's Soccer", short: 'Soccer', forum: 'the-pitch', icon: '⚽', schedulePath: 'womens-soccer' },
-  { key: 'track', label: 'Track & Field', short: 'Track', forum: 'track-and-field', icon: '🏃', schedulePath: 'track-and-field' },
-  { key: 'xc', label: 'Cross Country', short: 'Cross Country', forum: 'track-and-field', icon: '🏃', schedulePath: 'cross-country' },
+  { key: 'track', label: 'Track & Field', short: 'Track', forum: 'track-and-field', icon: '👟', schedulePath: 'track-and-field' },
+  { key: 'xc', label: 'Cross Country', short: 'Cross Country', forum: 'track-and-field', icon: '⏱️', schedulePath: 'cross-country' },
   { key: 'mgolf', label: "Men's Golf", short: 'Golf', forum: 'other-sports', icon: '⛳', schedulePath: 'mens-golf' },
   { key: 'wgolf', label: "Women's Golf", short: 'Golf', forum: 'other-sports', icon: '⛳', schedulePath: 'womens-golf' },
   { key: 'wten', label: "Women's Tennis", short: 'Tennis', forum: 'other-sports', icon: '🎾', schedulePath: 'womens-tennis' },
-  { key: 'swim', label: 'Swimming & Diving', short: 'Swimming', forum: 'other-sports', icon: '🏊', schedulePath: 'womens-swimming-and-diving' },
+  { key: 'swim', label: 'Swimming & Diving', short: 'Swimming', forum: 'other-sports', icon: '🌊', schedulePath: 'womens-swimming-and-diving' },
 ];
 
 /** Headline sports: shown first everywhere; the other sports stay one tap away. */

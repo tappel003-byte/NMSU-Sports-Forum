@@ -4,7 +4,7 @@ import { Mail, Send, VolumeX } from 'lucide-react';
 import { api, uploadImage } from '../api';
 import { AvatarCropper } from '../components/AvatarCropper';
 import { useApi, useApp, type Prefs } from '../state';
-import { PostBody, fullTime, timeAgo } from '../format';
+import { PostBody, fullTime, sportIcon, timeAgo } from '../format';
 import { Avatar, Badges, ErrorState, Loading, ThreadList, type MemberLite, type ThreadItem } from '../components/ui';
 import { BADGES, SPORTS, isVenueForum } from '../../shared/sports';
 import { rankFor } from '../../shared/forum';
@@ -316,7 +316,7 @@ export function Settings() {
         <p className="small muted" style={{ marginTop: 0 }}>Used for your “My sports” feed and game reminders.</p>
         <div className="chip-row">
           {SPORTS.map((s) => (
-            <button key={s.key} className={`btn small ${(prefs.my_sports ?? []).includes(s.key) ? '' : 'secondary'}`} aria-pressed={(prefs.my_sports ?? []).includes(s.key)} onClick={() => toggleSport(s.key)}>{s.icon} {s.label}</button>
+            <button key={s.key} className={`btn small ${(prefs.my_sports ?? []).includes(s.key) ? '' : 'secondary'}`} aria-pressed={(prefs.my_sports ?? []).includes(s.key)} onClick={() => toggleSport(s.key)}>{sportIcon(s.key)} {s.label}</button>
           ))}
         </div>
       </section>

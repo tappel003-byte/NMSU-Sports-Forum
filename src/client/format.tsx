@@ -33,7 +33,9 @@ export function sportName(key: string | null | undefined) {
   return (key && SPORT_BY_KEY[key]?.label) || 'Other';
 }
 
-export function sportIcon(key: string | null | undefined) {
+/** Sport icon: phone emoji, except swimming, which uses a drawing of racing goggles (the 🥽 emoji looks like ski goggles). */
+export function sportIcon(key: string | null | undefined): ReactNode {
+  if (key === 'swim') return <img src="/brand/swim-goggles.png" alt="" className="sport-img" width={18} height={18} />;
   return (key && SPORT_BY_KEY[key]?.icon) || '🏅';
 }
 
