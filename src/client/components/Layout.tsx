@@ -148,7 +148,7 @@ function LeftRail({ inSheet = false }: { inSheet?: boolean }) {
         <p className="rail-title">Community</p>
         <nav className="side-nav">
           {community.map((f) => (
-            <NavLink key={f.slug} to={`/f/${f.slug}`}><span aria-hidden="true">{f.icon}</span> {f.name}{f.unread > 0 && <span className="count hot">{f.unread}</span>}</NavLink>
+            <NavLink key={f.slug} to={f.slug === 'aggie-vault' ? '/vault' : `/f/${f.slug}`}><span aria-hidden="true">{f.icon}</span> {f.name}{f.unread > 0 && <span className="count hot">{f.unread}</span>}</NavLink>
           ))}
           <NavLink to="/contributions"><Award size={17} /> Contributions</NavLink>
           <NavLink to="/year-in-review"><Sparkles size={17} /> Year in Review</NavLink>

@@ -5,7 +5,7 @@ import type { AppEnv } from '../env';
 import { all, first, getSetting, logMod, notify, run, stmt, userPrefs } from '../db';
 import { HttpError, now, parse } from '../util';
 import { matchup } from '../lib/sports';
-import { TAGS, cleanTags } from '../../shared/forum';
+import { TAGS, cleanTags, parseYouTubeId } from '../../shared/forum';
 import { SPORT_BY_KEY } from '../../shared/sports';
 import { starterPrompts } from '../lib/topics';
 import { checkHonorary, memberSummaries } from '../lib/members';
@@ -46,6 +46,26 @@ forum.get('/forums', async (c) => {
       muted: muted.forums.has(f.id),
     })),
   });
+});
+
+// Aggie Vault: its own page, a gallery of YouTube clips (each is a never-archived thread in the Aggie Vault section).
+forum.get('/vault', async (c) => {
+  const rows = await all<{ id: number; title: string; user_id: number | null; created_at: number; reply_count: number; body: string | null }>(c.env,
+    `SELECT t.id, t.title, t.user_id, t.created_at, t.reply_count,
+            (SELECT p.body FROM posts p WHERE p.thread_id = t.id AND p.deleted = 0 AND p.pending = 0 ORDER BY p.id LIMIT 1) AS body
+       FROM threads t JOIN forums f ON f.id = t.forum_id
+      WHERE f.slug = 'aggie-vault' AND t.deleted = 0 AND t.pending = 0
+      ORDER BY t.created_at DESC LIMIT 200`);
+  const members = await memberSummaries(c.env, rows.map((r) => r.user_id));
+  const items = rows.map((r) => {
+    const body = r.body ?? '';
+    const urls = body.match(/https?:\/\/\S+/g) ?? [];
+    const youtube = urls.map((u) => parseYouTubeId(u)).find(Boolean) ?? null;
+    const note = body.replace(/https?:\/\/\S+/g, '').replace(/\s+/g, ' ').trim().slice(0, 140);
+    const a = r.user_id ? members.get(r.user_id) : undefined;
+    return { id: r.id, title: r.title, youtube_id: youtube, note, replies: r.reply_count, created_at: r.created_at, author: a ? { id: a.id, username: a.username } : null };
+  });
+  return c.json({ items });
 });
 
 forum.get('/forums/:slug', async (c) => {
