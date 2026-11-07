@@ -155,7 +155,7 @@ function LeftRail({ inSheet = false }: { inSheet?: boolean }) {
       <div className="rail-card">
         <p className="rail-title">Aggie History</p>
         <nav className="side-nav">
-          {hasBoard('aggie-vault') && <NavLink to="/vault"><Clapperboard size={17} /> <span className="nav-text">Aggie Vault<span className="nav-sub">Classic Aggie moments on video</span></span>{count(unread('aggie-vault'))}</NavLink>}
+          {hasBoard('aggie-vault') && <NavLink to="/vault"><Clapperboard size={17} /> <span className="nav-text">Aggie Vault<span className="nav-sub">A place to put Classic Aggie video moments</span></span>{count(unread('aggie-vault'))}</NavLink>}
           <NavLink to="/time-machine"><History size={17} /> <span className="nav-text">Time Machine<span className="nav-sub">Past scores and rosters, as available</span></span></NavLink>
         </nav>
       </div>
