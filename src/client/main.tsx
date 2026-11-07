@@ -60,3 +60,24 @@ if (import.meta.env.PROD) {
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
 }
+
+// iPhone home-screen app: after the keyboard closes, iOS sometimes leaves the page shifted, so the fixed bottom bar
+// floats above a grey band. A tiny scroll nudge once the keyboard is gone makes iOS put fixed elements back.
+{
+  const isEditable = (el: EventTarget | null) => el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || (el as HTMLElement | null)?.isContentEditable;
+  const settle = () => {
+    window.setTimeout(() => {
+      if (isEditable(document.activeElement)) return; // keyboard moved to another field
+      const y = window.scrollY;
+      window.scrollTo(0, y + 1);
+      window.scrollTo(0, y);
+    }, 120);
+  };
+  document.addEventListener('focusout', (e) => { if (isEditable(e.target)) settle(); });
+  let lastHeight = window.visualViewport?.height ?? 0;
+  window.visualViewport?.addEventListener('resize', () => {
+    const h = window.visualViewport!.height;
+    if (h > lastHeight + 100) settle(); // keyboard just closed
+    lastHeight = h;
+  });
+}
