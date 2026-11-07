@@ -190,3 +190,28 @@ export async function runRosterImport(env: Env, budget: number): Promise<number>
   await setSetting(env, STATE_KEY, JSON.stringify(state));
   return used;
 }
+
+/** A pasted list, one player per line: "#, Name, Pos, Yr, Ht, Wt, Hometown" (number optional; hometown may contain commas). Pure. */
+export function parsePastedRoster(text: string): RosterRow[] {
+  const out: RosterRow[] = [];
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.replace(/^[\s*•-]+/, '').trim();
+    if (!line) continue;
+    const f = line.split(/\s*[,\t|]\s*/).map((x) => x.trim());
+    let jersey: string | null = null;
+    if (/^#?\d{1,3}$/.test(f[0] ?? '')) jersey = f.shift()!.replace('#', '');
+    const name = f.shift() ?? '';
+    if (name.length < 2 || /^name$/i.test(name)) continue;
+    const [position, class_year, height, weight, ...rest] = f;
+    const wt = Number(String(weight ?? '').replace(/[^0-9]/g, ''));
+    out.push({
+      name, jersey,
+      position: position || null,
+      class_year: class_year || null,
+      height: height ? height.replace(/['"\s]+/g, '-').replace(/-+$/, '') : null,
+      weight: wt >= 80 && wt <= 450 ? wt : null,
+      hometown: rest.join(', ') || null,
+    });
+  }
+  return out;
+}

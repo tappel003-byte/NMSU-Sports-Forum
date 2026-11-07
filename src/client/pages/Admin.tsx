@@ -5,7 +5,7 @@ import { useApi, useApp } from '../state';
 import { fullTime, gameTime, matchup, sportName, timeAgo } from '../format';
 import { ErrorState, Loading, Modal, type GameItem } from '../components/ui';
 import { InviteSheet, type CreatedInvite } from '../components/Invite';
-import { BADGES, SPORTS } from '../../shared/sports';
+import { BADGES, SPORTS, SPORT_BY_KEY } from '../../shared/sports';
 
 function copy(text: string, toast: (m: string) => void) {
   navigator.clipboard?.writeText(text).then(() => toast('Link copied'), () => toast('Copy failed — select the link and copy it manually'));
@@ -571,14 +571,52 @@ function logText(l: LogEntry): string {
   return `${words} ${thing}${subject}`.trim();
 }
 
+type RosterPhoto = { id: number; sport: string; season: number; username: string; note: string | null; created_at: number };
+
+/** Media guide pages members sent in. Enter players (paste a list, e.g. from Claude), then mark done. */
+function RosterPhotos() {
+  const { toast } = useApp();
+  const { data, reload } = useApi<{ photos: RosterPhoto[] }>('/roster-photos');
+  const [text, setText] = useState<Record<number, string>>({});
+  if (!data) return <Loading />;
+  const add = async (p: RosterPhoto) => {
+    try {
+      const r = await api<{ added: number; skipped: number }>(`/roster-photos/${p.id}/players`, { body: { text: text[p.id] ?? '' } });
+      toast(`Added ${r.added} player${r.added === 1 ? '' : 's'}${r.skipped ? ` (${r.skipped} already on the roster)` : ''}.`);
+      setText({ ...text, [p.id]: '' });
+    } catch (err) { toast((err as Error).message); }
+  };
+  const done = async (p: RosterPhoto) => {
+    try { await api(`/roster-photos/${p.id}/done`, { method: 'POST' }); toast('Done. The sender has been thanked.'); reload(); } catch (err) { toast((err as Error).message); }
+  };
+  const label = (p: RosterPhoto) => `${SPORT_BY_KEY[p.sport]?.label ?? p.sport} · ${p.season}-${String((p.season + 1) % 100).padStart(2, '0')}`;
+  return (
+    <section className="card">
+      <div className="section-head"><h2>Roster photos to enter</h2><span className="small muted">{data.photos.length} waiting</span></div>
+      <div className="card-pad small muted" style={{ paddingTop: 0 }}>Tip: give the photo to Claude and ask for one player per line: <code>#, Name, Pos, Yr, Ht, Wt, Hometown</code>. Paste the list below, then Mark done.</div>
+      {data.photos.length ? data.photos.map((p) => (
+        <div key={p.id} className="card-pad stack roster-photo" style={{ borderTop: '1px solid var(--line)' }}>
+          <div><strong>{label(p)}</strong> <span className="small muted">from {p.username} · {timeAgo(p.created_at)}</span></div>
+          {p.note && <div className="small">{p.note}</div>}
+          <a href={`/api/roster-photos/${p.id}/image`} target="_blank" rel="noopener noreferrer"><img src={`/api/roster-photos/${p.id}/image`} alt={`Media guide page for ${label(p)}`} className="roster-photo-img" /></a>
+          <textarea className="input" rows={5} placeholder={'12, John Smith, QB, Jr, 6-2, 205, Tyler, TX'} value={text[p.id] ?? ''} onChange={(e) => setText({ ...text, [p.id]: e.target.value })} aria-label="Paste players" />
+          <div className="row"><button className="btn small" disabled={!(text[p.id] ?? '').trim()} onClick={() => add(p)}>Add players</button>
+            <Link className="btn small ghost" to={`/time-machine?sport=${p.sport}&season=${p.season}-${String((p.season + 1) % 100).padStart(2, '0')}`}>Open roster</Link>
+            <button className="btn small secondary" onClick={() => done(p)}>Mark done</button></div>
+        </div>
+      )) : <div className="empty">No media guide pages waiting.</div>}
+    </section>
+  );
+}
+
 export function Admin() {
   const { me, pulse } = useApp();
   const isAdmin = me?.role === 'admin';
   if (!isAdmin && me?.role !== 'moderator') return <ErrorState error="Moderators only." />;
   // Moderators get the moderation tools; running the site (invitations, sports data, settings) stays with admins.
   const tabs = isAdmin
-    ? [['', 'Overview'], ['invites', 'Invitations'], ['members', 'Members'], ['reports', 'Reports'], ['approvals', 'Approvals'], ['bans', 'Bans & appeals'], ['data', 'Sports data'], ['settings', 'Settings'], ['log', 'Log']]
-    : [['', 'Reports'], ['members', 'Members'], ['approvals', 'Approvals'], ['bans', 'Bans & appeals'], ['log', 'Log']];
+    ? [['', 'Overview'], ['invites', 'Invitations'], ['members', 'Members'], ['reports', 'Reports'], ['approvals', 'Approvals'], ['bans', 'Bans & appeals'], ['data', 'Sports data'], ['rosters', 'Roster photos'], ['settings', 'Settings'], ['log', 'Log']]
+    : [['', 'Reports'], ['members', 'Members'], ['approvals', 'Approvals'], ['bans', 'Bans & appeals'], ['rosters', 'Roster photos'], ['log', 'Log']];
   return (
     <div className="stack">
       <div className="page-head"><div className="eyebrow">Community {isAdmin ? 'administration' : 'moderation'}</div><h1>{isAdmin ? 'Admin' : 'Moderation'}</h1><p className="small muted" style={{ margin: 0 }}>{isAdmin ? 'Community administration is separate from technical ownership of hosting, the domain and GitHub.' : 'Keep discussions on track: review flagged posts, approve newcomers, and handle warnings, suspensions and appeals.'}</p></div>
@@ -597,6 +635,7 @@ export function Admin() {
         <Route path="data" element={<SportsData />} />
         <Route path="settings" element={<SettingsTab />} />
         <Route path="log" element={<Log />} />
+        <Route path="rosters" element={<RosterPhotos />} />
       </Routes>
     </div>
   );

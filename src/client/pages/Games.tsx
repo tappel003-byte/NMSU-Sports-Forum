@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { FEATURED_SPORTS, officialRosterUrl } from '../../shared/sports';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { api } from '../api';
+import { api, prepareImage } from '../api';
 import { useApi, useApp } from '../state';
 import { Score, fullTime, gameTime, matchup, sportIcon, sportName } from '../format';
 import { BackButton, ErrorState, GameRow, JoinCta, Loading, ThreadList, type GameItem, type ThreadItem, LiveScore } from '../components/ui';
@@ -332,8 +332,22 @@ function TmRoster({ sport, season }: { sport: string; season: string }) {
   const [editing, setEditing] = useState<number | 'new' | null>(null);
   const [f, setF] = useState(EMPTY_PLAYER);
   const [busy, setBusy] = useState(false);
+  const [sending, setSending] = useState(false);
   if (!data) return null;
   const isMod = me?.role === 'admin' || me?.role === 'moderator';
+  const sendPhoto = async (file: File) => {
+    setSending(true);
+    try {
+      // Kept larger than discussion photos so small print in the media guide stays readable.
+      const blob = await prepareImage(file, 2400);
+      const form = new FormData();
+      form.append('file', blob instanceof File ? blob : new File([blob], 'page.jpg', { type: blob.type || 'image/jpeg' }));
+      form.append('sport', sport);
+      form.append('season', season);
+      await api('/rosters/photos', { form });
+      toast('Thanks! We\'ll add the players as soon as we can.');
+    } catch (err) { toast((err as Error).message); } finally { setSending(false); }
+  };
   const open = (p: RosterPlayer | null) => {
     setEditing(p ? p.id : 'new');
     setF(p ? { name: p.name, jersey: p.jersey ?? '', position: p.position ?? '', class_year: p.class_year ?? '', height: p.height ?? '', weight: p.weight ? String(p.weight) : '', hometown: p.hometown ?? '' } : EMPTY_PLAYER);
@@ -383,7 +397,18 @@ function TmRoster({ sport, season }: { sport: string; season: string }) {
           </div>
         ))}
         {!data.players.length && editing !== 'new' && <div className="empty">No roster on file for this season yet.{me ? ' Have a media guide? Add players below.' : ''}</div>}
-        {editing === 'new' ? form : me && <div className="card-pad"><button className="btn small secondary" onClick={() => open(null)}>+ Add a player</button></div>}
+        {editing === 'new' ? form : me && (
+          <div className="card-pad stack" style={{ gap: 6 }}>
+            <div className="row" style={{ flexWrap: 'wrap', gap: 8 }}>
+              <button className="btn small secondary" onClick={() => open(null)}>+ Add a player</button>
+              <label className={`btn small secondary ${sending ? 'disabled' : ''}`}>
+                📷 {sending ? 'Sending…' : 'Send a media guide page'}
+                <input type="file" accept="image/*" hidden disabled={sending} onChange={(e) => { const file = e.target.files?.[0]; e.target.value = ''; if (file) sendPhoto(file); }} />
+              </label>
+            </div>
+            <span className="tiny muted">Send a media guide page: we'll add the players as soon as we can.</span>
+          </div>
+        )}
         <div className="card-pad small"><a href={data.official_url} target="_blank" rel="noopener noreferrer">Official roster on nmstatesports.com ↗</a><span className="tiny muted"> (pick the season there)</span></div>
         <div className="card-pad tiny muted" style={{ paddingTop: 0 }}>
           {[data.sources.espn && 'This season\'s roster from ESPN.', data.sources.cfbd && 'Football rosters from CollegeFootballData.com.',

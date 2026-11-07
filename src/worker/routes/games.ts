@@ -1,7 +1,9 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import type { AppEnv } from '../env';
-import { all, first, getSetting, logMod, run } from '../db';
+import { all, first, getSetting, logMod, notify, run } from '../db';
+import { deleteObject, getObject, putObject } from '../storage';
+import { parsePastedRoster } from '../lib/rosters';
 import { isModerator } from '../auth';
 import { HttpError, now, parse } from '../util';
 import { FEATURED_SPORTS, FEATURED_SQL, officialRosterUrl, officialScheduleUrl, parseHubLinks, SPORTS, SPORT_BY_KEY } from '../../shared/sports';
@@ -301,5 +303,87 @@ games.delete('/rosters/:id{[0-9]+}', async (c) => {
   if (!p) throw new HttpError(404, 'Player not found.');
   await run(c.env, 'UPDATE roster_players SET removed = 1, updated_by = ?, updated_at = ? WHERE id = ?', user!.id, now(), id);
   await logMod(c.env, user!.id, 'remove_roster_player', 'roster_player', id, p.name);
+  return c.json({ ok: true });
+});
+
+// ---------- Media guide photos: members send a page, admins enter the players ----------
+
+const PHOTO_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+
+games.post('/rosters/photos', async (c) => {
+  const user = c.get('user');
+  if (!user?.id) throw new HttpError(401, 'Sign in to send a media guide page.');
+  const form = await c.req.formData();
+  const file = form.get('file');
+  const sport = String(form.get('sport') ?? '');
+  const season = seasonYear(String(form.get('season') ?? ''));
+  const note = String(form.get('note') ?? '').trim().slice(0, 300) || null;
+  if (!(sport in SPORT_BY_KEY) || season === null) throw new HttpError(400, 'Choose a sport and season.');
+  if (!(file instanceof File) || !PHOTO_TYPES.has(file.type)) throw new HttpError(400, 'Send a JPEG, PNG or WebP photo.');
+  const max = c.env.UPLOADS ? 8_000_000 : 1_900_000;
+  if (file.size > max) throw new HttpError(400, `Photos must be under ${Math.round(max / 1_000_000)} MB.`);
+  const open = await first<{ n: number }>(c.env, "SELECT COUNT(*) AS n FROM roster_photos WHERE user_id = ? AND status = 'open'", user.id);
+  if ((open?.n ?? 0) >= 30) throw new HttpError(429, 'You have 30 pages waiting. Thanks! Please wait until those are entered.');
+  const key = `roster/${crypto.randomUUID().replace(/-/g, '')}`;
+  await putObject(c.env, key, await file.arrayBuffer(), file.type);
+  await run(c.env, 'INSERT INTO roster_photos (sport, season, user_id, image_key, content_type, note, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    sport, season, user.id, key, file.type, note, now());
+  return c.json({ ok: true });
+});
+
+const requireRosterMod = (user: { role: string } | undefined | null) => {
+  if (!isModerator(user)) throw new HttpError(403, 'Admins and moderators only.');
+};
+
+games.get('/roster-photos', async (c) => {
+  requireRosterMod(c.get('user'));
+  const rows = await all<{ id: number; sport: string; season: number; user_id: number; note: string | null; created_at: number }>(c.env,
+    "SELECT id, sport, season, user_id, note, created_at FROM roster_photos WHERE status = 'open' ORDER BY created_at LIMIT 100");
+  const members = await memberSummaries(c.env, rows.map((r) => r.user_id));
+  return c.json({ photos: rows.map((r) => ({ ...r, username: members.get(r.user_id)?.username ?? 'member' })) });
+});
+
+games.get('/roster-photos/:id{[0-9]+}/image', async (c) => {
+  requireRosterMod(c.get('user'));
+  const p = await first<{ image_key: string }>(c.env, "SELECT image_key FROM roster_photos WHERE id = ? AND status = 'open'", Number(c.req.param('id')));
+  const obj = p ? await getObject(c.env, p.image_key) : null;
+  if (!obj) throw new HttpError(404, 'Photo not found.');
+  return new Response(obj.body, { headers: { 'Content-Type': obj.contentType, 'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff' } });
+});
+
+/** Paste a list (e.g. Claude's summary of the page): one player per line. Adds everyone not already on that season's roster. */
+games.post('/roster-photos/:id{[0-9]+}/players', async (c) => {
+  const user = c.get('user');
+  requireRosterMod(user);
+  const p = await first<{ sport: string; season: number }>(c.env, "SELECT sport, season FROM roster_photos WHERE id = ? AND status = 'open'", Number(c.req.param('id')));
+  if (!p) throw new HttpError(404, 'Photo not found.');
+  const { text } = parse(z.object({ text: z.string().max(20_000) }), await c.req.json());
+  const rows = parsePastedRoster(text);
+  if (!rows.length) throw new HttpError(400, 'No players found. Put one player per line: #, Name, Pos, Yr, Ht, Wt, Hometown');
+  const t = now();
+  const results = await c.env.DB.batch(rows.map((r) => c.env.DB.prepare(
+    `INSERT INTO roster_players (sport, season, name, jersey, position, class_year, height, weight, hometown, source, added_by, created_at, updated_at)
+     SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, 'member', ?, ?, ?
+      WHERE NOT EXISTS (SELECT 1 FROM roster_players WHERE sport = ? AND season = ? AND removed = 0 AND lower(name) = lower(?))`)
+    .bind(p.sport, p.season, r.name.slice(0, 80), r.jersey, r.position?.slice(0, 12) ?? null, r.class_year?.slice(0, 8) ?? null, r.height?.slice(0, 8) ?? null,
+      r.weight, r.hometown?.slice(0, 80) ?? null, user!.id, t, t, p.sport, p.season, r.name)));
+  const added = results.reduce((n, x) => n + (x.meta.changes ?? 0), 0);
+  return c.json({ added, skipped: rows.length - added });
+});
+
+games.post('/roster-photos/:id{[0-9]+}/done', async (c) => {
+  const user = c.get('user');
+  requireRosterMod(user);
+  const id = Number(c.req.param('id'));
+  const p = await first<{ sport: string; season: number; user_id: number; image_key: string }>(c.env,
+    "SELECT sport, season, user_id, image_key FROM roster_photos WHERE id = ? AND status = 'open'", id);
+  if (!p) throw new HttpError(404, 'Photo not found.');
+  await run(c.env, "UPDATE roster_photos SET status = 'done', done_by = ?, done_at = ? WHERE id = ?", user!.id, now(), id);
+  await deleteObject(c.env, p.image_key);
+  const season = `${p.season}-${String((p.season + 1) % 100).padStart(2, '0')}`;
+  if (p.user_id !== user!.id) {
+    await notify(c.env, p.user_id, 'roster', `Thanks! The ${SPORT_BY_KEY[p.sport]?.label ?? 'team'} roster from your media guide page is up.`,
+      `/time-machine?sport=${p.sport}&season=${season}`, user!.id);
+  }
   return c.json({ ok: true });
 });

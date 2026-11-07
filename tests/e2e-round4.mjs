@@ -927,6 +927,31 @@ try {
     && roster.sources.members && memberRemove.status === 403 && adminRemove.status === 200 && after === 0,
     JSON.stringify({ rosterRow, dupe: dupeAdd.status, softSeasons, memberRemove: memberRemove.status, adminRemove: adminRemove.status, after }));
 
+  // ---------- Media guide photos: member sends a page; admin pastes the list (e.g. from Claude), marks done; sender is thanked ----------
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+  await reg.goto(BASE + '/time-machine?sport=soft&season=1997-98');
+  await reg.waitForSelector('details.roster-acc');
+  await reg.click('details.roster-acc > summary');
+  await reg.setInputFiles('label:has-text("Send a media guide page") input[type=file]', { name: 'page.png', mimeType: 'image/png', buffer: png });
+  await reg.waitForSelector('.toast:has-text("Thanks")');
+  const queue = (await api(admin, '/roster-photos')).body.photos;
+  const memberQueue = await api(reg, '/roster-photos');
+  const photo = queue.find((p) => p.sport === 'soft' && p.season === 1997);
+  await admin.goto(BASE + '/admin/rosters');
+  await admin.waitForSelector('.roster-photo');
+  const imgOk = await admin.$eval('.roster-photo-img', (el) => el.complete && el.naturalWidth > 0);
+  await admin.fill('textarea[aria-label="Paste players"]', '12, Kim Ace, P, Sr, 5-9, , Albuquerque, NM\n4, Lee Glove, C, Jr');
+  await admin.click('button:has-text("Add players")');
+  await admin.waitForSelector('text=Added 2 players');
+  await admin.click('button:has-text("Mark done")');
+  await admin.waitForSelector('text=No media guide pages waiting');
+  const imgAfter = await admin.evaluate(async (id) => (await fetch(`/api/roster-photos/${id}/image`)).status, photo?.id);
+  const r97 = (await api(reg, '/time-machine/roster?sport=soft&season=1997-98')).body.players.map((p) => `${p.jersey} ${p.name} ${p.position} ${p.hometown ?? ''}`);
+  const thanks = (await api(reg, '/notifications')).body.notifications?.some((n) => /roster from your media guide/.test(n.text));
+  check('Media guide photos: a member sends a page; admins see it privately, paste the players and mark it done; the photo is deleted and the sender thanked',
+    Boolean(photo) && memberQueue.status === 403 && imgOk && r97.includes('12 Kim Ace P Albuquerque, NM') && r97.includes('4 Lee Glove C ') && imgAfter === 404 && thanks,
+    JSON.stringify({ photo: Boolean(photo), member: memberQueue.status, imgOk, r97, imgAfter, thanks }));
+
   // ---------- Smaller iPhones: iPhone SE / mini (375 wide) and original SE (320 wide) ----------
   for (const [label, w, h] of [['se', 375, 667], ['se1', 320, 568]]) {
     await reg.setViewportSize({ width: w, height: h });
