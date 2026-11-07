@@ -74,13 +74,16 @@ export function parseCfbdRoster(json: unknown): (RosterRow & { key: string })[] 
   });
 }
 
-async function save(env: Env, sport: string, season: number, source: 'cfbd' | 'wikipedia', sourceUrl: string | null, rows: (RosterRow & { key: string })[]) {
+async function save(env: Env, sport: string, season: number, source: 'cfbd' | 'wikipedia' | 'espn', sourceUrl: string | null, rows: (RosterRow & { key: string })[]) {
   if (!rows.length) return 0;
   const t = now();
+  // A player already on that season's roster (from any source, or added by a member) is never added twice.
   await env.DB.batch(rows.map((r) => stmt(env,
     `INSERT OR IGNORE INTO roster_players (sport, season, name, jersey, position, class_year, height, weight, hometown, source, source_key, source_url, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    sport, season, r.name, r.jersey, r.position, r.class_year, r.height, r.weight, r.hometown, source, `${source}:${sport}:${season}:${r.key}`, sourceUrl, t, t)));
+     SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+      WHERE NOT EXISTS (SELECT 1 FROM roster_players WHERE sport = ? AND season = ? AND lower(name) = lower(?))`,
+    sport, season, r.name, r.jersey, r.position, r.class_year, r.height, r.weight, r.hometown, source, `${source}:${sport}:${season}:${r.key}`, sourceUrl, t, t,
+    sport, season, r.name)));
   return rows.length;
 }
 
@@ -91,13 +94,61 @@ const WIKI_TEAMS: { sport: string; title: (y: number) => string; from: number }[
 ];
 const STATE_KEY = 'roster_import';
 
+type EspnAthlete = { id?: string; fullName?: string; displayName?: string; jersey?: string; position?: { abbreviation?: string };
+  experience?: { displayValue?: string; abbreviation?: string }; displayHeight?: string; displayWeight?: string; weight?: number;
+  birthPlace?: { city?: string; state?: string } };
+
+/** ESPN team roster (athletes either flat or grouped by unit, as football is). Pure. */
+export function parseEspnRoster(json: unknown): (RosterRow & { key: string })[] {
+  const list = (json as { athletes?: (EspnAthlete & { items?: EspnAthlete[] })[] })?.athletes;
+  if (!Array.isArray(list)) return [];
+  const flat = list.flatMap((a) => (Array.isArray(a.items) ? a.items : [a]));
+  const yr: Record<string, string> = { freshman: 'Fr', sophomore: 'So', junior: 'Jr', senior: 'Sr', graduate: 'Gr' };
+  return flat.flatMap((a) => {
+    const name = (a.fullName || a.displayName || '').trim();
+    if (!name || !a.id) return [];
+    const ht = /^(\d+)' ?(\d+)/.exec(a.displayHeight ?? '');
+    const wt = a.weight ?? Number(/\d+/.exec(a.displayWeight ?? '')?.[0]);
+    return [{
+      key: String(a.id), name, jersey: a.jersey ?? null, position: a.position?.abbreviation ?? null,
+      class_year: yr[(a.experience?.displayValue ?? '').toLowerCase()] ?? null,
+      height: ht ? `${ht[1]}-${ht[2]}` : null, weight: Number.isFinite(wt) && wt ? wt : null,
+      hometown: [a.birthPlace?.city, a.birthPlace?.state].filter(Boolean).join(', ') || null,
+    }];
+  });
+}
+
+/** This season's rosters from ESPN (football, men's and women's basketball), at most once a day. Returns requests used. */
+const ESPN_ROSTERS: { sport: string; path: string; team: string }[] = [
+  { sport: 'fb', path: 'football/college-football', team: '166' },
+  { sport: 'mbb', path: 'basketball/mens-college-basketball', team: '166' },
+  { sport: 'wbb', path: 'basketball/womens-college-basketball', team: '166' },
+  // Baseball left out: ESPN's college baseball roster is stale (same list every season, positions "UN").
+];
+async function refreshCurrentRosters(env: Env, season: number): Promise<number> {
+  const last = Number(await getSetting(env, 'current_rosters_at')) || 0;
+  if (now() - last < 24 * 3_600_000) return 0;
+  const base = (env.ESPN_BASE || 'https://site.api.espn.com').replace(/\/$/, '');
+  let ok = true;
+  for (const r of ESPN_ROSTERS) {
+    try {
+      const res = await fetch(`${base}/apis/site/v2/sports/${r.path}/teams/${r.team}/roster`, { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(15_000) });
+      if (res.ok) await save(env, r.sport, season, 'espn', null, parseEspnRoster(await res.json()));
+      else ok = false;
+    } catch { ok = false; }
+  }
+  if (ok) await setSetting(env, 'current_rosters_at', String(now()));
+  return ESPN_ROSTERS.length;
+}
+
 /** One step of the roster import: up to `budget` requests, newest seasons first. Returns how many requests were used. */
 export async function runRosterImport(env: Env, budget: number): Promise<number> {
   if (budget <= 0) return 0;
   let state: Record<string, number> = {};
   try { state = JSON.parse(await getSetting(env, STATE_KEY) || '{}'); } catch { /* start over */ }
   const thisSeason = new Date(now()).getUTCMonth() >= 6 ? new Date(now()).getUTCFullYear() : new Date(now()).getUTCFullYear() - 1;
-  let used = 0;
+  // This season first (ESPN), then older seasons.
+  let used = await refreshCurrentRosters(env, thisSeason);
   // Football rosters (CollegeFootballData), this season back to 2000.
   if (env.CFBD_API_KEY) {
     const base = (env.CFBD_BASE || 'https://api.collegefootballdata.com').replace(/\/$/, '');

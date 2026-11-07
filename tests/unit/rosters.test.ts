@@ -41,3 +41,14 @@ describe('CollegeFootballData', () => {
     expect(games[1]).toMatchObject({ opponent: 'New Mexico', home_away: 'away', result: 'L', nmsu_score: 12, opp_score: 29, time_tba: 1 });
   });
 });
+
+import { parseEspnRoster } from '../../src/worker/lib/rosters';
+describe('ESPN current rosters', () => {
+  it('reads flat (basketball) and grouped (football) rosters', () => {
+    const flat = parseEspnRoster({ athletes: [{ id: '1', fullName: 'Jachai Cantave', jersey: '5', position: { abbreviation: 'G' }, experience: { displayValue: 'Freshman' }, displayHeight: "6' 1\"", displayWeight: '180 lbs', birthPlace: { city: 'Houston', state: 'TX' } }] });
+    expect(flat[0]).toEqual({ key: '1', name: 'Jachai Cantave', jersey: '5', position: 'G', class_year: 'Fr', height: '6-1', weight: 180, hometown: 'Houston, TX' });
+    const grouped = parseEspnRoster({ athletes: [{ position: 'offense', items: [{ id: '2', fullName: 'Trey Arnold', jersey: '17', position: { abbreviation: 'QB' }, experience: { displayValue: 'Freshman' }, displayHeight: "6' 2\"", weight: 205 }] }] });
+    expect(grouped[0]).toMatchObject({ name: 'Trey Arnold', position: 'QB', height: '6-2', weight: 205 });
+    expect(parseEspnRoster({})).toEqual([]);
+  });
+});

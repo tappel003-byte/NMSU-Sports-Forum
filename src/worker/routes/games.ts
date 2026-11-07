@@ -253,7 +253,8 @@ games.get('/time-machine/roster', async (c) => {
   const wiki = rows.find((r) => r.source === 'wikipedia' && r.source_url)?.source_url ?? null;
   return c.json({
     players: rows.map(({ source_url: _u, updated_by, added_by, ...r }) => ({ ...r, edited: Boolean(updated_by || added_by) })),
-    sources: { cfbd: rows.some((r) => r.source === 'cfbd'), wikipedia: wiki, members: rows.some((r) => r.source === 'member' || r.updated_by) },
+    sources: { cfbd: rows.some((r) => r.source === 'cfbd'), espn: rows.some((r) => r.source === 'espn'), wikipedia: wiki, members: rows.some((r) => r.source === 'member' || r.updated_by) },
+    official_url: officialRosterUrl(sport),
   });
 });
 
