@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   Award, Bell, Bookmark, CalendarDays, ClipboardList, History, Home, Lightbulb, LogOut, Mail, Map as MapIcon, MessageCircle, MessagesSquare,
-  Moon, Search, Sun, Send, Settings, Shield, Sparkles, Trophy, Trophy as TrophyIcon, UserPlus, Users,
+  Menu, Moon, Search, Sun, Send, Settings, Shield, Sparkles, Trophy, Trophy as TrophyIcon, UserPlus, Users,
 } from 'lucide-react';
 import { FEATURED_SPORTS } from '../../shared/sports';
 import { gameTime, matchup, sportIcon, sportName } from '../format';
@@ -122,12 +122,12 @@ function Header() {
   );
 }
 
-function LeftRail() {
+function LeftRail({ inSheet = false }: { inSheet?: boolean }) {
   const { me, pulse, site } = useApp();
   const { data } = useForums();
   const community = data?.forums.filter((f) => f.kind !== 'sport' && f.kind !== 'general') ?? [];
   return (
-    <aside className="left-rail" aria-label="Sections">
+    <aside className={`left-rail ${inSheet ? 'in-sheet' : ''}`} aria-label="Sections">
       <div className="rail-card">
         <p className="rail-title">Navigate</p>
         <nav className="side-nav">
@@ -218,9 +218,21 @@ function RightRail() {
 function BottomNav() {
   const { pulse } = useApp();
   const loc = useLocation();
+  // "More": on phones the side menu is hidden, so this opens it (Aggie History, Calendar, Members, Admin…).
+  const [more, setMore] = useState(false);
+  useEffect(() => { setMore(false); }, [loc.pathname, loc.search]);
   // Inside a chat room the bottom bar steps aside; the big ← Back button at the top leads out.
   if (/^\/chat\/[^/]+$/.test(loc.pathname)) return null;
   return (
+    <>
+    {more && (
+      <div className="more-backdrop" onClick={() => setMore(false)}>
+        <div className="more-sheet" role="dialog" aria-label="More" onClick={(e) => e.stopPropagation()}>
+          <div className="more-head"><strong>Menu</strong><button type="button" className="btn ghost small" onClick={() => setMore(false)} aria-label="Close menu">✕ Close</button></div>
+          <LeftRail inSheet />
+        </div>
+      </div>
+    )}
     <nav className="bottom-nav" aria-label="Main">
       <NavLink to="/" end><Home size={22} /> Home</NavLink>
       <NavLink to="/feed"><MessagesSquare size={22} /> Board{pulse.unread_threads > 0 && <span className="dot">{pulse.unread_threads > 99 ? '99+' : pulse.unread_threads}</span>}</NavLink>
@@ -229,8 +241,11 @@ function BottomNav() {
         aria-label={pulse.chat_live ? (pulse.chat_live.kind === 'game' ? 'Chat, game chat is live' : 'Chat, people are chatting now') : undefined}>
         <MessageCircle size={22} /> {pulse.chat_live?.kind === 'game' ? 'LIVE' : 'Chat'}{pulse.chat_live && <span className="live-pip" aria-hidden="true" />}
       </NavLink>
-      <NavLink to="/members"><Users size={22} /> Members</NavLink>
+      <button type="button" className={`more-btn ${more ? 'active' : ''}`} onClick={() => setMore(!more)} aria-expanded={more} aria-label="More: all sections">
+        <Menu size={22} /> More{pulse.open_reports > 0 && <span className="dot">{pulse.open_reports}</span>}
+      </button>
     </nav>
+    </>
   );
 }
 

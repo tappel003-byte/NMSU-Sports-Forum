@@ -809,6 +809,19 @@ try {
   const onPref = (await api(reg, '/me')).body.me.prefs.notify_replies;
   check('Members can turn each kind of notification on or off right from the Notifications page', offPref === false && onPref === true, JSON.stringify({ offPref, onPref }));
 
+  // ---------- Phones: "More" in the bottom bar opens the full menu (Aggie History etc.) ----------
+  await reg.setViewportSize({ width: 390, height: 844 });
+  await reg.goto(BASE + '/');
+  await reg.click('.bottom-nav button:has-text("More")');
+  await reg.waitForSelector('.more-sheet a:has-text("Aggie History")');
+  const sheetText = await reg.textContent('.more-sheet');
+  await reg.screenshot({ path: `${SHOTS}/iphone-more-menu.png` });
+  await reg.click('.more-sheet a:has-text("Aggie History")');
+  await reg.waitForSelector('h1:has-text("Aggie History")');
+  const sheetClosed = (await reg.locator('.more-sheet').count()) === 0;
+  check('On a phone, More opens the full menu (Aggie History, Calendar, Members…) and closes after picking',
+    /Aggie History/.test(sheetText ?? '') && /Calendar/.test(sheetText ?? '') && /Members/.test(sheetText ?? '') && sheetClosed, JSON.stringify({ sheetClosed }));
+
   // ---------- Smaller iPhones: iPhone SE / mini (375 wide) and original SE (320 wide) ----------
   for (const [label, w, h] of [['se', 375, 667], ['se1', 320, 568]]) {
     await reg.setViewportSize({ width: w, height: h });
