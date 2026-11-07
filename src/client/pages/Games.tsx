@@ -211,7 +211,9 @@ const TM_GROUPS: { title: string; sports: string[] }[] = [
 
 // Fall sports' seasons fit in one calendar year ("2026"); the rest span two ("2026-27").
 const FALL_SPORTS = ['fb', 'vb', 'wsoc', 'xc'];
-const seasonLabel = (sport: string, s: string) => (FALL_SPORTS.includes(sport) ? s.slice(0, 4) : s);
+/** Spring sports are named by their spring year ("2004 baseball" = the 2003-04 season). */
+const SPRING_SPORTS = ['base', 'soft'];
+const seasonLabel = (sport: string, s: string) => (FALL_SPORTS.includes(sport) ? s.slice(0, 4) : SPRING_SPORTS.includes(sport) ? String(Number(s.slice(0, 4)) + 1) : s);
 
 /** Aggie Time Machine, organized like RockAuto: pick a sport, then a season, then see that season's games. */
 export function TimeMachine() {
