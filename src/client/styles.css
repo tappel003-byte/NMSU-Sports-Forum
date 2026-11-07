@@ -672,7 +672,7 @@ input[type='checkbox']:disabled { opacity: .5; cursor: not-allowed; }
 .bottom-nav .more-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; height: var(--bottom-h); color: var(--muted); font-size: .7rem; font-weight: 700; position: relative; background: none; border: 0; cursor: pointer; font-family: inherit; }
 .bottom-nav .more-btn.active { color: var(--crimson); }
 .more-backdrop { position: fixed; inset: 0; z-index: 29; background: rgb(0 0 0 / .35); }
-.more-sheet { position: fixed; left: 8px; right: 8px; bottom: calc(var(--bottom-h) + env(safe-area-inset-bottom) + 8px); max-height: calc(100dvh - var(--header-h) - var(--bottom-h) - 40px); overflow-y: auto;
+.more-sheet { position: fixed; left: 8px; right: 8px; bottom: calc(var(--bottom-h) + env(safe-area-inset-bottom) + 8px); max-height: calc(100dvh - var(--header-h) - env(safe-area-inset-top) - var(--bottom-h) - env(safe-area-inset-bottom) - 24px); overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y;
   background: var(--page); border-radius: var(--radius); box-shadow: 0 10px 30px rgb(0 0 0 / .3); padding: 10px; }
 .more-head { display: flex; align-items: center; justify-content: space-between; padding: 2px 4px 8px; }
 .left-rail.in-sheet { display: block; position: static; max-height: none; overflow: visible; }
