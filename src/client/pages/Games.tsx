@@ -328,7 +328,7 @@ const EMPTY_PLAYER = { name: '', jersey: '', position: '', class_year: '', heigh
 /** Season roster as an accordion: imported players plus anything members add or fix (e.g. from media guides). */
 function TmRoster({ sport, season }: { sport: string; season: string }) {
   const { me, toast } = useApp();
-  const { data, reload } = useApi<{ players: RosterPlayer[]; sources: { cfbd: boolean; wikipedia: string | null; members: boolean } }>(`/time-machine/roster?sport=${sport}&season=${season}`);
+  const { data, reload } = useApi<{ players: RosterPlayer[]; sources: { cfbd: boolean; espn: boolean; wikipedia: string | null; members: boolean }; official_url: string }>(`/time-machine/roster?sport=${sport}&season=${season}`);
   const [editing, setEditing] = useState<number | 'new' | null>(null);
   const [f, setF] = useState(EMPTY_PLAYER);
   const [busy, setBusy] = useState(false);
@@ -384,8 +384,9 @@ function TmRoster({ sport, season }: { sport: string; season: string }) {
         ))}
         {!data.players.length && editing !== 'new' && <div className="empty">No roster on file for this season yet.{me ? ' Have a media guide? Add players below.' : ''}</div>}
         {editing === 'new' ? form : me && <div className="card-pad"><button className="btn small secondary" onClick={() => open(null)}>+ Add a player</button></div>}
-        <div className="card-pad tiny muted">
-          {[data.sources.cfbd && 'Football rosters from CollegeFootballData.com.',
+        <div className="card-pad small"><a href={data.official_url} target="_blank" rel="noopener noreferrer">Official roster on nmstatesports.com ↗</a><span className="tiny muted"> (pick the season there)</span></div>
+        <div className="card-pad tiny muted" style={{ paddingTop: 0 }}>
+          {[data.sources.espn && 'This season\'s roster from ESPN.', data.sources.cfbd && 'Football rosters from CollegeFootballData.com.',
             data.sources.wikipedia && <>From <a href={data.sources.wikipedia} target="_blank" rel="noopener noreferrer">Wikipedia</a> (CC BY-SA).</>,
             data.sources.members && 'Some players added or corrected by members.'].filter(Boolean).map((x, i) => <span key={i}>{x} </span>)}
         </div>
