@@ -897,6 +897,36 @@ try {
     /Men's sports/.test(tmTop ?? '') && /Women's sports/.test(tmTop ?? '') && oldGames.length > 0 && /[WL] \d+–\d+/.test(gamesText ?? '') && !(oldGames.length && /tap to reveal/.test(gamesText ?? '') && oldGames.length === (gamesText.match(/–/g) || []).length),
     JSON.stringify({ old: oldGames.length }));
 
+  // ---------- Rosters by season: members add and fix players (media guides); admins remove; any season can be opened ----------
+  await reg.goto(BASE + '/time-machine?sport=soft');
+  await reg.waitForSelector('select[aria-label="Season"]');
+  await reg.selectOption('select[aria-label="Season"]', '1998-99');
+  await reg.click('button:has-text("Open")');
+  await reg.waitForSelector('details.roster-acc');
+  await reg.click('details.roster-acc > summary');
+  await reg.click('button:has-text("Add a player")');
+  await reg.fill('input[aria-label="Name"]', 'Jane Slugger');
+  await reg.fill('input[aria-label="Number"]', '7');
+  await reg.fill('input[aria-label="Position"]', 'SS');
+  await reg.fill('input[aria-label="Hometown"]', 'Las Cruces, NM');
+  await reg.click('.roster-form button:has-text("Save")');
+  await reg.waitForSelector('.roster-row:has-text("Jane Slugger")');
+  await reg.click('.roster-row:has-text("Jane Slugger") button:has-text("Fix")');
+  await reg.fill('input[aria-label="Position"]', '2B');
+  await reg.click('.roster-form button:has-text("Save")');
+  await reg.waitForSelector('.roster-row:has-text("2B")');
+  const rosterRow = await reg.textContent('.roster-row:has-text("Jane Slugger")');
+  const dupeAdd = await api(reg, '/rosters', { body: { sport: 'soft', season: 1998, name: 'jane slugger' } });
+  const softSeasons = (await api(reg, '/time-machine?sport=soft')).body.seasons;
+  const roster = (await api(reg, '/time-machine/roster?sport=soft&season=1998-99')).body;
+  const memberRemove = await api(reg, `/rosters/${roster.players[0].id}`, { method: 'DELETE' });
+  const adminRemove = await api(admin, `/rosters/${roster.players[0].id}`, { method: 'DELETE' });
+  const after = (await api(reg, '/time-machine/roster?sport=soft&season=1998-99')).body.players.length;
+  check('Rosters: a member opens any season, adds a player and fixes them; duplicates refused; only admins remove; the season then lists in the Time Machine',
+    /#7/.test(rosterRow ?? '') && /2B/.test(rosterRow ?? '') && /Las Cruces/.test(rosterRow ?? '') && dupeAdd.status === 409 && softSeasons.includes('1998-99')
+    && roster.sources.members && memberRemove.status === 403 && adminRemove.status === 200 && after === 0,
+    JSON.stringify({ rosterRow, dupe: dupeAdd.status, softSeasons, memberRemove: memberRemove.status, adminRemove: adminRemove.status, after }));
+
   // ---------- Smaller iPhones: iPhone SE / mini (375 wide) and original SE (320 wide) ----------
   for (const [label, w, h] of [['se', 375, 667], ['se1', 320, 568]]) {
     await reg.setViewportSize({ width: w, height: h });

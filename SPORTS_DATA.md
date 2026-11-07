@@ -54,4 +54,12 @@ Added October 30, 2026 at the owner's request. `src/worker/lib/livescore.ts` rea
 - Postseason games (bowls, conference and NCAA tournaments) are included; forfeits are left out.
 - The 30-minute cron imports a few seasons per run until finished; a daily job re-checks this season and last, so early-season games the NM State calendar has already dropped (it lists only about a month back) still arrive.
 - Games already on file from the NM State calendar are never duplicated or overwritten; missing final scores are filled in.
-- Not used: nmstatesports.com archives (bot-protected; would need NM State's permission). Football before 1999 could come from CollegeFootballData once `CFBD_API_KEY` is set.
+- Football before 1999: CollegeFootballData (`CFBD_API_KEY`), back to the program's start (1893), a few seasons per run.
+- Not used: nmstatesports.com archives and its `/services/` calendar (its robots.txt disallows `/services/` for all crawlers); Sports Reference (terms forbid building a substitute database). Other sports' history would need NM State's permission.
+
+## Rosters by season — added Nov 2026
+- Table `roster_players` (migration 0015), keyed by Time Machine season (fall start year).
+- Football: CollegeFootballData `/roster`, 2000–now (full details from about 2014; earlier years mostly names).
+- Men's and women's basketball: Wikipedia season articles (`{{CBB roster/Player}}`), read slowly through the official API with an identifying User-Agent; credited "From Wikipedia (CC BY-SA)" with a link. Seasons without an article or roster are skipped.
+- Any sport: members add or fix players (e.g. from media guides); admins and moderators remove. Imports only add rows and never overwrite a member's fix.
+- The 30-minute cron shares a budget of 16 outside requests across history and roster imports.

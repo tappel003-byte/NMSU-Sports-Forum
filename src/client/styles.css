@@ -705,3 +705,11 @@ input[type='checkbox']:disabled { opacity: .5; cursor: not-allowed; }
 .tm-group-head { background: var(--crimson-tint); }
 .tm-group-head h2 { color: var(--crimson); }
 :root[data-theme='dark'] .tm-group-head h2 { color: var(--text); }
+/* Time Machine roster accordion */
+.roster-acc > summary { cursor: pointer; list-style: none; }
+.roster-acc > summary::-webkit-details-marker { display: none; }
+.roster-acc > summary h2::after { content: ' ▾'; font-size: .8em; color: var(--muted); }
+.roster-acc[open] > summary h2::after { content: ' ▴'; }
+.roster-num { width: 2.6em; color: var(--muted); font-weight: 700; font-size: .9rem; }
+.roster-form-grid { display: grid; grid-template-columns: 2fr 0.6fr 0.8fr 1fr 0.8fr 0.7fr 1.6fr; gap: 6px; }
+@media (max-width: 640px) { .roster-form-grid { grid-template-columns: 1fr 1fr 1fr; } .roster-form-grid > :first-child, .roster-form-grid > :last-child { grid-column: 1 / -1; } }

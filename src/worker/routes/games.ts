@@ -1,7 +1,8 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import type { AppEnv } from '../env';
-import { all, first, getSetting, run } from '../db';
+import { all, first, getSetting, logMod, run } from '../db';
+import { isModerator } from '../auth';
 import { HttpError, now, parse } from '../util';
 import { FEATURED_SPORTS, FEATURED_SQL, officialRosterUrl, officialScheduleUrl, parseHubLinks, SPORTS, SPORT_BY_KEY } from '../../shared/sports';
 import { memberSummaries } from '../lib/members';
@@ -226,10 +227,78 @@ games.get('/time-machine', async (c) => {
   const seasonSport = sport && sport in SPORT_BY_KEY ? sport : null;
   const seasons = await all<{ y: number }>(c.env,
     `SELECT DISTINCT CAST(strftime('%Y', starts_at / 1000, 'unixepoch', '-6 months') AS INTEGER) AS y FROM games
-      WHERE removed = 0 AND starts_at < ?${seasonSport ? ' AND sport = ?' : ''} ORDER BY y DESC`, ...(seasonSport ? [now(), seasonSport] : [now()]));
+      WHERE removed = 0 AND starts_at < ?${seasonSport ? ' AND sport = ?' : ''}
+     UNION SELECT DISTINCT season AS y FROM roster_players WHERE removed = 0${seasonSport ? ' AND sport = ?' : ''}
+     ORDER BY y DESC`, ...(seasonSport ? [now(), seasonSport, seasonSport] : [now()]));
   return c.json({
     season,
     seasons: seasons.map((s) => `${s.y}-${String((s.y + 1) % 100).padStart(2, '0')}`),
     games: rows.map((g) => ({ ...presentGame(g), posts: g.posts, chats: g.chats, predictions: g.preds })),
   });
+});
+
+// ---------- Rosters by season (Time Machine) ----------
+// Filled by imports (football: CollegeFootballData; basketball: Wikipedia) and by members, e.g. from media guides.
+
+const seasonYear = (v: string | undefined) => { const y = Number(String(v ?? '').slice(0, 4)); return Number.isInteger(y) && y >= 1880 && y <= 2100 ? y : null; };
+
+games.get('/time-machine/roster', async (c) => {
+  const sport = c.req.query('sport') ?? '';
+  const season = seasonYear(c.req.query('season'));
+  if (!(sport in SPORT_BY_KEY) || season === null) throw new HttpError(400, 'Choose a sport and season.');
+  const rows = await all<{ id: number; name: string; jersey: string | null; position: string | null; class_year: string | null; height: string | null;
+    weight: number | null; hometown: string | null; source: string; source_url: string | null; updated_by: number | null; added_by: number | null }>(c.env,
+    `SELECT id, name, jersey, position, class_year, height, weight, hometown, source, source_url, updated_by, added_by FROM roster_players
+      WHERE sport = ? AND season = ? AND removed = 0 ORDER BY CASE WHEN jersey GLOB '[0-9]*' THEN CAST(jersey AS INTEGER) ELSE 999 END, name`, sport, season);
+  const wiki = rows.find((r) => r.source === 'wikipedia' && r.source_url)?.source_url ?? null;
+  return c.json({
+    players: rows.map(({ source_url: _u, updated_by, added_by, ...r }) => ({ ...r, edited: Boolean(updated_by || added_by) })),
+    sources: { cfbd: rows.some((r) => r.source === 'cfbd'), wikipedia: wiki, members: rows.some((r) => r.source === 'member' || r.updated_by) },
+  });
+});
+
+const rosterFields = z.object({
+  name: z.string().trim().min(2, 'enter the player\'s name').max(80),
+  jersey: z.string().trim().max(4).optional().nullable(),
+  position: z.string().trim().max(12).optional().nullable(),
+  class_year: z.string().trim().max(8).optional().nullable(),
+  height: z.string().trim().max(8).optional().nullable(),
+  weight: z.number().int().min(80).max(450).optional().nullable(),
+  hometown: z.string().trim().max(80).optional().nullable(),
+});
+const orNull = (v: string | null | undefined) => (v ? v : null);
+
+games.post('/rosters', async (c) => {
+  const user = c.get('user');
+  if (!user?.id) throw new HttpError(401, 'Sign in to add players.');
+  const body = parse(rosterFields.extend({ sport: z.string().refine((v) => v in SPORT_BY_KEY, 'choose a sport'), season: z.number().int().min(1880).max(2100) }), await c.req.json());
+  const dupe = await first<{ id: number }>(c.env, 'SELECT id FROM roster_players WHERE sport = ? AND season = ? AND removed = 0 AND lower(name) = lower(?)', body.sport, body.season, body.name);
+  if (dupe) throw new HttpError(409, 'That player is already on this roster. Use Fix to change their details.');
+  const t = now();
+  const r = await run(c.env, `INSERT INTO roster_players (sport, season, name, jersey, position, class_year, height, weight, hometown, source, added_by, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'member', ?, ?, ?)`, body.sport, body.season, body.name, orNull(body.jersey), orNull(body.position), orNull(body.class_year),
+    orNull(body.height), body.weight ?? null, orNull(body.hometown), user.id, t, t);
+  return c.json({ id: r.meta.last_row_id });
+});
+
+games.patch('/rosters/:id{[0-9]+}', async (c) => {
+  const user = c.get('user');
+  if (!user?.id) throw new HttpError(401, 'Sign in to fix players.');
+  const body = parse(rosterFields, await c.req.json());
+  const r = await run(c.env, `UPDATE roster_players SET name = ?, jersey = ?, position = ?, class_year = ?, height = ?, weight = ?, hometown = ?, updated_by = ?, updated_at = ?
+    WHERE id = ? AND removed = 0`, body.name, orNull(body.jersey), orNull(body.position), orNull(body.class_year), orNull(body.height), body.weight ?? null,
+    orNull(body.hometown), user.id, now(), Number(c.req.param('id')));
+  if (!r.meta.changes) throw new HttpError(404, 'Player not found.');
+  return c.json({ ok: true });
+});
+
+games.delete('/rosters/:id{[0-9]+}', async (c) => {
+  const user = c.get('user');
+  if (!isModerator(user)) throw new HttpError(403, 'Only admins and moderators can remove players.');
+  const id = Number(c.req.param('id'));
+  const p = await first<{ name: string }>(c.env, 'SELECT name FROM roster_players WHERE id = ? AND removed = 0', id);
+  if (!p) throw new HttpError(404, 'Player not found.');
+  await run(c.env, 'UPDATE roster_players SET removed = 1, updated_by = ?, updated_at = ? WHERE id = ?', user!.id, now(), id);
+  await logMod(c.env, user!.id, 'remove_roster_player', 'roster_player', id, p.name);
+  return c.json({ ok: true });
 });

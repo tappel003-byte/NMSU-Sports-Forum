@@ -7,17 +7,19 @@ import { runGameLifecycle, syncAllFeeds } from './lib/sports';
 import { syncRecruiting } from './lib/recruiting';
 import { expireBanProposals } from './lib/moderation';
 import { runAutoTopics } from './lib/topics';
-import { refreshRecentSeasons, runHistoryImport } from './lib/history';
-import { runNmStateProbe } from './lib/probe';
+import { refreshRecentSeasons, runCfbdFootballHistory, runHistoryImport } from './lib/history';
+import { runRosterImport } from './lib/rosters';
 
 /** Every 30 minutes: sync schedules, run the game-day lifecycle and deliver bookmark reminders. */
 export async function frequentJobs(env: Env): Promise<void> {
   await syncAllFeeds(env);
   await runGameLifecycle(env);
   await runAutoTopics(env);
-  // Time Machine history: a few past seasons per run from ESPN until every season on file is in.
-  await runHistoryImport(env).catch((e) => console.error('history import', e));
-  await runNmStateProbe(env).catch((e) => console.error('nm state probe', e));
+  // Time Machine history and rosters: a small, shared number of outside requests per run, until everything is in.
+  let budget = 16;
+  budget -= await runHistoryImport(env, Math.min(12, budget)).then((r) => r.fetched).catch((e) => { console.error('history import', e); return 0; });
+  budget -= await runCfbdFootballHistory(env, Math.min(8, budget)).catch((e) => { console.error('football history', e); return 0; });
+  await runRosterImport(env, Math.min(6, budget)).catch((e) => console.error('roster import', e));
   const due = await all<{ id: number; user_id: number; post_id: number; note: string | null; thread_id: number; title: string }>(env,
     `SELECT b.id, b.user_id, b.post_id, b.note, p.thread_id, t.title FROM bookmarks b JOIN posts p ON p.id = b.post_id JOIN threads t ON t.id = p.thread_id
       WHERE b.reminded = 0 AND b.remind_at IS NOT NULL AND b.remind_at <= ?`, now());
