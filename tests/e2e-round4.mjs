@@ -370,6 +370,7 @@ try {
   await reg.waitForSelector('.scorebox, .score-toggle');
   await reg.click('button[aria-label="Full screen chat"]');
   await reg.waitForSelector('button[aria-label="Exit full screen"]');
+  await reg.waitForSelector('.focus-bar .score-toggle');
   const focusState = await reg.evaluate(() => ({
     header: getComputedStyle(document.querySelector('.site-header')).display,
     chatHead: getComputedStyle(document.querySelector('.chat-head')).display,
@@ -835,8 +836,23 @@ try {
   await reg.goto(BASE + '/games?sport=week');
   await reg.waitForSelector('button.page-back');
   await reg.screenshot({ path: `${SHOTS}/desktop-dark-games.png` });
-  await api(reg, '/me/prefs', { method: 'PATCH', body: { theme: 'system' } });
+  await api(reg, '/me/prefs', { method: 'PATCH', body: { theme: 'light' } });
   check('Dark mode works on desktop', darkOn === 'dark', String(darkOn));
+  // Moon icon in the header: one tap switches to dark and saves it to the account (so it follows to other devices).
+  await reg.goto(BASE + '/');
+  await reg.waitForSelector('button[aria-label="Switch to dark mode"]');
+  await reg.click('button[aria-label="Switch to dark mode"]');
+  await reg.waitForSelector('button[aria-label="Switch to light mode"]');
+  await reg.waitForTimeout(500);
+  const afterMoon = { page: await reg.evaluate(() => document.documentElement.dataset.theme), saved: (await api(reg, '/me')).body.me.prefs.theme };
+  await reg.screenshot({ path: `${SHOTS}/desktop-moon-dark.png` });
+  await reg.click('button[aria-label="Switch to light mode"]');
+  await reg.waitForSelector('button[aria-label="Switch to dark mode"]');
+  await reg.waitForTimeout(500);
+  const afterSun = { page: await reg.evaluate(() => document.documentElement.dataset.theme), saved: (await api(reg, '/me')).body.me.prefs.theme };
+  await api(reg, '/me/prefs', { method: 'PATCH', body: { theme: 'system' } });
+  check('Moon icon switches to dark and saves it to the account; the sun switches back',
+    afterMoon.page === 'dark' && afterMoon.saved === 'dark' && afterSun.page === 'light' && afterSun.saved === 'light', JSON.stringify({ afterMoon, afterSun }));
 
   // ---------- Audit history ----------
   const log = (await api(admin, '/admin/log')).body.log;
