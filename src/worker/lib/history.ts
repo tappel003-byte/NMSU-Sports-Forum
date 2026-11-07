@@ -26,6 +26,7 @@ export const HISTORY_SPORTS: HistorySport[] = [
   { sport: 'wbb', path: 'basketball/womens-college-basketball', team: '166', from: 2001, min: 20 },
   { sport: 'vb', path: 'volleyball/womens-college-volleyball', team: '166', from: 2025, min: 20 },
   { sport: 'base', path: 'baseball/college-baseball', team: '103', from: 2026, min: 35 },
+  { sport: 'soft', path: 'baseball/college-softball', team: '515', from: 2026, min: 35 },
   { sport: 'wsoc', path: 'soccer/usa.ncaa.w.1', team: '20619', from: 2026, min: 12, currentOnly: true },
 ];
 const FETCHES_PER_RUN = 12;
