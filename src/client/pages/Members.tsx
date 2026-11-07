@@ -329,7 +329,7 @@ export function Settings() {
         {prefCheck('notify_dm', 'New private messages')}
         {prefCheck('notify_games', 'Game reminders for my sports', 'About two hours before each game.')}
         {prefCheck('auto_follow', 'Automatically follow discussions I post in')}
-        {prefCheck('spoiler_free', 'Spoiler-free mode', 'Hide final scores until you tap to reveal — handy when watching on delay.')}
+        {prefCheck('spoiler_free', 'Spoiler-free mode', 'Hide final scores from the last two days until you tap to reveal — handy when watching on delay. Older scores always show.')}
         {prefCheck('large_text', 'Larger text')}
         {prefCheck('compact', 'Compact discussion lists', 'Hide descriptions so more discussions fit on screen.')}
         <div className="field" style={{ marginTop: 8 }}>

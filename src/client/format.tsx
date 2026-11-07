@@ -41,15 +41,19 @@ export function matchup(g: { opponent: string; home_away: string }) {
   return g.home_away === 'away' ? `at ${g.opponent}` : `vs. ${g.opponent}`;
 }
 
-/** Final score, hidden behind a tap when the member has spoiler-free mode on. */
-export function Score({ game }: { game: { status: string; result: string | null; nmsu_score: number | null; opp_score: number | null } }) {
+/** Spoiler-free mode only hides scores of games from the last two days (watching on delay); older scores always show. */
+export const SPOILER_WINDOW_MS = 2 * 24 * 3_600_000;
+
+/** Final score, hidden behind a tap when the member has spoiler-free mode on and the game is recent. */
+export function Score({ game }: { game: { status: string; result: string | null; nmsu_score: number | null; opp_score: number | null; starts_at?: number } }) {
   const { me } = useApp();
   const [shown, setShown] = useState(false);
   if (game.status === 'canceled') return <span className="chip gray">Canceled</span>;
   if (game.status === 'postponed') return <span className="chip gray">Postponed</span>;
   if (game.status !== 'final') return null;
   const text = game.result ? `${game.result} ${game.nmsu_score ?? ''}–${game.opp_score ?? ''}` : 'Final';
-  if (me?.prefs?.spoiler_free && !shown) {
+  const recent = game.starts_at === undefined || Date.now() - game.starts_at < SPOILER_WINDOW_MS;
+  if (me?.prefs?.spoiler_free && recent && !shown) {
     return <button type="button" className="spoiler" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShown(true); }}>Final · tap to reveal</button>;
   }
   return <span className={`result ${game.result ?? ''}`}>{text}</span>;
