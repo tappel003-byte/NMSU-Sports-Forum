@@ -47,3 +47,11 @@ The owner downloaded the nmstatesports.com composite calendar (Calendar → All 
 
 ## Live in-game scores (football and men's basketball)
 Added October 30, 2026 at the owner's request. `src/worker/lib/livescore.ts` reads ESPN's public scoreboard JSON (`site.api.espn.com/apis/site/v2/sports/{football/college-football|basketball/mens-college-basketball}/scoreboard?dates=YYYYMMDD&groups=80|50`) and finds NM State by ESPN team id 166. Lookups only happen from 30 minutes before start to 5 hours after, at most once every 30 seconds per game (cached in the `live_scores` table), no matter how many members are watching. ESPN does not formally offer this feed to third parties, so the code fails quietly: no score bar, but the ESPN Gamecast or team-page link still shows. Official final results still come only from the NMSU calendar feed.
+
+## Past seasons (Time Machine) — added Nov 2026
+- Source: ESPN's public team-schedule feed (`src/worker/lib/history.ts`). Final scores only; no ESPN text or images are copied.
+- Coverage: football 1999–now, men's basketball 2002–now, women's basketball 2001–now, volleyball 2025–now, baseball 2026–now, women's soccer current season only. Earlier volleyball/baseball/soccer seasons are mostly missing on ESPN, so they are skipped rather than shown half-empty. Golf, tennis, swimming, track and cross country have no game-by-game data on ESPN.
+- Postseason games (bowls, conference and NCAA tournaments) are included; forfeits are left out.
+- The 30-minute cron imports a few seasons per run until finished; a daily job re-checks this season and last, so early-season games the NM State calendar has already dropped (it lists only about a month back) still arrive.
+- Games already on file from the NM State calendar are never duplicated or overwritten; missing final scores are filled in.
+- Not used: nmstatesports.com archives (bot-protected; would need NM State's permission). Football before 1999 could come from CollegeFootballData once `CFBD_API_KEY` is set.
