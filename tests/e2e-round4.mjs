@@ -815,6 +815,7 @@ try {
   await reg.click('.bottom-nav button:has-text("More")');
   await reg.waitForSelector('.more-sheet a:has-text("Aggie Vault")');
   const sheetText = await reg.textContent('.more-sheet');
+  const fitsWithoutScroll = await reg.$eval('.more-sheet', (el) => el.scrollHeight <= el.clientHeight + 1);
   const groups = await reg.$$eval('.more-sheet .rail-title', (els) => els.map((e) => e.textContent));
   const dupes = await reg.$$eval('.more-sheet a', (els) => els.map((e) => e.getAttribute('href')).filter((h) => ['/', '/feed', '/games', '/chat'].includes(h)));
   await reg.screenshot({ path: `${SHOTS}/iphone-more-menu.png` });
@@ -822,8 +823,8 @@ try {
   await reg.waitForURL(/\/calendar/);
   const sheetClosed = await reg.waitForSelector('.more-sheet', { state: 'detached', timeout: 5000 }).then(() => true, () => false);
   check('On a phone, More shows the grouped menu without the bottom-bar items or the Aggie History board, and closes after picking',
-    JSON.stringify(groups) === JSON.stringify(['Game Day', 'Aggie History', 'Members', 'Site']) && dupes.length === 0 && (await reg.locator('a[href="/f/aggie-history"]').count()) === 0 && /Time Machine/.test(sheetText ?? '') && sheetClosed,
-    JSON.stringify({ groups, dupes, sheetClosed }));
+    JSON.stringify(groups) === JSON.stringify(['Game Day', 'Aggie History', 'Members', 'Site']) && dupes.length === 0 && fitsWithoutScroll && (await reg.locator('a[href="/f/aggie-history"]').count()) === 0 && /Time Machine/.test(sheetText ?? '') && sheetClosed,
+    JSON.stringify({ groups, dupes, fitsWithoutScroll, sheetClosed }));
   // Short phone: the menu must sit fully below the header (title and Close visible) and scroll inside itself.
   await reg.setViewportSize({ width: 375, height: 600 });
   await reg.goto(BASE + '/');
