@@ -896,10 +896,9 @@ try {
   const checkedColor = await reg.$eval('input[type="checkbox"]:checked', (el) => getComputedStyle(el).backgroundColor);
   await reg.screenshot({ path: `${SHOTS}/desktop-dark-settings.png` });
   check('Checked boxes are Aggie crimson in dark mode (not pink)', checkedColor === 'rgb(140, 11, 66)', checkedColor);
-  const goggles = await reg.locator('button:has-text("Swimming & Diving") img[src="/brand/swim-goggles.png"]').count();
-  const trackBtn = await reg.textContent('button:has-text("Track & Field")');
-  const xcBtn = await reg.textContent('button:has-text("Cross Country")');
-  check('Sport icons: no people (track 👟, cross country ⏱️, swimming uses the racing-goggles drawing)', goggles === 1 && trackBtn.includes('👟') && xcBtn.includes('⏱️'), JSON.stringify({ goggles, trackBtn, xcBtn }));
+  const pics = await reg.$$eval('button img.sport-img', (els) => els.map((e) => [e.getAttribute('src'), e.complete && e.naturalWidth > 0]));
+  const swimPic = await reg.locator('button:has-text("Swimming & Diving") img[src="/brand/sports/swim.png"]').count();
+  check('Sport icons: the drawn picture set shows on every sport button and loads', pics.length >= 13 && pics.every(([, ok]) => ok) && swimPic === 1, JSON.stringify(pics));
   await reg.goto(BASE + '/');
   await reg.screenshot({ path: `${SHOTS}/desktop-dark-home.png` });
   await reg.goto(BASE + '/games?sport=week');

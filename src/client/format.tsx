@@ -33,9 +33,16 @@ export function sportName(key: string | null | undefined) {
   return (key && SPORT_BY_KEY[key]?.label) || 'Other';
 }
 
-/** Sport icon: phone emoji, except swimming, which uses a drawing of racing goggles (the 🥽 emoji looks like ski goggles). */
+/** Picture file for each sport (public/brand/sports). Men's and women's versions share one picture. */
+const SPORT_IMG: Record<string, string> = {
+  fb: 'fb', mbb: 'bball', wbb: 'bball', vb: 'vb', base: 'base', soft: 'soft', wsoc: 'wsoc',
+  track: 'track', xc: 'xc', mgolf: 'golf', wgolf: 'golf', wten: 'tennis', swim: 'swim',
+};
+
+/** Sport icon: the site's own drawn set; falls back to the emoji for any sport without a picture. */
 export function sportIcon(key: string | null | undefined): ReactNode {
-  if (key === 'swim') return <img src="/brand/swim-goggles.png" alt="" className="sport-img" width={18} height={18} />;
+  const img = key ? SPORT_IMG[key] : undefined;
+  if (img) return <img src={`/brand/sports/${img}.png`} alt="" className="sport-img" width={18} height={18} />;
   return (key && SPORT_BY_KEY[key]?.icon) || '🏅';
 }
 
