@@ -6,7 +6,7 @@ import { deleteObject, getObject, putObject } from '../storage';
 import { parsePastedRoster } from '../lib/rosters';
 import { isModerator } from '../auth';
 import { HttpError, now, parse } from '../util';
-import { FEATURED_SPORTS, FEATURED_SQL, officialRosterUrl, officialScheduleUrl, parseHubLinks, SPORTS, SPORT_BY_KEY } from '../../shared/sports';
+import { FEATURED_SPORTS, FEATURED_SQL, MEDIA_GUIDES_URL, officialRosterUrl, officialScheduleUrl, officialSeasonUrls, parseHubLinks, SPORTS, SPORT_BY_KEY } from '../../shared/sports';
 import { memberSummaries } from '../lib/members';
 import { THREAD_SELECT, presentThreads, type ThreadRow } from '../lib/threads';
 import { dayStartMT, seasonOf, seasonRange, weekStartMT, type GameRow } from '../lib/sports';
@@ -231,10 +231,21 @@ games.get('/time-machine', async (c) => {
     `SELECT DISTINCT CAST(strftime('%Y', starts_at / 1000, 'unixepoch', '-6 months') AS INTEGER) AS y FROM games
       WHERE removed = 0 AND starts_at < ?${seasonSport ? ' AND sport = ?' : ''}
      UNION SELECT DISTINCT season AS y FROM roster_players WHERE removed = 0${seasonSport ? ' AND sport = ?' : ''}
-     ORDER BY y DESC`, ...(seasonSport ? [now(), seasonSport, seasonSport] : [now()]));
+     UNION SELECT season AS y FROM season_summaries${seasonSport ? ' WHERE sport = ?' : ''}
+     ORDER BY y DESC`, ...(seasonSport ? [now(), seasonSport, seasonSport, seasonSport] : [now()]));
+  // Season records (where a summary exists) for the season list, and the full summary for the chosen season.
+  const summaries = seasonSport ? await all<{ season: number; record: string | null; conf_record: string | null; conf_standing: string | null;
+    conference: string | null; postseason: string | null; coach: string | null; source: string; source_url: string | null }>(c.env,
+    'SELECT season, record, conf_record, conf_standing, conference, postseason, coach, source, source_url FROM season_summaries WHERE sport = ?', seasonSport) : [];
+  const label = (y: number) => `${y}-${String((y + 1) % 100).padStart(2, '0')}`;
+  const chosenYear = Number(season.slice(0, 4));
   return c.json({
     season,
     seasons: seasons.map((s) => `${s.y}-${String((s.y + 1) % 100).padStart(2, '0')}`),
+    records: Object.fromEntries(summaries.filter((x) => x.record).map((x) => [label(x.season), x.record])),
+    summary: summaries.find((x) => x.season === chosenYear) ?? null,
+    official: seasonSport ? officialSeasonUrls(seasonSport, chosenYear) : null,
+    media_guides: MEDIA_GUIDES_URL,
     games: rows.map((g) => ({ ...presentGame(g), posts: g.posts, chats: g.chats, predictions: g.preds })),
   });
 });
@@ -256,7 +267,8 @@ games.get('/time-machine/roster', async (c) => {
   return c.json({
     players: rows.map(({ source_url: _u, updated_by, added_by, ...r }) => ({ ...r, edited: Boolean(updated_by || added_by) })),
     sources: { cfbd: rows.some((r) => r.source === 'cfbd'), espn: rows.some((r) => r.source === 'espn'), wikipedia: wiki, members: rows.some((r) => r.source === 'member' || r.updated_by) },
-    official_url: officialRosterUrl(sport),
+    official_url: officialSeasonUrls(sport, season)?.roster ?? officialRosterUrl(sport),
+    official_label: officialSeasonUrls(sport, season)?.label ?? null,
   });
 });
 

@@ -68,3 +68,16 @@ describe('Pasted roster lists (e.g. from Claude reading a media guide page)', ()
     expect(rows[2]).toMatchObject({ name: 'Ty Brown', jersey: '3', height: '6-0', weight: 180, hometown: 'Dallas, TX' });
   });
 });
+
+import { officialSeasonUrls } from '../../src/shared/sports';
+describe('Official season pages on nmstatesports.com', () => {
+  it('uses the site\'s own season names per sport', () => {
+    expect(officialSeasonUrls('fb', 2004)?.schedule).toBe('https://nmstatesports.com/sports/football/schedule/2004');
+    expect(officialSeasonUrls('mgolf', 2001)?.roster).toBe('https://nmstatesports.com/sports/mens-golf/roster/2001-02');
+    expect(officialSeasonUrls('xc', 2003)?.schedule).toBe('https://nmstatesports.com/sports/cross-country/schedule/2003-04');
+    expect(officialSeasonUrls('base', 2003)?.roster).toBe('https://nmstatesports.com/sports/baseball/roster/2004');
+    expect(officialSeasonUrls('swim', 2005)?.roster).toBe('https://nmstatesports.com/sports/womens-swimming-and-diving/roster/2005-06');
+    expect(officialSeasonUrls('track', 2005)?.roster).toBe('https://nmstatesports.com/sports/indoor-track/roster/2005-06');
+    expect(officialSeasonUrls('fb', 1999)).toBeNull();
+  });
+});

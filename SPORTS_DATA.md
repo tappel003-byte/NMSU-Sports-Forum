@@ -71,3 +71,8 @@ Added October 30, 2026 at the owner's request. `src/worker/lib/livescore.ts` rea
 - nmstatesports.com archive services: robots.txt disallows `/services/`; the pages behind bot protection.
 - ESPN college softball/baseball rosters: stale (same list every season, positions "UN"), so not imported.
 The route for older non-revenue history is NM State Athletics' permission (draft email on hold) or member contributions.
+
+## Season summaries and official season links — added Nov 2026
+- `season_summaries` (migration 0018): record, conference record/finish, coach, postseason per season. First load: NM State baseball 1962–2020 from Wikipedia's year-by-year table (cites the 2020 NMSU baseball media guide), credited on the page (CC BY-SA). Checked: every coach matches the article's coaches table; the article's second "1986" row is really 1987 (link and coach), corrected.
+- Every Time Machine season from 2000 on links to nmstatesports.com's own roster and schedule pages for that exact season (`officialSeasonUrls` in src/shared/sports.ts: fall sports by fall year, baseball/softball by spring year, others "2003-04"; track under indoor-track), plus the media guide directory. Links only; nothing is read from those pages.
+- Members fill older seasons from media guides, NMSU yearbooks (1907–1992) and The Round Up (1893–1999) via "Send a media guide page".
