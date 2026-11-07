@@ -940,6 +940,10 @@ try {
   await admin.goto(BASE + '/admin/rosters');
   await admin.waitForSelector('.roster-photo');
   const imgOk = await admin.$eval('.roster-photo-img', (el) => el.complete && el.naturalWidth > 0);
+  // "Read this page" (Cloudflare Workers AI) only runs on the live site; here it must explain that instead of failing silently.
+  await admin.click('button:has-text("Read this page")');
+  await admin.waitForSelector('.toast:has-text("only available on the live site")');
+  const memberRead = await api(reg, `/roster-photos/${photo?.id}/read`, { method: 'POST' });
   await admin.fill('textarea[aria-label="Paste players"]', '12, Kim Ace, P, Sr, 5-9, , Albuquerque, NM\n4, Lee Glove, C, Jr');
   await admin.click('button:has-text("Add players")');
   await admin.waitForSelector('text=Added 2 players');
@@ -949,8 +953,8 @@ try {
   const r97 = (await api(reg, '/time-machine/roster?sport=soft&season=1997-98')).body.players.map((p) => `${p.jersey} ${p.name} ${p.position} ${p.hometown ?? ''}`);
   const thanks = (await api(reg, '/notifications')).body.notifications?.some((n) => /roster from your media guide/.test(n.text));
   check('Media guide photos: a member sends a page; admins see it privately, paste the players and mark it done; the photo is deleted and the sender thanked',
-    Boolean(photo) && memberQueue.status === 403 && imgOk && r97.includes('12 Kim Ace P Albuquerque, NM') && r97.includes('4 Lee Glove C ') && imgAfter === 404 && thanks,
-    JSON.stringify({ photo: Boolean(photo), member: memberQueue.status, imgOk, r97, imgAfter, thanks }));
+    Boolean(photo) && memberQueue.status === 403 && memberRead.status === 403 && imgOk && r97.includes('12 Kim Ace P Albuquerque, NM') && r97.includes('4 Lee Glove C ') && imgAfter === 404 && thanks,
+    JSON.stringify({ photo: Boolean(photo), member: memberQueue.status, memberRead: memberRead.status, imgOk, r97, imgAfter, thanks }));
 
   // ---------- Smaller iPhones: iPhone SE / mini (375 wide) and original SE (320 wide) ----------
   for (const [label, w, h] of [['se', 375, 667], ['se1', 320, 568]]) {

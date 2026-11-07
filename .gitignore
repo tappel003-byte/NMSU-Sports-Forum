@@ -6,3 +6,4 @@ dist/
 test-results/
 tests/screenshots/
 .DS_Store
+.wrangler.test.jsonc

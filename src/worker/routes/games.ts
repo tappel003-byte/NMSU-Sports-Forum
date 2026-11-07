@@ -387,3 +387,35 @@ games.post('/roster-photos/:id{[0-9]+}/done', async (c) => {
   }
   return c.json({ ok: true });
 });
+
+const VISION_MODEL = '@cf/meta/llama-3.2-11b-vision-instruct';
+const READ_PROMPT = `This photo is a page from a college sports media guide or program. List every player on the roster shown.
+Write exactly one line per player in this format, with commas between fields:
+number, full name, position, class year, height, weight, hometown
+Leave a field empty if it is not shown (keep its commas). Write nothing else: no headings, no numbering, no notes.`;
+
+/** Draft roster from the photo (Cloudflare Workers AI). Fills the paste box only; an admin checks it before adding. */
+games.post('/roster-photos/:id{[0-9]+}/read', async (c) => {
+  requireRosterMod(c.get('user'));
+  if (!c.env.AI) throw new HttpError(503, 'Photo reading is only available on the live site.');
+  const p = await first<{ image_key: string; content_type: string }>(c.env, "SELECT image_key, content_type FROM roster_photos WHERE id = ? AND status = 'open'", Number(c.req.param('id')));
+  const obj = p ? await getObject(c.env, p.image_key) : null;
+  if (!p || !obj) throw new HttpError(404, 'Photo not found.');
+  const bytes = new Uint8Array(obj.body instanceof ArrayBuffer ? obj.body : await new Response(obj.body).arrayBuffer());
+  let bin = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  const image = `data:${p.content_type};base64,${btoa(bin)}`;
+  const ask = () => c.env.AI!.run(VISION_MODEL, { messages: [{ role: 'user', content: READ_PROMPT }], image, max_tokens: 2048, temperature: 0 });
+  let out: unknown;
+  try {
+    out = await ask();
+  } catch (e) {
+    // First use on the account: the model asks for Meta's license to be accepted once.
+    if (!/agree|licen[cs]e/i.test(String(e))) throw new HttpError(502, 'The photo reader is not available right now. Try again later or use Claude.');
+    await c.env.AI.run(VISION_MODEL, { prompt: 'agree' }).catch(() => undefined);
+    out = await ask().catch(() => { throw new HttpError(502, 'The photo reader is not available right now. Try again later or use Claude.'); });
+  }
+  const text = String((out as { response?: unknown })?.response ?? '').trim();
+  if (!text) throw new HttpError(502, 'The photo reader could not read this page. Try Claude instead.');
+  return c.json({ text });
+});
