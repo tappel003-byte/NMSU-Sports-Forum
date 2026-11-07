@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
-  Award, Bell, Bookmark, CalendarDays, ClipboardList, History, Home, Lightbulb, LogOut, Mail, Map as MapIcon, MessageCircle, MessagesSquare,
+  Award, Bell, Bookmark, CalendarDays, ClipboardList, Clapperboard, History, Home, Lightbulb, LogOut, Mail, Map as MapIcon, MessageCircle, MessagesSquare,
   Menu, Moon, Search, Sun, Send, Settings, Shield, Sparkles, Trophy, Trophy as TrophyIcon, UserPlus, Users,
 } from 'lucide-react';
 import { FEATURED_SPORTS } from '../../shared/sports';
@@ -122,37 +122,58 @@ function Header() {
   );
 }
 
+/** Hidden boards: kept in the database (and reachable by old links) but left out of the menu. */
+const HIDDEN_BOARDS = ['aggie-history'];
+
 function LeftRail({ inSheet = false }: { inSheet?: boolean }) {
   const { me, pulse, site } = useApp();
   const { data } = useForums();
-  const community = data?.forums.filter((f) => f.kind !== 'sport' && f.kind !== 'general') ?? [];
+  const unread = (slug: string) => data?.forums.find((f) => f.slug === slug && !HIDDEN_BOARDS.includes(f.slug))?.unread ?? 0;
+  const hasBoard = (slug: string) => !!data?.forums.some((f) => f.slug === slug);
+  const count = (n: number) => n > 0 && <span className="count hot">{n}</span>;
   return (
     <aside className={`left-rail ${inSheet ? 'in-sheet' : ''}`} aria-label="Sections">
+      {/* On phones these four are on the bottom bar, so the More menu leaves them out. */}
+      {!inSheet && (
+        <div className="rail-card">
+          <nav className="side-nav">
+            <NavLink to="/" end><Home size={17} /> Home</NavLink>
+            <NavLink to="/feed"><MessagesSquare size={17} /> Board{count(pulse.unread_threads)}</NavLink>
+          </nav>
+        </div>
+      )}
       <div className="rail-card">
-        <p className="rail-title">Navigate</p>
+        <p className="rail-title">Game Day</p>
         <nav className="side-nav">
-          <NavLink to="/" end><Home size={17} /> Home</NavLink>
-          <NavLink to="/feed"><MessagesSquare size={17} /> Board{pulse.unread_threads > 0 && <span className="count hot">{pulse.unread_threads}</span>}</NavLink>
-          <NavLink to="/games"><TrophyIcon size={17} /> Game Center</NavLink>
-          <NavLink to="/chat" className={pulse.chat_live ? 'chat-live' : undefined}><MessageCircle size={17} /> Live chat{pulse.chat_live && <span className="count hot">{pulse.chat_live.kind === 'game' ? 'LIVE' : 'now'}</span>}</NavLink>
+          {!inSheet && <NavLink to="/games"><TrophyIcon size={17} /> Game Center</NavLink>}
+          {!inSheet && <NavLink to="/chat" className={pulse.chat_live ? 'chat-live' : undefined}><MessageCircle size={17} /> Live chat{pulse.chat_live && <span className="count hot">{pulse.chat_live.kind === 'game' ? 'LIVE' : 'now'}</span>}</NavLink>}
           <NavLink to="/calendar"><CalendarDays size={17} /> Calendar</NavLink>
-          <NavLink to="/members"><Users size={17} /> Members</NavLink>
-          {me && (site.memberInvites || me.role === 'admin') && <NavLink to="/invite"><Send size={17} /> Invite friends</NavLink>}
           <NavLink to="/rosters"><ClipboardList size={17} /> Rosters &amp; links</NavLink>
           <NavLink to="/recruiting"><UserPlus size={17} /> Recruiting</NavLink>
-          <NavLink to="/time-machine"><History size={17} /> Time Machine</NavLink>
-          {(me?.role === 'admin' || me?.role === 'moderator') && <NavLink to="/admin"><Shield size={17} /> {me.role === 'admin' ? 'Admin' : 'Moderation'}{pulse.open_reports > 0 && <span className="count hot">{pulse.open_reports}</span>}</NavLink>}
         </nav>
       </div>
       <div className="rail-card">
-        <p className="rail-title">Community</p>
+        <p className="rail-title">Aggie History</p>
         <nav className="side-nav">
-          {community.map((f) => (
-            <NavLink key={f.slug} to={f.slug === 'aggie-vault' ? '/vault' : `/f/${f.slug}`}><span aria-hidden="true">{f.icon}</span> {f.name}{f.unread > 0 && <span className="count hot">{f.unread}</span>}</NavLink>
-          ))}
+          {hasBoard('aggie-vault') && <NavLink to="/vault"><Clapperboard size={17} /> Aggie Vault{count(unread('aggie-vault'))}</NavLink>}
+          <NavLink to="/time-machine"><History size={17} /> Time Machine</NavLink>
+        </nav>
+      </div>
+      <div className="rail-card">
+        <p className="rail-title">Members</p>
+        <nav className="side-nav">
+          <NavLink to="/members" end><Users size={17} /> Members</NavLink>
+          {me && (site.memberInvites || me.role === 'admin') && <NavLink to="/invite"><Send size={17} /> Invite friends</NavLink>}
+          <NavLink to="/map"><MapIcon size={17} /> Member map</NavLink>
           <NavLink to="/contributions"><Award size={17} /> Contributions</NavLink>
           <NavLink to="/year-in-review"><Sparkles size={17} /> Year in Review</NavLink>
-          <NavLink to="/map"><MapIcon size={17} /> Member map</NavLink>
+        </nav>
+      </div>
+      <div className="rail-card">
+        <p className="rail-title">Site</p>
+        <nav className="side-nav">
+          {hasBoard('suggestions') && <NavLink to="/f/suggestions"><Lightbulb size={17} /> Suggestions &amp; Improvements{count(unread('suggestions'))}</NavLink>}
+          {(me?.role === 'admin' || me?.role === 'moderator') && <NavLink to="/admin"><Shield size={17} /> {me.role === 'admin' ? 'Admin' : 'Moderation'}{count(pulse.open_reports)}</NavLink>}
         </nav>
       </div>
     </aside>
@@ -218,7 +239,7 @@ function RightRail() {
 function BottomNav() {
   const { pulse } = useApp();
   const loc = useLocation();
-  // "More": on phones the side menu is hidden, so this opens it (Aggie History, Calendar, Members, Admin…).
+  // "More": on phones the side menu is hidden, so this opens it (Calendar, Aggie Vault, Members, Admin…).
   const [more, setMore] = useState(false);
   useEffect(() => { setMore(false); }, [loc.pathname, loc.search]);
   // Inside a chat room the bottom bar steps aside; the big ← Back button at the top leads out.

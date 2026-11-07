@@ -809,18 +809,28 @@ try {
   const onPref = (await api(reg, '/me')).body.me.prefs.notify_replies;
   check('Members can turn each kind of notification on or off right from the Notifications page', offPref === false && onPref === true, JSON.stringify({ offPref, onPref }));
 
-  // ---------- Phones: "More" in the bottom bar opens the full menu (Aggie History etc.) ----------
+  // ---------- Phones: "More" opens the grouped menu (Game Day / Aggie History / Members / Site); Aggie History board is hidden ----------
   await reg.setViewportSize({ width: 390, height: 844 });
   await reg.goto(BASE + '/');
   await reg.click('.bottom-nav button:has-text("More")');
-  await reg.waitForSelector('.more-sheet a:has-text("Aggie History")');
+  await reg.waitForSelector('.more-sheet a:has-text("Aggie Vault")');
   const sheetText = await reg.textContent('.more-sheet');
+  const groups = await reg.$$eval('.more-sheet .rail-title', (els) => els.map((e) => e.textContent));
+  const dupes = await reg.$$eval('.more-sheet a', (els) => els.map((e) => e.getAttribute('href')).filter((h) => ['/', '/feed', '/games', '/chat'].includes(h)));
   await reg.screenshot({ path: `${SHOTS}/iphone-more-menu.png` });
-  await reg.click('.more-sheet a:has-text("Aggie History")');
-  await reg.waitForSelector('h1:has-text("Aggie History")');
-  const sheetClosed = (await reg.locator('.more-sheet').count()) === 0;
-  check('On a phone, More opens the full menu (Aggie History, Calendar, Members…) and closes after picking',
-    /Aggie History/.test(sheetText ?? '') && /Calendar/.test(sheetText ?? '') && /Members/.test(sheetText ?? '') && sheetClosed, JSON.stringify({ sheetClosed }));
+  await reg.click('.more-sheet a:has-text("Calendar")');
+  await reg.waitForURL(/\/calendar/);
+  const sheetClosed = await reg.waitForSelector('.more-sheet', { state: 'detached', timeout: 5000 }).then(() => true, () => false);
+  check('On a phone, More shows the grouped menu without the bottom-bar items or the Aggie History board, and closes after picking',
+    JSON.stringify(groups) === JSON.stringify(['Game Day', 'Aggie History', 'Members', 'Site']) && dupes.length === 0 && (await reg.locator('a[href="/f/aggie-history"]').count()) === 0 && /Time Machine/.test(sheetText ?? '') && sheetClosed,
+    JSON.stringify({ groups, dupes, sheetClosed }));
+  await reg.setViewportSize({ width: 1280, height: 900 });
+  await reg.goto(BASE + '/');
+  await reg.waitForSelector('.left-rail a:has-text("Game Center")');
+  const deskLinks = await reg.$$eval('.left-rail a', (els) => els.map((e) => e.textContent.trim()));
+  check('On a computer the side menu keeps Home, Board, Game Center and Live chat, and has no Aggie History board',
+    ['Home', 'Board', 'Game Center', 'Live chat'].every((w) => deskLinks.some((l) => l.startsWith(w))) && !deskLinks.some((l) => l.includes('Aggie History')), JSON.stringify(deskLinks));
+  await reg.setViewportSize({ width: 390, height: 844 });
 
   // ---------- Aggie Vault: its own gallery page of YouTube clips; admins add, everyone watches and comments ----------
   await admin.goto(BASE + '/vault');
