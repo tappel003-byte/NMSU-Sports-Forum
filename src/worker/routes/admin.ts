@@ -34,7 +34,7 @@ admin.get('/overview', async (c) => {
     first<{ n: number }>(c.env, 'SELECT COUNT(*) AS n FROM posts WHERE pending = 1 AND deleted = 0'),
     first<{ n: number }>(c.env, 'SELECT COUNT(*) AS n FROM invites WHERE revoked = 0 AND uses < max_uses AND expires_at > ?', now()),
     all(c.env, 'SELECT id, sport, url, enabled, last_ok_at, last_error, last_error_at, failing, last_counts FROM data_feeds ORDER BY sport'),
-    all(c.env, 'SELECT l.*, u.username AS actor FROM mod_log l LEFT JOIN users u ON u.id = l.actor_id ORDER BY l.id DESC LIMIT 25'),
+    all(c.env, LOG_SQL, 25),
   ]);
   return c.json({ members, open_reports: reports?.n ?? 0, pending_posts: pendingPosts?.n ?? 0, open_invites: invites?.n ?? 0, feeds, log, emailEnabled: emailEnabled(c.env) });
 });
@@ -505,7 +505,16 @@ admin.patch('/games/:id', requireAdmin, async (c) => {
   return c.json({ game: presentGame((await first<GameRow>(c.env, 'SELECT * FROM games WHERE id = ?', id))!) });
 });
 
+/** Routine housekeeping is still recorded (appeals point at log entries) but left out of the log view:
+ *  it would otherwise bury the actions that matter (removals, warnings, suspensions, bans, role changes). */
+const ROUTINE_ACTIONS = ['approve_post', 'update_settings', 'add_feed', 'remove_feed', 'run_news_desk', 'post_topic_of_day',
+  'create_invite', 'override_game', 'clear_game_override', 'setup_first_admin'];
+const LOG_SQL = `SELECT l.id, l.action, l.target_type, l.target_id, l.created_at, u.username AS actor, s.username AS subject,
+    substr(l.detail, 1, 80) AS detail
+  FROM mod_log l LEFT JOIN users u ON u.id = l.actor_id LEFT JOIN users s ON s.id = l.subject_user_id
+  WHERE l.action NOT IN (${ROUTINE_ACTIONS.map((a) => `'${a}'`).join(', ')})
+  ORDER BY l.id DESC LIMIT ?`;
+
 admin.get('/log', async (c) => {
-  const rows = await all(c.env, 'SELECT l.*, u.username AS actor FROM mod_log l LEFT JOIN users u ON u.id = l.actor_id ORDER BY l.id DESC LIMIT 200');
-  return c.json({ log: rows });
+  return c.json({ log: await all(c.env, LOG_SQL, 200) });
 });

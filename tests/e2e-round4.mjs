@@ -949,6 +949,8 @@ try {
   const actions = new Set(log.map((l) => l.action));
   const needed = ['auto_hide_pending_review', 'restore_post', 'remove_post', 'warn', 'appeal_overturned', 'suspend', 'lift_suspension', 'ban_proposed', 'ban_vote_approve', 'ban', 'appeal_upheld', 'revoke_flagging'];
   check('Every decision is recorded in the audit history with its reason', needed.every((a) => actions.has(a)) && log.find((l) => l.action === 'restore_post').detail === 'Hot take, not trolling.', needed.filter((a) => !actions.has(a)).join(', '));
+  check('The log view leaves out routine housekeeping (approvals, settings, invites) and keeps details short',
+    !['approve_post', 'update_settings', 'create_invite'].some((a) => actions.has(a)) && log.every((l) => !l.detail || l.detail.length <= 80), [...actions].join(', '));
 } catch (e) {
   check('Unexpected error', false, e.stack?.split('\n').slice(0, 3).join(' | '));
 } finally {

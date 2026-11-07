@@ -248,7 +248,6 @@ function TmSports() {
           {grp.sports.map((k) => (
             <Link key={k} to={`/time-machine?sport=${k}`} className="list-row tm-row">
               <span className="grow"><strong>{SPORT_BY_KEY[k]?.label ?? k}</strong></span>
-              <span className="small muted">{data.sports[k] ? `${data.sports[k]} ${data.sports[k] === 1 ? 'game' : 'games'}` : 'No games yet'}</span>
               <span aria-hidden="true">›</span>
             </Link>
           ))}

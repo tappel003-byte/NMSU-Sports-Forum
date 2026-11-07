@@ -14,7 +14,7 @@ function copy(text: string, toast: (m: string) => void) {
 interface Feed { id: number; sport: string; url: string; enabled: number; last_ok_at: number | null; last_error: string | null; last_error_at: number | null; failing: number; last_counts: string | null }
 
 function Overview() {
-  const { data, error, reload } = useApi<{ members: { total: number; admins: number; suspended: number }; open_reports: number; pending_posts: number; open_invites: number; feeds: Feed[]; log: { id: number; actor: string | null; action: string; target_type: string; detail: string | null; created_at: number }[]; emailEnabled: boolean }>('/admin/overview');
+  const { data, error, reload } = useApi<{ members: { total: number; admins: number; suspended: number }; open_reports: number; pending_posts: number; open_invites: number; feeds: Feed[]; log: LogEntry[]; emailEnabled: boolean }>('/admin/overview');
   if (error) return <ErrorState error={error} retry={reload} />;
   if (!data) return <Loading />;
   // One missed check is normal (the official site sometimes refuses a request); warn after three in a row (~90 minutes).
@@ -31,7 +31,7 @@ function Overview() {
       {!data.emailEnabled && <div className="note-box small">Email is not configured, so invitations and password resets are shared as links you copy and send yourself (text, email, etc.). The technical owner can enable email later; see docs/DEPLOYMENT.md.</div>}
       <section className="card">
         <div className="section-head"><h2>Recent moderation activity</h2><Link to="/admin/log" className="small">Full log</Link></div>
-        {data.log.length ? data.log.map((l) => <div key={l.id} className="list-row small"><span className="grow"><strong>{l.actor ?? 'system'}</strong> {l.action.replace(/_/g, ' ')} {l.detail ? `— ${l.detail.slice(0, 100)}` : ''}</span><span className="tiny muted">{timeAgo(l.created_at)}</span></div>) : <div className="empty">Nothing yet.</div>}
+        {data.log.length ? data.log.map((l) => <div key={l.id} className="list-row small"><span className="grow"><strong>{l.actor ?? 'System'}</strong> {logText(l)}</span><span className="tiny muted">{timeAgo(l.created_at)}</span></div>) : <div className="empty">Nothing yet.</div>}
       </section>
     </div>
   );
@@ -542,16 +542,33 @@ function SettingsTab() {
 }
 
 function Log() {
-  const { data } = useApi<{ log: { id: number; actor: string | null; action: string; target_type: string; target_id: number | null; detail: string | null; created_at: number }[] }>('/admin/log');
+  const { data } = useApi<{ log: LogEntry[] }>('/admin/log');
   if (!data) return <Loading />;
   return (
     <section className="card">
       <div className="section-head"><h2>Moderation log</h2><span className="small muted">Private to administrators</span></div>
-      <div className="table-scroll"><table className="simple"><thead><tr><th>When</th><th>Admin</th><th>Action</th><th>Detail</th></tr></thead><tbody>
-        {data.log.map((l) => <tr key={l.id}><td className="tiny">{fullTime(l.created_at)}</td><td>{l.actor ?? 'system'}</td><td>{l.action.replace(/_/g, ' ')} <span className="tiny muted">{l.target_type} {l.target_id ?? ''}</span></td><td className="tiny">{l.detail}</td></tr>)}
-      </tbody></table></div>
+      {data.log.length ? data.log.map((l) => (
+        <div key={l.id} className="list-row small log-row">
+          <span className="grow"><strong>{l.actor ?? 'System'}</strong> {logText(l)}</span>
+          <span className="tiny muted nowrap">{fullTime(l.created_at)}</span>
+        </div>
+      )) : <div className="empty">Nothing yet.</div>}
     </section>
   );
+}
+
+type LogEntry = { id: number; actor: string | null; action: string; target_type: string; target_id: number | null; subject?: string | null; detail: string | null; created_at: number };
+
+/** One plain-English line per log entry, e.g. "made jtnmsu a moderator" or "removed a chat message". */
+function logText(l: LogEntry): string {
+  const who = l.subject || (l.target_type === 'user' ? l.detail : null) || 'a member';
+  const roles: Record<string, string> = { set_role_admin: `made ${who} an admin`, set_role_moderator: `made ${who} a moderator`, set_role_member: `set ${who} back to member` };
+  if (roles[l.action]) return roles[l.action];
+  const things: Record<string, string> = { chat_message: 'a chat message', post: 'a post', thread: 'a discussion', user: who, invite: 'an invitation', badge: 'a badge' };
+  const words = l.action.replace(/_/g, ' ');
+  const thing = things[l.target_type] ?? '';
+  const subject = l.subject && l.target_type !== 'user' ? ` by ${l.subject}` : '';
+  return `${words} ${thing}${subject}`.trim();
 }
 
 export function Admin() {
