@@ -50,7 +50,7 @@ Added October 30, 2026 at the owner's request. `src/worker/lib/livescore.ts` rea
 
 ## Past seasons (Time Machine) — added Nov 2026
 - Source: ESPN's public team-schedule feed (`src/worker/lib/history.ts`). Final scores only; no ESPN text or images are copied.
-- Coverage: football 1999–now, men's basketball 2002–now, women's basketball 2001–now, volleyball 2025–now, baseball 2026–now, women's soccer current season only. Earlier volleyball/baseball/soccer seasons are mostly missing on ESPN, so they are skipped rather than shown half-empty. Golf, tennis, swimming, track and cross country have no game-by-game data on ESPN.
+- Coverage: football 1999–now, men's basketball 2002–now, women's basketball 2001–now, volleyball 2025–now, baseball 2026–now, softball 2026–now, women's soccer current season only. Earlier volleyball/baseball/soccer seasons are mostly missing on ESPN, so they are skipped rather than shown half-empty. Golf, tennis, swimming, track and cross country have no game-by-game data on ESPN.
 - Postseason games (bowls, conference and NCAA tournaments) are included; forfeits are left out.
 - The 30-minute cron imports a few seasons per run until finished; a daily job re-checks this season and last, so early-season games the NM State calendar has already dropped (it lists only about a month back) still arrive.
 - Games already on file from the NM State calendar are never duplicated or overwritten; missing final scores are filled in.
@@ -63,3 +63,11 @@ Added October 30, 2026 at the owner's request. `src/worker/lib/livescore.ts` rea
 - Men's and women's basketball: Wikipedia season articles (`{{CBB roster/Player}}`), read slowly through the official API with an identifying User-Agent; credited "From Wikipedia (CC BY-SA)" with a link. Seasons without an article or roster are skipped.
 - Any sport: members add or fix players (e.g. from media guides); admins and moderators remove. Imports only add rows and never overwrite a member's fix.
 - The 30-minute cron shares a budget of 16 outside requests across history and roster imports.
+
+## Other sources checked (Nov 2026) and why they're not used
+- NCAA stats (stats.ncaa.org) and NCAA.com scoreboards: NCAA terms of service prohibit robots, scraping and harvesting.
+- TFRRS / DirectAthletics (track, cross country): has sent demand letters to people collecting its results.
+- Sports Reference: terms forbid building a substitute database.
+- nmstatesports.com archive services: robots.txt disallows `/services/`; the pages behind bot protection.
+- ESPN college softball/baseball rosters: stale (same list every season, positions "UN"), so not imported.
+The route for older non-revenue history is NM State Athletics' permission (draft email on hold) or member contributions.
