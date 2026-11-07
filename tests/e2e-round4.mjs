@@ -376,12 +376,13 @@ try {
     bigScore: document.querySelectorAll('.scorebox').length,
     thin: document.querySelector('.score-toggle')?.textContent ?? '',
     input: Boolean(document.querySelector('#chat-text')),
+    exitInBar: Boolean(document.querySelector('.focus-bar button[aria-label="Exit full screen"]')),
   }));
   await reg.screenshot({ path: `${SHOTS}/iphone-chat-fullscreen.png` });
   await reg.click('button[aria-label="Exit full screen"]');
   await reg.waitForSelector('.chat-head', { state: 'visible' });
   check('Full-screen chat hides the site header, chat header and big scoreboard (one-line score stays); Exit restores them',
-    focusState.header === 'none' && focusState.chatHead === 'none' && focusState.bigScore === 0 && /34/.test(focusState.thin) && focusState.input, JSON.stringify(focusState));
+    focusState.header === 'none' && focusState.chatHead === 'none' && focusState.bigScore === 0 && /34/.test(focusState.thin) && focusState.input && focusState.exitInBar, JSON.stringify(focusState));
   await reg.unroute('**/api/games/*/live');
   await reg.setViewportSize({ width: 1280, height: 900 });
   check('Live scoreboard shows both teams, big scores and the clock, with a Box score drop-down and no ESPN Gamecast link', /NM State/.test(scoreText) && /34/.test(scoreText) && /28/.test(scoreText) && /14:34/.test(scoreText) && espnLinks === 0 && espnOnGame === 0 && boxHref === 1 && menuRoster === 1 && /football\/roster$/.test(gameRoster ?? '') && /nmstatesports\.com\/sports\/football\/roster$/.test(rosterHref ?? ''), JSON.stringify({ scoreText, espnLinks, espnOnGame, boxHref, rosterHref, gameRoster, menuRoster }));
@@ -823,6 +824,19 @@ try {
     check(`No sideways scrolling on a ${w}-wide phone (game chat)`, !overflow);
   }
   await reg.setViewportSize({ width: 1280, height: 900 });
+
+  // ---------- Dark mode on desktop (Settings → Appearance) ----------
+  await api(reg, '/me/prefs', { method: 'PATCH', body: { theme: 'dark' } });
+  await reg.setViewportSize({ width: 1280, height: 900 });
+  await reg.goto(BASE + '/');
+  await reg.waitForSelector('.quick-links');
+  const darkOn = await reg.evaluate(() => document.documentElement.getAttribute('data-theme'));
+  await reg.screenshot({ path: `${SHOTS}/desktop-dark-home.png` });
+  await reg.goto(BASE + '/games?sport=week');
+  await reg.waitForSelector('button.page-back');
+  await reg.screenshot({ path: `${SHOTS}/desktop-dark-games.png` });
+  await api(reg, '/me/prefs', { method: 'PATCH', body: { theme: 'system' } });
+  check('Dark mode works on desktop', darkOn === 'dark', String(darkOn));
 
   // ---------- Audit history ----------
   const log = (await api(admin, '/admin/log')).body.log;
