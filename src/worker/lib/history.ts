@@ -200,3 +200,51 @@ export async function runHistoryImport(env: Env, maxFetches = FETCHES_PER_RUN): 
   const done = HISTORY_SPORTS.every((hs) => (state[hs.sport] ?? startSeason) < hs.from);
   return { fetched, added, done };
 }
+
+// ---------- Football before 1999 (CollegeFootballData; ESPN's records start in 1999) ----------
+
+type CfbdGame = { id?: number; startDate?: string; startTimeTBD?: boolean; completed?: boolean; neutralSite?: boolean; venue?: string | null;
+  homeId?: number; homeTeam?: string; homePoints?: number | null; awayId?: number; awayTeam?: string; awayPoints?: number | null };
+const CFBD_NMSU = 166;
+
+/** Completed NM State games in a CollegeFootballData /games response. Pure. */
+export function parseCfbdGames(json: unknown): HistoryGame[] {
+  if (!Array.isArray(json)) return [];
+  const out: HistoryGame[] = [];
+  for (const g of json as CfbdGame[]) {
+    const home = g.homeId === CFBD_NMSU || g.homeTeam === 'New Mexico State';
+    const away = g.awayId === CFBD_NMSU || g.awayTeam === 'New Mexico State';
+    if ((!home && !away) || g.id === undefined || !g.startDate || g.completed === false) continue;
+    const a = home ? g.homePoints : g.awayPoints, b = home ? g.awayPoints : g.homePoints;
+    const startsAt = Date.parse(g.startDate);
+    if (a === null || a === undefined || b === null || b === undefined || !Number.isFinite(startsAt)) continue;
+    if (a + b <= 2) continue; // forfeit
+    out.push({
+      uid: `cfbd:fb:${g.id}`, sport: 'fb', opponent: (home ? g.awayTeam : g.homeTeam) || 'TBA',
+      home_away: g.neutralSite ? 'neutral' : home ? 'home' : 'away', venue: g.venue ?? null, starts_at: startsAt,
+      time_tba: g.startTimeTBD === false ? 0 : 1, result: a > b ? 'W' : a < b ? 'L' : 'T', nmsu_score: a, opp_score: b,
+    });
+  }
+  return out;
+}
+
+/** One step: older football seasons from CollegeFootballData, 1998 back to the program's start. Returns requests used. */
+export async function runCfbdFootballHistory(env: Env, budget: number): Promise<number> {
+  if (!env.CFBD_API_KEY || budget <= 0) return 0;
+  const key = 'cfbd_fb_history';
+  let y = Number(await getSetting(env, key)) || 1998;
+  const base = (env.CFBD_BASE || 'https://api.collegefootballdata.com').replace(/\/$/, '');
+  let used = 0;
+  while (y >= 1893 && used < budget) {
+    used++;
+    try {
+      const res = await fetch(`${base}/games?year=${y}&team=New%20Mexico%20State&seasonType=both`,
+        { headers: { Authorization: `Bearer ${env.CFBD_API_KEY}`, Accept: 'application/json' }, signal: AbortSignal.timeout(20_000) });
+      if (!res.ok) break; // try this season again next run
+      await saveSeason(env, parseCfbdGames(await res.json()));
+    } catch { break; }
+    y--;
+  }
+  await setSetting(env, key, String(y));
+  return used;
+}

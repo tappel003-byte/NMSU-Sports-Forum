@@ -270,7 +270,28 @@ function TmSeasons({ sport }: { sport: string }) {
           <span aria-hidden="true">›</span>
         </Link>
       )) : <div className="empty">No past games on record for this sport yet. Seasons appear here as games are played.</div>}
+      <AddSeasonRoster sport={sport} />
     </section>
+  );
+}
+
+/** Lets a member open any season (to add a roster from a media guide) even when no games are on file for it. */
+function AddSeasonRoster({ sport }: { sport: string }) {
+  const { me } = useApp();
+  const nav = useNavigate();
+  const [year, setYear] = useState('');
+  if (!me) return null;
+  const now = new Date().getFullYear();
+  const years = Array.from({ length: now - 1899 }, (_, i) => now - i);
+  return (
+    <div className="card-pad row" style={{ borderTop: '1px solid var(--line)', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+      <span className="small muted grow">Have a media guide? Add a roster for another season:</span>
+      <select className="select" value={year} onChange={(e) => setYear(e.target.value)} aria-label="Season">
+        <option value="">Season…</option>
+        {years.map((y) => { const s = `${y}-${String((y + 1) % 100).padStart(2, '0')}`; return <option key={y} value={s}>{seasonLabel(sport, s)}</option>; })}
+      </select>
+      <button className="btn small" disabled={!year} onClick={() => nav(`/time-machine?sport=${sport}&season=${year}`)}>Open</button>
+    </div>
   );
 }
 
@@ -279,6 +300,7 @@ function TmGames({ sport, season }: { sport: string; season: string }) {
   if (error) return <ErrorState error={error} retry={reload} />;
   if (!data) return <Loading />;
   return (
+    <>
     <section className="card">
       <div className="section-head"><h2>Games</h2><span className="small muted">{data.games.length} played</span></div>
       {data.games.length ? data.games.map((g) => (
@@ -295,5 +317,80 @@ function TmGames({ sport, season }: { sport: string; season: string }) {
         </Link>
       )) : <div className="empty">No games on record for this season.</div>}
     </section>
+    <TmRoster sport={sport} season={season} />
+    </>
   );
 }
+
+type RosterPlayer = { id: number; name: string; jersey: string | null; position: string | null; class_year: string | null; height: string | null; weight: number | null; hometown: string | null; edited: boolean };
+const EMPTY_PLAYER = { name: '', jersey: '', position: '', class_year: '', height: '', weight: '', hometown: '' };
+
+/** Season roster as an accordion: imported players plus anything members add or fix (e.g. from media guides). */
+function TmRoster({ sport, season }: { sport: string; season: string }) {
+  const { me, toast } = useApp();
+  const { data, reload } = useApi<{ players: RosterPlayer[]; sources: { cfbd: boolean; wikipedia: string | null; members: boolean } }>(`/time-machine/roster?sport=${sport}&season=${season}`);
+  const [editing, setEditing] = useState<number | 'new' | null>(null);
+  const [f, setF] = useState(EMPTY_PLAYER);
+  const [busy, setBusy] = useState(false);
+  if (!data) return null;
+  const isMod = me?.role === 'admin' || me?.role === 'moderator';
+  const open = (p: RosterPlayer | null) => {
+    setEditing(p ? p.id : 'new');
+    setF(p ? { name: p.name, jersey: p.jersey ?? '', position: p.position ?? '', class_year: p.class_year ?? '', height: p.height ?? '', weight: p.weight ? String(p.weight) : '', hometown: p.hometown ?? '' } : EMPTY_PLAYER);
+  };
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      const body = { ...f, weight: f.weight ? Number(f.weight) : null };
+      if (editing === 'new') await api('/rosters', { body: { ...body, sport, season: Number(season.slice(0, 4)) } });
+      else await api(`/rosters/${editing}`, { method: 'PATCH', body });
+      setEditing(null);
+      reload();
+    } catch (err) { toast((err as Error).message); } finally { setBusy(false); }
+  };
+  const remove = async (p: RosterPlayer) => {
+    if (!confirm(`Remove ${p.name} from this roster?`)) return;
+    try { await api(`/rosters/${p.id}`, { method: 'DELETE' }); reload(); } catch (err) { toast((err as Error).message); }
+  };
+  const set = (k: keyof typeof EMPTY_PLAYER) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value });
+  const form = (
+    <form className="card-pad stack roster-form" onSubmit={save}>
+      <div className="roster-form-grid">
+        <input className="input" placeholder="Name" value={f.name} onChange={set('name')} required aria-label="Name" />
+        <input className="input" placeholder="#" value={f.jersey} onChange={set('jersey')} aria-label="Number" />
+        <input className="input" placeholder="Pos" value={f.position} onChange={set('position')} aria-label="Position" />
+        <input className="input" placeholder="Yr (Fr, So…)" value={f.class_year} onChange={set('class_year')} aria-label="Class" />
+        <input className="input" placeholder="Ht (6-2)" value={f.height} onChange={set('height')} aria-label="Height" />
+        <input className="input" placeholder="Wt" inputMode="numeric" value={f.weight} onChange={set('weight')} aria-label="Weight" />
+        <input className="input" placeholder="Hometown" value={f.hometown} onChange={set('hometown')} aria-label="Hometown" />
+      </div>
+      <div className="row"><button className="btn small" disabled={busy || !f.name.trim()}>{busy ? 'Saving…' : 'Save'}</button><button type="button" className="btn small ghost" onClick={() => setEditing(null)}>Cancel</button></div>
+    </form>
+  );
+  return (
+    <section className="card">
+      <details className="roster-acc">
+        <summary className="section-head"><h2>Roster</h2><span className="small muted">{data.players.length ? `${data.players.length} players` : 'None yet'}</span></summary>
+        {data.players.map((p) => editing === p.id ? <div key={p.id}>{form}</div> : (
+          <div key={p.id} className="list-row roster-row">
+            <span className="roster-num">{p.jersey ? `#${p.jersey}` : ''}</span>
+            <span className="grow"><strong>{p.name}</strong>
+              <span className="tiny muted" style={{ display: 'block' }}>{[p.position, p.class_year, p.height, p.weight ? `${p.weight} lb` : null, p.hometown].filter(Boolean).join(' · ')}</span>
+            </span>
+            {me && <button className="btn small ghost" onClick={() => open(p)}>Fix</button>}
+            {isMod && <button className="btn small ghost" onClick={() => remove(p)} aria-label={`Remove ${p.name}`}>✕</button>}
+          </div>
+        ))}
+        {!data.players.length && editing !== 'new' && <div className="empty">No roster on file for this season yet.{me ? ' Have a media guide? Add players below.' : ''}</div>}
+        {editing === 'new' ? form : me && <div className="card-pad"><button className="btn small secondary" onClick={() => open(null)}>+ Add a player</button></div>}
+        <div className="card-pad tiny muted">
+          {[data.sources.cfbd && 'Football rosters from CollegeFootballData.com.',
+            data.sources.wikipedia && <>From <a href={data.sources.wikipedia} target="_blank" rel="noopener noreferrer">Wikipedia</a> (CC BY-SA).</>,
+            data.sources.members && 'Some players added or corrected by members.'].filter(Boolean).map((x, i) => <span key={i}>{x} </span>)}
+        </div>
+      </details>
+    </section>
+  );
+}
+
