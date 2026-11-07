@@ -699,3 +699,5 @@ input[type='checkbox']:disabled { opacity: .5; cursor: not-allowed; }
 .tm-row { color: var(--text); align-items: center; }
 .tm-row:hover { text-decoration: none; background: var(--crimson-tint); }
 .sport-img { width: 1.2em; height: 1.2em; object-fit: contain; vertical-align: -0.25em; display: inline-block; }
+
+.nowrap { white-space: nowrap; }
