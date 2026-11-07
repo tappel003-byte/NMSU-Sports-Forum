@@ -850,6 +850,24 @@ try {
     /1960 Sun Bowl team/.test(card ?? '') && /unbeaten/.test(card ?? '') && thumb === 'https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg'
     && /Copy link/.test(helpText ?? '') && memberAdd === 0 && memberPost.status === 403, JSON.stringify({ card, thumb, memberAdd, memberPost: memberPost.status }));
 
+  // ---------- Time Machine: pick a sport, then a season, then the games (RockAuto style); old scores always show ----------
+  await api(reg, '/me/prefs', { method: 'PATCH', body: { spoiler_free: true } });
+  await reg.goto(BASE + '/time-machine');
+  await reg.waitForSelector('h2:has-text("Women\'s sports")');
+  const tmTop = await reg.textContent('main');
+  await reg.screenshot({ path: `${SHOTS}/iphone-time-machine.png` });
+  await reg.click('a.tm-row:has-text("Football")');
+  await reg.waitForSelector('h2:has-text("Seasons")');
+  await reg.click('a.tm-row >> nth=0');
+  await reg.waitForSelector('h2:has-text("Games")');
+  const oldGames = (await api(reg, `/time-machine?sport=fb&season=${new URL(reg.url()).searchParams.get('season')}`)).body.games.filter((g) => g.status === 'final' && Date.now() - g.starts_at > 3 * 86_400_000);
+  const gamesText = await reg.textContent('main');
+  await reg.screenshot({ path: `${SHOTS}/iphone-time-machine-games.png` });
+  await api(reg, '/me/prefs', { method: 'PATCH', body: { spoiler_free: false } });
+  check('Time Machine drills down sport → season → games; spoiler-free does not hide scores of older games',
+    /Men's sports/.test(tmTop ?? '') && /Women's sports/.test(tmTop ?? '') && oldGames.length > 0 && /[WL] \d+–\d+/.test(gamesText ?? '') && !(oldGames.length && /tap to reveal/.test(gamesText ?? '') && oldGames.length === (gamesText.match(/–/g) || []).length),
+    JSON.stringify({ old: oldGames.length }));
+
   // ---------- Smaller iPhones: iPhone SE / mini (375 wide) and original SE (320 wide) ----------
   for (const [label, w, h] of [['se', 375, 667], ['se1', 320, 568]]) {
     await reg.setViewportSize({ width: w, height: h });

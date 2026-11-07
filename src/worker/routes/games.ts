@@ -203,6 +203,12 @@ games.get('/predictions/standings', async (c) => {
 });
 
 // Aggie Time Machine: past games and everything the community said about them.
+// Time Machine, first level: how many past games each sport has on record.
+games.get('/time-machine/sports', async (c) => {
+  const rows = await all<{ sport: string; n: number }>(c.env, 'SELECT sport, COUNT(*) AS n FROM games WHERE removed = 0 AND starts_at < ? GROUP BY sport', now());
+  return c.json({ sports: Object.fromEntries(rows.map((r) => [r.sport, r.n])) });
+});
+
 games.get('/time-machine', async (c) => {
   const season = c.req.query('season') ?? seasonOf(now());
   const sport = c.req.query('sport');
@@ -216,8 +222,11 @@ games.get('/time-machine', async (c) => {
        (SELECT COUNT(*) FROM chat_messages m WHERE m.room = 'game-' || g.id AND m.deleted = 0) AS chats,
        (SELECT COUNT(*) FROM predictions pr WHERE pr.game_id = g.id) AS preds
      FROM games g WHERE ${where} ORDER BY g.starts_at DESC LIMIT 200`, ...params);
+  // Seasons with past games (for the chosen sport, when one is chosen).
+  const seasonSport = sport && sport in SPORT_BY_KEY ? sport : null;
   const seasons = await all<{ y: number }>(c.env,
-    `SELECT DISTINCT CAST(strftime('%Y', starts_at / 1000, 'unixepoch', '-6 months') AS INTEGER) AS y FROM games WHERE removed = 0 ORDER BY y DESC`);
+    `SELECT DISTINCT CAST(strftime('%Y', starts_at / 1000, 'unixepoch', '-6 months') AS INTEGER) AS y FROM games
+      WHERE removed = 0 AND starts_at < ?${seasonSport ? ' AND sport = ?' : ''} ORDER BY y DESC`, ...(seasonSport ? [now(), seasonSport] : [now()]));
   return c.json({
     season,
     seasons: seasons.map((s) => `${s.y}-${String((s.y + 1) % 100).padStart(2, '0')}`),

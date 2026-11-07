@@ -202,36 +202,89 @@ export function Predictions() {
   );
 }
 
+// Time Machine groups (text only, no icons). Track and cross country cover both men and women.
+const TM_GROUPS: { title: string; sports: string[] }[] = [
+  { title: "Men's sports", sports: ['fb', 'mbb', 'base', 'mgolf'] },
+  { title: "Women's sports", sports: ['wbb', 'vb', 'soft', 'wsoc', 'wgolf', 'wten', 'swim'] },
+  { title: "Men's & women's", sports: ['track', 'xc'] },
+];
+
+// Fall sports' seasons fit in one calendar year ("2026"); the rest span two ("2026-27").
+const FALL_SPORTS = ['fb', 'vb', 'wsoc', 'xc'];
+const seasonLabel = (sport: string, s: string) => (FALL_SPORTS.includes(sport) ? s.slice(0, 4) : s);
+
+/** Aggie Time Machine, organized like RockAuto: pick a sport, then a season, then see that season's games. */
 export function TimeMachine() {
-  const [params, setParams] = useSearchParams();
-  const season = params.get('season') ?? '';
+  const [params] = useSearchParams();
   const sport = params.get('sport') ?? '';
-  const q = new URLSearchParams({ ...(season ? { season } : {}), ...(sport ? { sport } : {}) });
-  const { data, error, reload } = useApi<{ season: string; seasons: string[]; games: (GameItem & { posts: number; chats: number; predictions: number })[] }>(`/time-machine?${q}`);
-  if (error) return <ErrorState error={error} retry={reload} />;
-  if (!data) return <Loading />;
-  const set = (k: string, v: string) => setParams((p) => { if (v) p.set(k, v); else p.delete(k); return p; }, { replace: true });
+  const season = params.get('season') ?? '';
+  const label = (k: string) => SPORT_BY_KEY[k]?.label ?? k;
   return (
     <div className="stack">
       <div className="page-head">
-        <div className="eyebrow">Aggie Time Machine</div>
-        <h1>Relive every game, the way we lived it</h1>
-        <p className="muted small" style={{ margin: 0 }}>Every past game keeps its pregame predictions, live chat, postgame thread and most appreciated posts — forever.</p>
+        <BackButton />
+        <div className="eyebrow" style={{ marginTop: 8 }}>Aggie Time Machine</div>
+        <h1>{sport ? (season ? `${label(sport)} · ${seasonLabel(sport, season)}` : label(sport)) : 'Pick a sport'}</h1>
+        <nav className="tm-crumbs small" aria-label="Time Machine path">
+          <Link to="/time-machine">All sports</Link>
+          {sport && <> › <Link to={`/time-machine?sport=${sport}`}>{label(sport)}</Link></>}
+          {sport && season && <> › {seasonLabel(sport, season)}</>}
+        </nav>
       </div>
-      <section className="card">
-        <div className="filter-row">
-          <select className="select" style={{ width: 'auto' }} value={season || data.season} onChange={(e) => set('season', e.target.value)} aria-label="Season">
-            {[...new Set([data.season, ...data.seasons])].map((s) => <option key={s} value={s}>{s} season</option>)}
-          </select>
-          <select className="select" style={{ width: 'auto' }} value={sport} onChange={(e) => set('sport', e.target.value)} aria-label="Sport">
-            <option value="">All sports</option>
-            {SPORTS.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
-          </select>
-        </div>
-        {data.games.length ? data.games.map((g) => (
-          <GameRow key={g.id} game={g} extra={<div className="tiny muted">💬 {g.posts} posts · 🗨️ {g.chats} chat messages · 🎯 {g.predictions} picks</div>} />
-        )) : <div className="empty">No past games recorded for this season yet. The archive grows automatically as games are played.</div>}
-      </section>
+      {!sport ? <TmSports /> : !season ? <TmSeasons sport={sport} /> : <TmGames sport={sport} season={season} />}
     </div>
+  );
+}
+
+function TmSports() {
+  const { data, error, reload } = useApi<{ sports: Record<string, number> }>('/time-machine/sports');
+  if (error) return <ErrorState error={error} retry={reload} />;
+  if (!data) return <Loading />;
+  return (
+    <>
+      {TM_GROUPS.map((grp) => (
+        <section key={grp.title} className="card">
+          <div className="section-head"><h2>{grp.title}</h2></div>
+          {grp.sports.map((k) => (
+            <Link key={k} to={`/time-machine?sport=${k}`} className="list-row tm-row">
+              <span className="grow"><strong>{SPORT_BY_KEY[k]?.label ?? k}</strong></span>
+              <span className="small muted">{data.sports[k] ? `${data.sports[k]} ${data.sports[k] === 1 ? 'game' : 'games'}` : 'No games yet'}</span>
+              <span aria-hidden="true">›</span>
+            </Link>
+          ))}
+        </section>
+      ))}
+    </>
+  );
+}
+
+function TmSeasons({ sport }: { sport: string }) {
+  const { data, error, reload } = useApi<{ seasons: string[] }>(`/time-machine?sport=${sport}`);
+  if (error) return <ErrorState error={error} retry={reload} />;
+  if (!data) return <Loading />;
+  return (
+    <section className="card">
+      <div className="section-head"><h2>Seasons</h2></div>
+      {data.seasons.length ? data.seasons.map((s) => (
+        <Link key={s} to={`/time-machine?sport=${sport}&season=${s}`} className="list-row tm-row">
+          <span className="grow"><strong>{seasonLabel(sport, s)} season</strong></span>
+          <span aria-hidden="true">›</span>
+        </Link>
+      )) : <div className="empty">No past games on record for this sport yet. Seasons appear here as games are played.</div>}
+    </section>
+  );
+}
+
+function TmGames({ sport, season }: { sport: string; season: string }) {
+  const { data, error, reload } = useApi<{ games: (GameItem & { posts: number; chats: number })[] }>(`/time-machine?sport=${sport}&season=${season}`);
+  if (error) return <ErrorState error={error} retry={reload} />;
+  if (!data) return <Loading />;
+  return (
+    <section className="card">
+      <div className="section-head"><h2>Games</h2><span className="small muted">{data.games.length} played</span></div>
+      {data.games.length ? data.games.map((g) => (
+        <GameRow key={g.id} game={g} extra={(g.posts || g.chats) ? <div className="tiny muted">{g.posts} posts · {g.chats} chat messages</div> : undefined} />
+      )) : <div className="empty">No games on record for this season.</div>}
+    </section>
   );
 }
