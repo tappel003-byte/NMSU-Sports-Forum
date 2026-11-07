@@ -824,6 +824,17 @@ try {
   check('On a phone, More shows the grouped menu without the bottom-bar items or the Aggie History board, and closes after picking',
     JSON.stringify(groups) === JSON.stringify(['Game Day', 'Aggie History', 'Members', 'Site']) && dupes.length === 0 && (await reg.locator('a[href="/f/aggie-history"]').count()) === 0 && /Time Machine/.test(sheetText ?? '') && sheetClosed,
     JSON.stringify({ groups, dupes, sheetClosed }));
+  // Short phone: the menu must sit fully below the header (title and Close visible) and scroll inside itself.
+  await reg.setViewportSize({ width: 375, height: 600 });
+  await reg.goto(BASE + '/');
+  await reg.click('.bottom-nav button:has-text("More")');
+  await reg.waitForSelector('.more-sheet .more-head');
+  const fit = await reg.evaluate(() => {
+    const sheet = document.querySelector('.more-sheet'); const head = document.querySelector('.site-header');
+    const before = sheet.scrollTop; sheet.scrollTop = 9999;
+    return { sheetTop: sheet.getBoundingClientRect().top, headerBottom: head.getBoundingClientRect().bottom, scrolled: sheet.scrollTop > before };
+  });
+  check('On a short phone the More menu starts below the header and scrolls', fit.sheetTop >= fit.headerBottom && fit.scrolled, JSON.stringify(fit));
   await reg.setViewportSize({ width: 1280, height: 900 });
   await reg.goto(BASE + '/');
   await reg.waitForSelector('.left-rail a:has-text("Game Center")');
