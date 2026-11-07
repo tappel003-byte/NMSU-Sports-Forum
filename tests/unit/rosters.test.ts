@@ -52,3 +52,19 @@ describe('ESPN current rosters', () => {
     expect(parseEspnRoster({})).toEqual([]);
   });
 });
+
+import { parsePastedRoster } from '../../src/worker/lib/rosters';
+describe('Pasted roster lists (e.g. from Claude reading a media guide page)', () => {
+  it('reads one player per line, number optional, hometown with commas', () => {
+    const rows = parsePastedRoster(`#, Name, Pos, Yr, Ht, Wt, Hometown
+12, John Smith, QB, Jr, 6-2, 205 lbs, Tyler, TX
+- Maria Lopez, SS, So, 5'6", , Las Cruces, NM
+#3 | Ty Brown | WR | Fr | 6' 0" | 180 | Dallas, TX
+
+`);
+    expect(rows).toHaveLength(3);
+    expect(rows[0]).toEqual({ name: 'John Smith', jersey: '12', position: 'QB', class_year: 'Jr', height: '6-2', weight: 205, hometown: 'Tyler, TX' });
+    expect(rows[1]).toMatchObject({ name: 'Maria Lopez', jersey: null, position: 'SS', height: '5-6', weight: null, hometown: 'Las Cruces, NM' });
+    expect(rows[2]).toMatchObject({ name: 'Ty Brown', jersey: '3', height: '6-0', weight: 180, hometown: 'Dallas, TX' });
+  });
+});

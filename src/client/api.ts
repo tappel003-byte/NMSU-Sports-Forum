@@ -22,11 +22,11 @@ export async function api<T = any>(path: string, opts: { method?: string; body?:
 }
 
 /** Resizes photos in the browser before upload (max 1600px, JPEG) to keep storage and data use low. */
-export async function prepareImage(file: File): Promise<Blob> {
+export async function prepareImage(file: File, maxSide = 1600): Promise<Blob> {
   if (file.type === 'image/gif') return file;
   const bitmap = await createImageBitmap(file).catch(() => null);
   if (!bitmap) return file;
-  const scale = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height));
+  const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
   const canvas = document.createElement('canvas');
   canvas.width = Math.round(bitmap.width * scale);
   canvas.height = Math.round(bitmap.height * scale);
