@@ -245,7 +245,14 @@ export async function runCfbdFootballHistory(env: Env, budget: number): Promise<
         await setSetting(env, 'cfbd_last_error', `${new Date().toISOString()} games ${y}: ${res.status} ${(await res.text()).slice(0, 200)}`);
         if (res.status !== 400 && res.status !== 404) break; // outage or limit: try this season again next run
       } else await saveSeason(env, parseCfbdGames(await res.json()));
-    } catch { break; }
+    } catch (e) {
+      // Record why, and don't let one bad season block the rest: after three failed tries, move past it.
+      await setSetting(env, 'cfbd_last_error', `${new Date().toISOString()} games ${y}: ${String(e).slice(0, 200)}`);
+      const fails = (await getSetting(env, 'cfbd_fail').then((v) => JSON.parse(v || '{}')).catch(() => ({}))) as { year?: number; n?: number };
+      const n = fails.year === y ? (fails.n ?? 0) + 1 : 1;
+      await setSetting(env, 'cfbd_fail', JSON.stringify({ year: y, n }));
+      if (n < 3) break;
+    }
     y--;
   }
   await setSetting(env, key, String(y));
