@@ -78,3 +78,7 @@ The route for older non-revenue history is NM State Athletics' permission (draft
 - Members fill older seasons from media guides, NMSU yearbooks (1907–1992) and The Round Up (1893–1999) via "Send a media guide page".
 - Men's basketball season summaries 1932–33 to 2022–23 (migration 0019) from Wikipedia's season-by-season table; no team 1942–44.
 - Basketball games before ESPN's records (men's before 2001–02, women's before 2000–01) come from the same Wikipedia season articles the roster import reads (`{{CBB schedule entry}}`), at no extra requests. Scores are NM State first; the running record decides W/L. Dates only.
+- Football season summaries 1893–2025 (migration 0020) from Wikipedia's "List of New Mexico State Aggies football seasons"; no team 1918, 1944–45. Checked against our games (1931–2025): 87 of 91 match; 1934, 1935, 1984 and 1999 follow the official record. CollegeFootballData has no NM State games before 1931.
+
+## Where the free automatic sources end (Nov 2026)
+All of the above are imported. Wikipedia has no NM State softball, soccer or volleyball articles, few women's basketball seasons, and only short pre-1931 football season pages. Further history needs media guides (all-time letterwinner lists), NMSU yearbooks/The Round Up, or NM State's permission.
