@@ -33,7 +33,7 @@ export function Recruiting() {
   const [adding, setAdding] = useState(false);
   const { me } = useApp();
   const year = params.get('year') ?? '';
-  const { data, error, reload } = useApi<{ players: Player[]; years: number[]; sync: { configured: boolean; last_ok_at?: number | null; last_error?: string | null } }>(`/players?kind=${kind}${sport ? `&sport=${sport}` : ''}${year ? `&year=${year}` : ''}`);
+  const { data, error, reload } = useApi<{ players: Player[]; years: number[]; year: number | 'all'; sync: { configured: boolean; last_ok_at?: number | null; last_error?: string | null } }>(`/players?kind=${kind}${sport ? `&sport=${sport}` : ''}${year ? `&year=${year}` : ''}`);
   const yearLabel = (y: number | null) => (y === null ? 'Year not listed' : kind === 'portal' ? `${y} transfer portal` : `Class of ${y}`);
   if (error) return <ErrorState error={error} retry={reload} />;
   const set = (k: string, v: string) => setParams((p) => { if (v) p.set(k, v); else p.delete(k); return p; }, { replace: true });
@@ -60,14 +60,14 @@ export function Recruiting() {
           {SPORTS.map((s) => <button key={s.key} className={`btn small ${sport === s.key ? '' : 'secondary'}`} onClick={() => set('sport', s.key)}>{sportIcon(s.key)} {s.short}</button>)}
         </div>
         <div className="filter-row" style={{ paddingTop: 0 }}>
-          <select className="select" aria-label="Year" value={year} onChange={(e) => set('year', e.target.value)}>
-            <option value="">All years</option>
+          <select className="select" aria-label="Year" value={String(data?.year ?? year)} onChange={(e) => set('year', e.target.value)}>
+            <option value="all">All years</option>
             {(data?.years ?? []).map((y) => <option key={y} value={y}>{yearLabel(y)}</option>)}
           </select>
         </div>
         {!data ? <Loading /> : data.players.length ? data.players.map((p, i) => (
           <Fragment key={p.id}>
-          {!year && (i === 0 || data.players[i - 1].class_year !== p.class_year) && <div className="year-head">{yearLabel(p.class_year)}</div>}
+          {data.year === 'all' && (i === 0 || data.players[i - 1].class_year !== p.class_year) && <div className="year-head">{yearLabel(p.class_year)}</div>}
           <Link to={`/recruiting/${p.id}`} className="player-card">
             <span className="player-pos">{p.position ?? sportIcon(p.sport)}</span>
             <span className="grow">
