@@ -80,3 +80,17 @@ describe('forum helpers', () => {
     expect(rankFor(1200)).toBe('Aggie Legend');
   });
 });
+
+import { tweetImage, tweetToken } from '../../src/worker/lib/previews';
+describe('Tweet photos (X embed data)', () => {
+  it('takes the first photo, then media, then a video poster, only from X\'s image host', () => {
+    expect(tweetImage({ photos: [{ url: 'https://pbs.twimg.com/media/abc.jpg' }] })).toBe('https://pbs.twimg.com/media/abc.jpg');
+    expect(tweetImage({ mediaDetails: [{ media_url_https: 'https://pbs.twimg.com/media/def.jpg' }] })).toBe('https://pbs.twimg.com/media/def.jpg');
+    expect(tweetImage({ video: { poster: 'https://pbs.twimg.com/ext_tw_video_thumb/1/pu/img/x.jpg' } })).toContain('pbs.twimg.com');
+    expect(tweetImage({ photos: [{ url: 'https://evil.example/x.jpg' }] })).toBeNull();
+    expect(tweetImage(null)).toBeNull();
+  });
+  it('makes the token X\'s embed script uses', () => {
+    expect(tweetToken('1683920951807971329')).toMatch(/^[0-9a-z]+$/);
+  });
+});

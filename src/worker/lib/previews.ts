@@ -13,6 +13,8 @@ export interface Preview {
   author: string | null;
   author_url: string | null;
   published: string | null;
+  /** First photo (or video poster) of a tweet, served from X's image host. */
+  image?: string | null;
 }
 
 const decode = (s: string) => s
@@ -21,6 +23,18 @@ const decode = (s: string) => s
   .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;|&#x27;/g, "'").replace(/&mdash;/g, '—').replace(/&nbsp;/g, ' ')
   .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
   .trim();
+
+/** Token X's embed widget sends with a tweet id (same formula as X's own embed script). */
+export function tweetToken(id: string): string {
+  return ((Number(id) / 1e15) * Math.PI).toString(36).replace(/(0+|\.)/g, '');
+}
+
+/** First photo in X's embed data for a tweet (photos, then media, then a video's poster). Only X's image host is accepted. Pure. */
+export function tweetImage(json: unknown): string | null {
+  const j = json as { photos?: { url?: string }[]; mediaDetails?: { media_url_https?: string }[]; video?: { poster?: string } } | null;
+  const url = j?.photos?.[0]?.url ?? j?.mediaDetails?.[0]?.media_url_https ?? j?.video?.poster ?? null;
+  return url && /^https:\/\/pbs\.twimg\.com\//.test(url) ? url : null;
+}
 
 /** Tweet text via X's free oEmbed service (no API key, no tracking script). */
 export function parseTweetOembed(html: string, authorName?: string): Pick<Preview, 'description' | 'published'> {
@@ -48,7 +62,10 @@ async function fetchPreview(url: string): Promise<Omit<Preview, 'url'>> {
     const res = await fetch(`https://publish.twitter.com/oembed?omit_script=1&dnt=true&url=${encodeURIComponent(tweet.canonical)}`, { signal: AbortSignal.timeout(6000) });
     if (!res.ok) return { kind: 'x', ok: false, ...empty, site: 'X', author: `@${tweet.user}` };
     const data = (await res.json()) as { html: string; author_name?: string; author_url?: string };
-    return { kind: 'x', ok: true, ...empty, ...parseTweetOembed(data.html), site: 'X', author: data.author_name ?? `@${tweet.user}`, author_url: data.author_url ?? null };
+    // The photo comes from the data X's own embedded-tweet widget loads (oEmbed gives text only). Best effort.
+    const image = await fetch(`https://cdn.syndication.twimg.com/tweet-result?id=${tweet.id}&token=${tweetToken(tweet.id)}&lang=en`, { signal: AbortSignal.timeout(6000) })
+      .then((r) => (r.ok ? r.json() : null)).then(tweetImage).catch(() => null);
+    return { kind: 'x', ok: true, ...empty, ...parseTweetOembed(data.html), site: 'X', author: data.author_name ?? `@${tweet.user}`, author_url: data.author_url ?? null, image };
   }
   if (parseYouTubeId(url)) {
     const res = await fetch(`https://www.youtube.com/oembed?format=json&url=${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(6000) }).catch(() => null);
@@ -86,7 +103,7 @@ export async function getPreview(env: Env, url: string): Promise<Preview> {
     if (cached) return { ...cached, ok: Boolean(cached.ok) };
     p = { kind: parseTweetUrl(key) ? 'x' : parseYouTubeId(key) ? 'youtube' : 'link', ok: false, title: null, description: null, site: u.hostname, author: null, author_url: null, published: null };
   }
-  await run(env, `INSERT OR REPLACE INTO link_previews (url, kind, ok, title, description, site, author, author_url, published, fetched_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    key, p.kind, p.ok ? 1 : 0, p.title, p.description, p.site, p.author, p.author_url, p.published, now());
+  await run(env, `INSERT OR REPLACE INTO link_previews (url, kind, ok, title, description, site, author, author_url, published, image, fetched_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    key, p.kind, p.ok ? 1 : 0, p.title, p.description, p.site, p.author, p.author_url, p.published, p.image ?? null, now());
   return { url: key, ...p };
 }

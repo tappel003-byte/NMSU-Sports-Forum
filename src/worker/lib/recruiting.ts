@@ -1,7 +1,9 @@
 // Football recruits and transfer portal moves from CollegeFootballData.com (free API key).
 // Basketball and anything else is added by members with a source link.
 import type { Env, SessionUser } from '../env';
-import { first, run } from '../db';
+import { all, first, run } from '../db';
+import { getPreview } from './previews';
+import { parseTweetUrl } from '../../shared/forum';
 import { now } from '../util';
 import { SPORT_BY_KEY } from '../../shared/sports';
 import { createPost } from './threads';
@@ -169,6 +171,7 @@ export async function addPlayerNews(env: Env, user: SessionUser, playerId: numbe
   const postId = await createPost(env, user, thread!, note ? `${note}\n\n${url}` : url, {});
   await run(env, 'INSERT INTO player_news (player_id, user_id, url, note, post_id, created_at) VALUES (?, ?, ?, ?, ?, ?)', playerId, user.id, url, note, postId, now());
   await run(env, 'UPDATE players SET updated_at = ? WHERE id = ?', now(), playerId);
+  await setPlayerPhoto(env, playerId);
   return { thread_id: threadId, post_id: postId };
 }
 
@@ -176,3 +179,19 @@ export async function recruitingStatus(env: Env) {
   return first<{ last_ok_at: number | null; last_error: string | null; last_error_at: number | null; last_counts: string | null }>(env, "SELECT * FROM data_sync WHERE key = 'cfbd'");
 }
 
+
+/** Card photo: the photo of the first shared tweet that has one (the player's own post, shown from X). Kept once set. */
+export async function setPlayerPhoto(env: Env, playerId: number): Promise<string | null> {
+  const p = await first<{ photo_url: string | null }>(env, 'SELECT photo_url FROM players WHERE id = ?', playerId);
+  if (!p || p.photo_url) return p?.photo_url ?? null;
+  const news = await all<{ url: string }>(env, 'SELECT url FROM player_news WHERE player_id = ? ORDER BY id LIMIT 5', playerId);
+  for (const n of news) {
+    if (!parseTweetUrl(n.url)) continue;
+    const pv = await getPreview(env, n.url).catch(() => null);
+    if (pv?.image) {
+      await run(env, 'UPDATE players SET photo_url = ? WHERE id = ?', pv.image, playerId);
+      return pv.image;
+    }
+  }
+  return null;
+}

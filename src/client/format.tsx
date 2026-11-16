@@ -115,7 +115,7 @@ function withSpoilers(text: string, keyBase: string): ReactNode[] {
   return out;
 }
 
-interface PreviewData { url: string; kind: 'x' | 'youtube' | 'link'; ok: boolean; title: string | null; description: string | null; site: string | null; author: string | null; published: string | null }
+interface PreviewData { url: string; kind: 'x' | 'youtube' | 'link'; ok: boolean; title: string | null; description: string | null; site: string | null; author: string | null; published: string | null; image?: string | null }
 const previewCache = new Map<string, Promise<PreviewData | null>>();
 
 function loadPreview(url: string): Promise<PreviewData | null> {
@@ -176,6 +176,7 @@ export function LinkPreview({ url }: { url: string }) {
       <a className="preview x" href={tweet.canonical.replace('twitter.com', 'x.com')} target="_blank" rel="noopener noreferrer nofollow">
         <div className="head"><span className="logo" aria-hidden="true">𝕏</span><span>{p?.author ?? `@${tweet.user}`}</span><span className="tiny muted">@{tweet.user}</span></div>
         <div className="text" style={{ marginTop: 4 }}>{p === undefined ? 'Loading post…' : p?.ok && p.description ? p.description : 'This post is unavailable (it may have been deleted or made private). Tap to try it on X.'}</div>
+        {p?.ok && p.image && <img className="tweet-photo" src={p.image} alt="" loading="lazy" referrerPolicy="no-referrer" />}
         <div className="tiny muted" style={{ marginTop: 4 }}>{p?.published ? `${p.published} · ` : ''}View on X ↗</div>
       </a>
     );

@@ -11,7 +11,7 @@ import { SPORTS } from '../../shared/sports';
 
 interface Player {
   id: number; sport: string; kind: 'recruit' | 'transfer_in' | 'transfer_out'; source: 'cfbd' | 'member'; name: string; position: string | null;
-  class_year: number | null; school: string | null; hometown: string | null; stars: number | null; rating: number | null; ranking: number | null;
+  class_year: number | null; photo_url?: string | null; school: string | null; hometown: string | null; stars: number | null; rating: number | null; ranking: number | null;
   status: string; other_school: string | null; source_url: string | null; thread_id: number | null; updated_at: number; news?: number; yes?: number; predictions?: number;
 }
 
@@ -69,7 +69,7 @@ export function Recruiting() {
           <Fragment key={p.id}>
           {data.year === 'all' && (i === 0 || data.players[i - 1].class_year !== p.class_year) && <div className="year-head">{yearLabel(p.class_year)}</div>}
           <Link to={`/recruiting/${p.id}`} className="player-card">
-            <span className="player-pos">{p.position ?? sportIcon(p.sport)}</span>
+            {p.photo_url ? <img className="player-pos player-photo" src={p.photo_url} alt="" loading="lazy" referrerPolicy="no-referrer" /> : <span className="player-pos">{p.position ?? sportIcon(p.sport)}</span>}
             <span className="grow">
               <strong>{p.name}</strong> <Stars n={p.stars} />
               <span className="small muted" style={{ display: 'block' }}>
@@ -145,7 +145,8 @@ export function PlayerPage() {
       <nav className="small"><Link to="/recruiting">Recruiting</Link> › {sportName(p.sport)}</nav>
       <section className="card card-pad">
         <div className="profile-head">
-          <span className="player-pos" style={{ width: 64, height: 64, fontSize: '1.1rem' }}>{p.position ?? sportIcon(p.sport)}</span>
+          {p.photo_url ? <img className="player-pos player-photo" style={{ width: 64, height: 64 }} src={p.photo_url} alt={`${p.name}`} referrerPolicy="no-referrer" />
+            : <span className="player-pos" style={{ width: 64, height: 64, fontSize: '1.1rem' }}>{p.position ?? sportIcon(p.sport)}</span>}
           <div className="grow">
             <h1 style={{ marginBottom: 2 }}>{p.name} <Stars n={p.stars} /></h1>
             <div className="small muted">{sportName(p.sport)} · {KIND_LABELS[p.kind]}{p.class_year ? ` · ${p.class_year}` : ''}</div>

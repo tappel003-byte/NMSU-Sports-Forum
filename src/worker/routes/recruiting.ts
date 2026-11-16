@@ -7,7 +7,7 @@ import { HttpError, now, parse } from '../util';
 import { SPORT_BY_KEY } from '../../shared/sports';
 import { memberSummaries } from '../lib/members';
 import { getPreview } from '../lib/previews';
-import { addPlayerNews, ensurePlayerThread, recruitingStatus, syncRecruiting } from '../lib/recruiting';
+import { addPlayerNews, ensurePlayerThread, recruitingStatus, setPlayerPhoto, syncRecruiting } from '../lib/recruiting';
 
 export const recruiting = new Hono<AppEnv>();
 
@@ -43,6 +43,8 @@ recruiting.get('/players/:id', async (c) => {
   const user = c.get('user');
   const p = await first<Record<string, unknown> & { id: number; created_by: number | null; source_url: string | null }>(c.env, 'SELECT * FROM players WHERE id = ? AND removed = 0', Number(c.req.param('id')));
   if (!p) throw new HttpError(404, 'Player not found.');
+  // Tweets shared before photos were supported: pick up a card photo on first view.
+  if (!p.photo_url) p.photo_url = await setPlayerPhoto(c.env, p.id).catch(() => null);
   const news = await all<{ id: number; user_id: number; url: string; note: string | null; post_id: number | null; created_at: number }>(c.env,
     'SELECT n.* FROM player_news n LEFT JOIN posts ps ON ps.id = n.post_id WHERE n.player_id = ? AND (ps.id IS NULL OR ps.deleted = 0) ORDER BY n.id DESC LIMIT 100', p.id);
   const preds = await all<{ user_id: number; pick: string }>(c.env, 'SELECT user_id, pick FROM player_predictions WHERE player_id = ?', p.id);
