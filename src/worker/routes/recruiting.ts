@@ -16,7 +16,7 @@ const STATUSES = ['tracking', 'offered', 'visiting', 'committed', 'signed', 'enr
 recruiting.get('/players', async (c) => {
   const kind = c.req.query('kind');
   const sport = c.req.query('sport');
-  const year = Number(c.req.query('year')) || null;
+  const yearParam = c.req.query('year') ?? '';
   let where = 'p.removed = 0';
   const params: (string | number)[] = [];
   if (kind === 'recruit') where += " AND p.kind = 'recruit'";
@@ -24,6 +24,9 @@ recruiting.get('/players', async (c) => {
   if (sport && sport in SPORT_BY_KEY) { where += ' AND p.sport = ?'; params.push(sport); }
   // Years on file for the year dropdown (for the chosen tab and sport, before the year filter).
   const years = (await all<{ y: number }>(c.env, `SELECT DISTINCT p.class_year AS y FROM players p WHERE ${where} AND p.class_year IS NOT NULL ORDER BY y DESC`, ...params)).map((r) => r.y);
+  // Opens on the current year (or the newest year on file if the current year has nobody); "all" shows every year.
+  const thisYear = new Date().getUTCFullYear();
+  const year = yearParam === 'all' ? null : Number(yearParam) || (years.includes(thisYear) ? thisYear : years[0] ?? null);
   if (year) { where += ' AND p.class_year = ?'; params.push(year); }
   // Newest class first; within a year, highest-rated first, then by name. Players with no year go last.
   const rows = await all(c.env,
@@ -33,7 +36,7 @@ recruiting.get('/players', async (c) => {
        FROM players p WHERE ${where}
       ORDER BY (p.class_year IS NULL), p.class_year DESC, COALESCE(p.stars, 0) DESC, COALESCE(p.rating, 0) DESC, p.name LIMIT 500`, ...params);
   const status = await recruitingStatus(c.env);
-  return c.json({ players: rows, years, sync: { configured: Boolean(c.env.CFBD_API_KEY), ...status } });
+  return c.json({ players: rows, years, year: year ?? 'all', sync: { configured: Boolean(c.env.CFBD_API_KEY), ...status } });
 });
 
 recruiting.get('/players/:id', async (c) => {
