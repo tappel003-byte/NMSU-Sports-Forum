@@ -927,6 +927,22 @@ try {
     && roster.sources.members && memberRemove.status === 403 && adminRemove.status === 200 && after === 0,
     JSON.stringify({ rosterRow, dupe: dupeAdd.status, softSeasons, memberRemove: memberRemove.status, adminRemove: adminRemove.status, after }));
 
+  // ---------- Recruiting by year: newest class first with year headings; the dropdown narrows to one class ----------
+  for (const [name, y] of [['Older Recruit', 2025], ['Newer Recruit', 2027], ['Middle Recruit', 2026]]) {
+    await api(admin, '/players', { body: { sport: 'wbb', kind: 'recruit', name, class_year: y, status: 'tracking', source_url: 'https://example.com/r' } });
+  }
+  const allYears = (await api(reg, '/players?kind=recruit&sport=wbb')).body;
+  await reg.goto(BASE + '/recruiting?sport=wbb');
+  await reg.waitForSelector('.year-head');
+  const heads = await reg.$$eval('.year-head', (els) => els.map((e) => e.textContent));
+  await reg.selectOption('select[aria-label="Year"]', '2026');
+  await reg.waitForFunction(() => document.querySelectorAll('.player-card').length === 1);
+  const one = await reg.textContent('.player-card');
+  check('Recruiting is sorted by class (newest first) with year headings; the year dropdown shows one class',
+    JSON.stringify(allYears.years) === '[2027,2026,2025]' && allYears.players.map((p) => p.name).join() === 'Newer Recruit,Middle Recruit,Older Recruit'
+    && JSON.stringify(heads) === JSON.stringify(['Class of 2027', 'Class of 2026', 'Class of 2025']) && /Middle Recruit/.test(one ?? ''),
+    JSON.stringify({ years: allYears.years, heads }));
+
   // ---------- Media guide photos: member sends a page; admin pastes the list (e.g. from Claude), marks done; sender is thanked ----------
   const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
   await reg.goto(BASE + '/time-machine?sport=soft&season=1997-98');

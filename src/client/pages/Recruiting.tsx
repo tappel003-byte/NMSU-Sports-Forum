@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import { api } from '../api';
@@ -32,7 +32,9 @@ export function Recruiting() {
   const sport = params.get('sport') ?? '';
   const [adding, setAdding] = useState(false);
   const { me } = useApp();
-  const { data, error, reload } = useApi<{ players: Player[]; sync: { configured: boolean; last_ok_at?: number | null; last_error?: string | null } }>(`/players?kind=${kind}${sport ? `&sport=${sport}` : ''}`);
+  const year = params.get('year') ?? '';
+  const { data, error, reload } = useApi<{ players: Player[]; years: number[]; sync: { configured: boolean; last_ok_at?: number | null; last_error?: string | null } }>(`/players?kind=${kind}${sport ? `&sport=${sport}` : ''}${year ? `&year=${year}` : ''}`);
+  const yearLabel = (y: number | null) => (y === null ? 'Year not listed' : kind === 'portal' ? `${y} transfer portal` : `Class of ${y}`);
   if (error) return <ErrorState error={error} retry={reload} />;
   const set = (k: string, v: string) => setParams((p) => { if (v) p.set(k, v); else p.delete(k); return p; }, { replace: true });
   return (
@@ -50,15 +52,23 @@ export function Recruiting() {
       <section className="card">
         <div className="tabs" role="tablist">
           {[['recruit', 'Recruits'], ['portal', 'Transfer portal']].map(([k, l]) => (
-            <button key={k} role="tab" aria-selected={kind === k} className={`tab ${kind === k ? 'active' : ''}`} onClick={() => set('kind', k === 'recruit' ? '' : k)}>{l}</button>
+            <button key={k} role="tab" aria-selected={kind === k} className={`tab ${kind === k ? 'active' : ''}`} onClick={() => setParams((p) => { if (k === 'recruit') p.delete('kind'); else p.set('kind', k); p.delete('year'); return p; }, { replace: true })}>{l}</button>
           ))}
         </div>
         <div className="filter-row">
           <button className={`btn small ${sport ? 'secondary' : ''}`} onClick={() => set('sport', '')}>All sports</button>
           {SPORTS.map((s) => <button key={s.key} className={`btn small ${sport === s.key ? '' : 'secondary'}`} onClick={() => set('sport', s.key)}>{sportIcon(s.key)} {s.short}</button>)}
         </div>
-        {!data ? <Loading /> : data.players.length ? data.players.map((p) => (
-          <Link key={p.id} to={`/recruiting/${p.id}`} className="player-card">
+        <div className="filter-row" style={{ paddingTop: 0 }}>
+          <select className="select" aria-label="Year" value={year} onChange={(e) => set('year', e.target.value)}>
+            <option value="">All years</option>
+            {(data?.years ?? []).map((y) => <option key={y} value={y}>{yearLabel(y)}</option>)}
+          </select>
+        </div>
+        {!data ? <Loading /> : data.players.length ? data.players.map((p, i) => (
+          <Fragment key={p.id}>
+          {!year && (i === 0 || data.players[i - 1].class_year !== p.class_year) && <div className="year-head">{yearLabel(p.class_year)}</div>}
+          <Link to={`/recruiting/${p.id}`} className="player-card">
             <span className="player-pos">{p.position ?? sportIcon(p.sport)}</span>
             <span className="grow">
               <strong>{p.name}</strong> <Stars n={p.stars} />
@@ -69,6 +79,7 @@ export function Recruiting() {
             </span>
             <span className={`chip ${p.status === 'committed' || p.status === 'signed' || p.status === 'enrolled' ? '' : 'gray'}`}>{STATUS_LABELS[p.status] ?? p.status}</span>
           </Link>
+          </Fragment>
         )) : <div className="empty">Nobody tracked here yet. {data.sync.configured ? 'Automatic data appears after the next daily update.' : 'Add the first player.'}</div>}
       </section>
       {adding && <AddPlayer onClose={() => setAdding(false)} defaultKind={kind === 'portal' ? 'transfer_in' : 'recruit'} />}
