@@ -22,14 +22,18 @@ recruiting.get('/players', async (c) => {
   if (kind === 'recruit') where += " AND p.kind = 'recruit'";
   else if (kind === 'portal') where += " AND p.kind IN ('transfer_in', 'transfer_out')";
   if (sport && sport in SPORT_BY_KEY) { where += ' AND p.sport = ?'; params.push(sport); }
+  // Years on file for the year dropdown (for the chosen tab and sport, before the year filter).
+  const years = (await all<{ y: number }>(c.env, `SELECT DISTINCT p.class_year AS y FROM players p WHERE ${where} AND p.class_year IS NOT NULL ORDER BY y DESC`, ...params)).map((r) => r.y);
   if (year) { where += ' AND p.class_year = ?'; params.push(year); }
+  // Newest class first; within a year, highest-rated first, then by name. Players with no year go last.
   const rows = await all(c.env,
     `SELECT p.*, (SELECT COUNT(*) FROM player_news n WHERE n.player_id = p.id) AS news,
             (SELECT COUNT(*) FROM player_predictions x WHERE x.player_id = p.id AND x.pick = 'yes') AS yes,
             (SELECT COUNT(*) FROM player_predictions x WHERE x.player_id = p.id) AS predictions
-       FROM players p WHERE ${where} ORDER BY p.updated_at DESC LIMIT 300`, ...params);
+       FROM players p WHERE ${where}
+      ORDER BY (p.class_year IS NULL), p.class_year DESC, COALESCE(p.stars, 0) DESC, COALESCE(p.rating, 0) DESC, p.name LIMIT 500`, ...params);
   const status = await recruitingStatus(c.env);
-  return c.json({ players: rows, sync: { configured: Boolean(c.env.CFBD_API_KEY), ...status } });
+  return c.json({ players: rows, years, sync: { configured: Boolean(c.env.CFBD_API_KEY), ...status } });
 });
 
 recruiting.get('/players/:id', async (c) => {

@@ -722,3 +722,5 @@ label.btn.disabled { opacity: .6; pointer-events: none; }
 .season-record { font-size: 1.6rem; font-weight: 900; color: var(--crimson); line-height: 1.1; }
 :root[data-theme='dark'] .season-record { color: var(--text); }
 .tm-links { padding: 0 4px; }
+.year-head { padding: 8px 16px; background: var(--crimson-tint); color: var(--crimson); font-weight: 800; font-size: .85rem; letter-spacing: .02em; }
+:root[data-theme='dark'] .year-head { color: var(--text); }
